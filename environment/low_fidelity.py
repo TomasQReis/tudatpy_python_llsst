@@ -135,9 +135,10 @@ def environment_prop_settings_low_fidelity(
         central_bodies=                 centralBodies
     )
     
-    # Define initial cartesian states.
+    # Empty initial cartesian state and dependent variables list. 
     initialCartesianStatesList = []
     for spacecraft in spacecrafts:
+        # Define initial cartesian states.
         # Convert from keplerian initial state to cartesian coords. 
         cartesianState = element_conversion.keplerian_to_cartesian_elementwise(
             gravitational_parameter= bodies.get("Moon").gravitational_parameter,
@@ -152,6 +153,18 @@ def environment_prop_settings_low_fidelity(
         spacecraft["cartesianInitial"] = cartesianState
         # Append to initial states. 
         initialCartesianStatesList.append( cartesianState )
+
+    # TODO: Implement a method for ensuring correct relative distance measure
+    # for more than two satellites in constellation. 
+    # Something with an array with the pairs we want to have as links?
+    # NOTE: TEMPORARY!
+    dependentVariablesList = [
+        propagation_setup.dependent_variable.relative_distance(
+            body= spacecrafts[0]["name"],
+            relative_body= spacecrafts[1]["name"]
+        )
+    ]
+
 
     # Flatten out state vector.
     initialCartesianStates = np.concatenate( initialCartesianStatesList )
@@ -175,7 +188,8 @@ def environment_prop_settings_low_fidelity(
         initial_states= initialCartesianStates,
         initial_time= simStartEpoch,
         termination_settings= terminationSettings,
-        integrator_settings= integratorSettings
+        integrator_settings= integratorSettings,
+        output_variables= dependentVariablesList
     )
 
     return propagatorSettings
@@ -201,6 +215,8 @@ def environment_propagate_low_fidelity(
 
     # Extract state history. 
     stateHistory = dynamicsSimulator.propagation_results.state_history
+    # Extract dependent variables history. 
+    dependentVarsHistory = dynamicsSimulator.propagation_results.dependent_variable_history
 
-    return stateHistory
+    return stateHistory, dependentVarsHistory
     

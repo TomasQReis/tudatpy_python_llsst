@@ -2,15 +2,13 @@
 from environment.low_fidelity import *
 from obs_models.ll_sst import *
 from vehicles.roci_ab import *
+from visualization.plotting import *
 
 ### External library imports.
 import numpy as np
 
 ### Tudat imports
 from tudatpy.util import result2array
-
-
-
 
 if __name__ == "__main__":
     # Simulation start and end dates. 
@@ -37,9 +35,24 @@ if __name__ == "__main__":
     )
 
     # Propagate orbit. 
-    stateHistory = environment_propagate_low_fidelity(
+    stateHistory, dependentVarsHistory = environment_propagate_low_fidelity(
         bodies= simulationBodies,
         propagationSettings= propagatorSettings
     )
 
-    
+    # Relative distance plot. 
+    dependentVarsHistoryArray = result2array(dependentVarsHistory)
+    # Makes times into time since start of propagation. 
+    times = dependentVarsHistoryArray[:,0] - dependentVarsHistoryArray[0,0]
+    # Assembles data dictionary for use in plotting. 
+    dataDict = {
+        "Relative Distance": dependentVarsHistoryArray[:,1]
+    }
+
+    generalized_plot_2d(
+        yVariables= dataDict,
+        xVariables= times,
+        title= "Relative Distance Plot",
+        xAxisLabel= "Time since start of Simulation [s]",
+        yAxisLabel= "Relative Distance [m]"
+    )
