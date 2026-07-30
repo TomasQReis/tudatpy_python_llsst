@@ -11,12 +11,10 @@ import numpy as np
 
 ### Tudat imports.
 from tudatpy.interface import spice
-from tudatpy import dynamics
 from tudatpy.dynamics import environment_setup, propagation_setup, simulator
 from tudatpy.dynamics.environment import SystemOfBodies
+from tudatpy.dynamics.propagation_setup.propagator import TranslationalStatePropagatorSettings
 from tudatpy.astro import element_conversion
-from tudatpy import constants
-from tudatpy.util import result2array
 from tudatpy.astro.time_representation import DateTime
 
 # TODO: Put this in a common functions file. 
@@ -182,5 +180,27 @@ def environment_prop_settings_low_fidelity(
 
     return propagatorSettings
     
+def environment_propagate_low_fidelity(
+        bodies: SystemOfBodies,
+        propagationSettings: TranslationalStatePropagatorSettings,
+):
+    """
+    Propagates the provided bodies with the given propagation settings.
+    Args:
+        bodies (SystemOfBodies): Object containing the objects for bodies and environment models constituting the physical environment.   
+        propagationSettings (TranslationalStatePropagatorSettings) : SingleArcPropagatorSettings-derived class to define settings for single-arc translational dynamics. 
+    Returns:
+        stateHistory (dict): Dictionary whose keys are the timestamps of the propagation. Each key contains a flattenned numpy array of the states of each spacecraft at the given epoch, organized such that each set of 6 values corresponds to one spacecraft.
+    """
+    
+    # Create dynamics simulator.
+    dynamicsSimulator = simulator.create_dynamics_simulator(
+        bodies= bodies,
+        propagator_settings= propagationSettings
+    )
 
+    # Extract state history. 
+    stateHistory = dynamicsSimulator.propagation_results.state_history
 
+    return stateHistory
+    
