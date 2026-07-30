@@ -23,7 +23,16 @@ if __name__ == "__main__":
         )
 
     # Set up environment bodies. 
-    environment_bodies_low_fidelity( spacecrafts= spacecraftNames )
+    simulationBodies = environment_bodies_low_fidelity( 
+        spacecrafts= spacecraftDicts )
+
+    # Set up propagator settings. 
+    propagatorSettings = environment_prop_settings_low_fidelity(
+        spacecrafts= spacecraftDicts,
+        bodies= simulationBodies,
+        simStartEpoch= simStartEpoch,
+        simEndEpoch= simEndEpoch,
+        timeStep= 10.0
+    )
 
     
-
