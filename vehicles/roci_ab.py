@@ -5,13 +5,14 @@
 # "Donnager class"
 ### 
 
-# Roci A and B dictionaries. 
-# Contain vehicle characteristics and initial keplerian states. 
-
+### External library imports.
 import numpy as np
 
+### Imports for self-made functions 
 from auxiliary.math import law_cosines_anomaly_spacing
 
+# Roci A and B dictionaries. 
+# Contain vehicle characteristics and initial keplerian states. 
 rociA = {
     "name": "rociA",
     "mass": 100,        # kg
@@ -48,4 +49,4 @@ rociB = {
 }
 
 # List of dictionaries for use in creating body settings. 
-spacecraftDicts = [rociA, rociB]
+rociABList = [rociA, rociB]
