@@ -9,6 +9,8 @@ import numpy as np
 
 ### Tudat imports
 from tudatpy.util import result2array
+from tudatpy import dynamics
+from tudatpy.estimation.estimation_analysis import Estimator
 
 if __name__ == "__main__":
 
@@ -21,6 +23,7 @@ if __name__ == "__main__":
     simStartEpoch, simEndEpoch = load_spice( 
         startEpoch= simStartDate, endEpoch= simEndDate 
         )
+
 
     # Choose list of spacecraft for simulation. 
     spacecraftDicts = rociABList
@@ -51,29 +54,96 @@ if __name__ == "__main__":
     )
 
     # Create observation model simulator.
-    observationModelSimulator = observation_model_simulator_owr(
+    observationModelSimulator, observationModelSettings = observation_model_simulator_owr(
         owrLinkDefinition= observationLinkDefinition,
         bodies= simulationBodies
     )
 
+    # Create set of observation times. 
+    observationsStep = 10.0
+    observationTimes = np.arange( simStartEpoch+observationsStep, 
+                                step= observationsStep,
+                                stop= simEndEpoch)
 
-    if plot1 := False:
-        # Relative distance plot. 
-        dependentVarsHistoryArray = result2array(dependentVarsHistory)
-        # Makes times into time since start of propagation. 
-        times = dependentVarsHistoryArray[:,0] - dependentVarsHistoryArray[0,0]
+    ### -----------------------------------------------------------------------
+    ### TODO: Put this into its own observations file
+
+    ### Same physical environment as simulated observations.
+    parameterSettings = dynamics.parameters_setup.initial_states( 
+        propagatorSettings, simulationBodies )
+    
+    
+    estimator = Estimator(
+        bodies= simulationBodies,
+        estimated_parameters= dynamics.parameters_setup.create_parameter_set(
+            parameter_settings= parameterSettings,
+            bodies= simulationBodies),
+        observation_settings= observationModelSettings,
+        propagator_settings= propagatorSettings
+    )
+
+    # Simulate observations. 
+    simulatedObservations = simulate_observations_owr(
+        observationTimes= observationTimes,
+        owrLinkDefinition= observationLinkDefinition,
+        owrObservationSimulator= estimator.observation_simulators,
+        bodies= simulationBodies
+    )
+
+    # Extract simulated observation data. 
+    rangeParser = estimation.observations.observations_processing.observation_parser(
+        estimation.observable_models_setup.model_settings.one_way_range_type
+    )
+    simulatedObservationValues, simulatedObservationTimes = simulatedObservations.get_concatenated_observations_and_times(
+        rangeParser
+    )
+
+    ### -----------------------------------------------------------------------
+    dependentVarsHistoryArray = result2array(dependentVarsHistory)
+
+    # Relative distance plot. 
+    if plotRange := False:
+        
+        # Assembles times dictionary
+        epochDict = {
+            "Relative Distance": dependentVarsHistoryArray[:,0] - simStartEpoch,
+            "Range Measurement": np.array(observationTimes) - simStartEpoch
+        }
         # Assembles data dictionary for use in plotting. 
         dataDict = {
-            "Relative Distance": dependentVarsHistoryArray[:,1]
+            "Relative Distance": dependentVarsHistoryArray[:,1],
+            "Range Measurement": observationValues
         }
 
         generalized_plot_2d(
             yVariables= dataDict,
-            xVariables= times,
+            xVariables= epochDict,
             title= "Relative Distance Plot",
             xAxisLabel= "Time since start of Simulation [s]",
             yAxisLabel= "Relative Distance [m]"
         )
 
+    # Plots the difference between "real" range and simulated observations. 
+    if plotRangeDifference := True :
+        # Check where epochs match between propagation and observations.
+        matchedIndexes = np.where( np.isin( 
+            dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]
 
-    
+        # Extract propagation range for matching indices
+        propRange = dependentVarsHistoryArray[matchedIndexes,1]
+
+        # Calculate difference.
+        rangeDifference = abs(propRange - simulatedObservationValues)
+
+        # Data and epoch dictionaries 
+        yVariables = { "Range Difference": rangeDifference }
+        xVariables = { "Range Difference": np.array(simulatedObservationTimes) - simStartEpoch}
+
+        # Plots
+        generalized_plot_2d(
+            yVariables= yVariables,
+            xVariables= xVariables,
+            title= "Difference Between Propagation and Observation Range",
+            xAxisLabel= "Time since start of propagation [s]",
+            yAxisLabel= "Range Difference [m]"
+        )

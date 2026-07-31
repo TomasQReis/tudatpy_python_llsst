@@ -47,10 +47,9 @@ def trajectory_plot_3d(
     ax.set_aspect('equal')
     plt.show()
 
-
 def generalized_plot_2d(
         yVariables: dict,
-        xVariables: ndarray,
+        xVariables: dict,
         title: str,
         # TODO: Add a better method for generalized x-y axes. 
         xAxisLabel: str,
@@ -67,7 +66,7 @@ def generalized_plot_2d(
     i = 0
     for key, data in yVariables.items():
         ax.plot(
-            xVariables,
+            xVariables[key],
             data,
             label= key,
             linestyle=lineStyles[i % len(lineStyles)]

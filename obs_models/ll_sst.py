@@ -36,7 +36,7 @@ def link_creation_owr(
             )
     else:
         owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-            receiverDict[ "name" ] 
+            transmitterDict[ "name" ] 
             )
 
     # Receiver link.
@@ -54,6 +54,15 @@ def link_creation_owr(
 def observation_model_simulator_owr(
         owrLinkDefinition: estimation.observable_models_setup.links.LinkDefinition,
         bodies: SystemOfBodies):
+    """
+    Creates an observation simulator for later use in either estimating 
+    parameters or simulating observations. 
+    Args:
+        owrLinkDefinition (LinkDefinition): LinkDefinition object created with the correspoding link creation function.
+        bodies (SystemOfBodies): SystemOfBodies object used in the observations model.
+    Returns:
+        owrObservationSimulator (list[ObservationSimulator]): List of ObservationSimulators to be used in estimation or simulating observations. 
+    """
 
     # Observation settings list. 
     owrObservationSettings = []
@@ -68,4 +77,30 @@ def observation_model_simulator_owr(
         bodies= bodies
     )
 
-    return owrObservationSimulator
+    return owrObservationSimulator, owrObservationSettings
+
+# Create parameters for the simulated observations. 
+def simulate_observations_owr(
+        observationTimes: list,
+        owrLinkDefinition: estimation.observable_models_setup.links.LinkDefinition,
+        owrObservationSimulator: list[estimation.observable_models.observables_simulation.ObservationSimulator],
+        bodies: SystemOfBodies,
+):
+    # Create simulated observations settings. 
+    owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings(
+        observable_type= estimation.observable_models_setup.model_settings.one_way_range_type,
+        link_ends= owrLinkDefinition,
+        simulation_times= observationTimes
+    )
+
+    # NOTE: Additional simulated observation settings should be added here
+    # after the nominal settings are created.
+
+    # Simulates observations. 
+    owrSimulatedObservations = estimation.observations_setup.observations_wrapper.simulate_observations(
+        simulation_settings= [owrSimulatedObservationSettings],
+        observation_simulators= owrObservationSimulator,
+        bodies= bodies
+    )
+
+    return owrSimulatedObservations
