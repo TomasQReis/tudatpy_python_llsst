@@ -112,7 +112,7 @@ if __name__ == "__main__":
         # Assembles data dictionary for use in plotting. 
         dataDict = {
             "Relative Distance": dependentVarsHistoryArray[:,1],
-            "Range Measurement": observationValues
+            "Range Measurement": simulatedObservationValues
         }
 
         generalized_plot_2d(
