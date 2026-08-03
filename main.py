@@ -39,7 +39,8 @@ if __name__ == "__main__":
         bodies= simulationBodies,
         simStartEpoch= simStartEpoch,
         simEndEpoch= simEndEpoch,
-        timeStep= 10.0
+        timeStep= 10.0,
+        sHMoon= True
     )
 
     # Propagate orbit. 
@@ -158,11 +159,9 @@ if __name__ == "__main__":
         rangeDifference = abs(propRange - simulatedObservationValues)
 
         # Data and epoch dictionaries 
-        yVariables = { "Estimator Range": simulatedObservationValues,
-                       "Dynamics Range": propRange
+        yVariables = { "Range Difference": rangeDifference,
                     }
-        xVariables = { "Estimator Range": np.array(simulatedObservationTimes) - simStartEpoch,
-                      "Dynamics Range":  np.array(simulatedObservationTimes) - simStartEpoch
+        xVariables = { "Range Difference": np.array(simulatedObservationTimes) - simStartEpoch
                     }
 
         # Plots
