@@ -80,7 +80,6 @@ def observation_model_simulator_owr(
         owrLinkDefinition,
         light_time_correction_settings= lightTimeCorrectionSettings,
         ),
-        
     )
 
     # Create observational simulator. 
@@ -98,6 +97,18 @@ def simulate_observations_owr(
         owrObservationSimulator: list[estimation.observable_models.observables_simulation.ObservationSimulator],
         bodies: SystemOfBodies,
 ):
+    """
+    Performs the observations simulation.
+    Args:
+        observationTimes (list): List of floats with the observation times given in seconds since J2000.
+        owrLinkDefintion (LinkDefinition): LinkEnds definition as given by the link_creation_owr function.
+        owrObservationsSimulator: (list): List of ObservationSimulator as given by the estimator property observation_simulators or the create_observation_simulators function.
+        bodies (SystemOfBodies): System of bodies for the observation model environment. 
+    Returns:
+        owrSimulatedObservations (ObservationCollection): Simulated observations object. 
+        owrSimulatedObservationsDependentVars (NDArray): Dependent variables from the observations simulation. 
+    """
+    
     # Create simulated observations settings. 
     owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings(
         observable_type= estimation.observable_models_setup.model_settings.one_way_range_type,
@@ -109,6 +120,11 @@ def simulate_observations_owr(
     # after the nominal settings are created.
     # Adds range between links dependent variable. 
     dependentVariableRangeSettings = estimation.observations_setup.observations_dependent_variables.target_range_between_link_ends_dependent_variable()
+    dependentVariableCoGRangeSettings = estimation.observations_setup.observations_dependent_variables.body_center_distance_dependent_variable(
+        body_name= "rociA",
+        start_link_end_id= owrLinkDefinition.link_end_id( LinkEndType.transmitter ),
+        end_link_end_id= owrLinkDefinition.link_end_id( LinkEndType.receiver )
+    )
     estimation.observations_setup.observations_dependent_variables.add_dependent_variables_to_all(
         dependent_variable_settings= [ dependentVariableRangeSettings ],
         observation_simulation_settings= [ owrSimulatedObservationSettings ],

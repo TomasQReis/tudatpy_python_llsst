@@ -90,6 +90,17 @@ if __name__ == "__main__":
         bodies= simulationBodies
     )
 
+    # Estimation settings. 
+    estimationSettings = estimation.estimation_analysis.EstimationInput(
+        observations_and_times= simulatedObservations
+    )
+
+    # Perform initial state estimation.
+    estimationOutput = estimator.perform_estimation(
+        estimation_input= estimationSettings
+    )
+    
+
     # Extract simulated observation data. 
     rangeParser = estimation.observations.observations_processing.observation_parser(
         estimation.observable_models_setup.model_settings.one_way_range_type
@@ -100,10 +111,17 @@ if __name__ == "__main__":
 
     ### -----------------------------------------------------------------------
     dependentVarsHistoryArray = result2array(dependentVarsHistory)
+    stateHistoryArr = result2array(stateHistory)
 
+    print(estimationOutput.final_parameters[:3])
+    print(stateHistoryArr[0,1:4])
+
+    print(estimationOutput.final_parameters[3:6])
+    print(stateHistoryArr[0,4:7])
 
     print(np.shape(np.ravel(simulatedObservationsDependentVars[0])))
     print(np.shape(dependentVarsHistoryArray[:,0]))
+    print(np.ravel(simulatedObservationsDependentVars[0]))
 
     # Relative distance plot. 
     if plotRange := False:
@@ -128,7 +146,7 @@ if __name__ == "__main__":
         )
 
     # Plots the difference between "real" range and simulated observations. 
-    if plotRangeDifference := False :
+    if plotRangeDifference := True :
         # Check where epochs match between propagation and observations.
         matchedIndexes = np.where( np.isin( 
             dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]
@@ -140,9 +158,12 @@ if __name__ == "__main__":
         rangeDifference = abs(propRange - np.ravel(simulatedObservationsDependentVars[0]))
 
         # Data and epoch dictionaries 
-        yVariables = { "Range Difference": rangeDifference,
-}
-        xVariables = { "Range Difference": np.array(simulatedObservationTimes) - simStartEpoch }
+        yVariables = { "Estimator Range": rangeDifference,
+                       #"Dynamics Range": dependentVarsHistoryArray[:,1]
+                    }
+        xVariables = { "Estimator Range": np.array(simulatedObservationTimes) - simStartEpoch,
+                      #"Dynamics Range":  dependentVarsHistoryArray[:,0] - simStartEpoch
+                    }
 
         # Plots
         generalized_plot_2d(
@@ -152,3 +173,5 @@ if __name__ == "__main__":
             xAxisLabel= "Time since start of propagation [s]",
             yAxisLabel= "Range Difference [m]"
         )
+
+    # 
