@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # Simulation start and end dates. 
     # Given as [Year, Month, Day]
-    simStartDate    = [2026, 7, 30]
+    simStartDate    = [2026, 7, 31]
     simEndDate      = [2026, 8, 1]
 
     # Load SPICE kernels and return J2000 formatted epochs. 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     )
 
     # Simulate observations. 
-    simulatedObservations = simulate_observations_owr(
+    simulatedObservations, simulatedObservationsDependentVars = simulate_observations_owr(
         observationTimes= observationTimes,
         owrLinkDefinition= observationLinkDefinition,
         owrObservationSimulator= estimator.observation_simulators,
@@ -100,6 +100,10 @@ if __name__ == "__main__":
 
     ### -----------------------------------------------------------------------
     dependentVarsHistoryArray = result2array(dependentVarsHistory)
+
+
+    print(np.shape(np.ravel(simulatedObservationsDependentVars[0])))
+    print(np.shape(dependentVarsHistoryArray[:,0]))
 
     # Relative distance plot. 
     if plotRange := False:
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         )
 
     # Plots the difference between "real" range and simulated observations. 
-    if plotRangeDifference := True :
+    if plotRangeDifference := False :
         # Check where epochs match between propagation and observations.
         matchedIndexes = np.where( np.isin( 
             dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]
@@ -133,17 +137,18 @@ if __name__ == "__main__":
         propRange = dependentVarsHistoryArray[matchedIndexes,1]
 
         # Calculate difference.
-        rangeDifference = abs(propRange - simulatedObservationValues)
+        rangeDifference = abs(propRange - np.ravel(simulatedObservationsDependentVars[0]))
 
         # Data and epoch dictionaries 
-        yVariables = { "Range Difference": rangeDifference }
-        xVariables = { "Range Difference": np.array(simulatedObservationTimes) - simStartEpoch}
+        yVariables = { "Range Difference": rangeDifference,
+}
+        xVariables = { "Range Difference": np.array(simulatedObservationTimes) - simStartEpoch }
 
         # Plots
         generalized_plot_2d(
             yVariables= yVariables,
             xVariables= xVariables,
-            title= "Difference Between Propagation and Observation Range",
+            title= "Isolated Propagation and Estimator Propagation Range Difference",
             xAxisLabel= "Time since start of propagation [s]",
             yAxisLabel= "Range Difference [m]"
         )

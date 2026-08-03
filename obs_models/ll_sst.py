@@ -4,6 +4,7 @@
 
 # Tudat imports. 
 from tudatpy import estimation
+from tudatpy.estimation.observable_models_setup import links
 from tudatpy.estimation.observable_models_setup.links import LinkEndType
 from tudatpy.dynamics.environment import SystemOfBodies
 
@@ -64,12 +65,23 @@ def observation_model_simulator_owr(
         owrObservationSimulator (list[ObservationSimulator]): List of ObservationSimulators to be used in estimation or simulating observations. 
     """
 
+    """ # First order Sun-dependent relativistic light-time correction settings. 
+    lightTimeCorrectionSettings = [ 
+        estimation.observable_models_setup.light_time_corrections.light_time_convergence_settings( 
+            maximum_number_of_iterations= 100
+         ) 
+    ] """
+    # Empty light time corrections settings. 
+    lightTimeCorrectionSettings = []
+
     # Observation settings list. 
     owrObservationSettings = []
     owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range( 
         owrLinkDefinition,
-        light_time_correction_settings= [],
-    ))
+        light_time_correction_settings= lightTimeCorrectionSettings,
+        ),
+        
+    )
 
     # Create observational simulator. 
     owrObservationSimulator = estimation.observations_setup.observations_simulation_settings.create_observation_simulators(
@@ -90,17 +102,30 @@ def simulate_observations_owr(
     owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings(
         observable_type= estimation.observable_models_setup.model_settings.one_way_range_type,
         link_ends= owrLinkDefinition,
-        simulation_times= observationTimes
+        simulation_times= observationTimes,
     )
 
     # NOTE: Additional simulated observation settings should be added here
     # after the nominal settings are created.
+    # Adds range between links dependent variable. 
+    dependentVariableRangeSettings = estimation.observations_setup.observations_dependent_variables.target_range_between_link_ends_dependent_variable()
+    estimation.observations_setup.observations_dependent_variables.add_dependent_variables_to_all(
+        dependent_variable_settings= [ dependentVariableRangeSettings ],
+        observation_simulation_settings= [ owrSimulatedObservationSettings ],
+        bodies= bodies
+    )
+
 
     # Simulates observations. 
     owrSimulatedObservations = estimation.observations_setup.observations_wrapper.simulate_observations(
-        simulation_settings= [owrSimulatedObservationSettings],
+        simulation_settings= [ owrSimulatedObservationSettings ],
         observation_simulators= owrObservationSimulator,
         bodies= bodies
     )
 
-    return owrSimulatedObservations
+    # Retrieves dependent variables. 
+    owrSimulatedObservationsDependentVars = owrSimulatedObservations.dependent_variable(
+        dependent_variable_settings= dependentVariableRangeSettings
+    )
+
+    return owrSimulatedObservations, owrSimulatedObservationsDependentVars
