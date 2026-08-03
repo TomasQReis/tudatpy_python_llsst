@@ -1,5 +1,6 @@
 ### Imports for self-made functions
 from environment.low_fidelity import *
+from environment.common_functions import *
 from obs_models.ll_sst import *
 from vehicles.roci_ab import *
 from visualization.plotting import *
@@ -113,15 +114,14 @@ if __name__ == "__main__":
     dependentVarsHistoryArray = result2array(dependentVarsHistory)
     stateHistoryArr = result2array(stateHistory)
 
-    print(estimationOutput.final_parameters[:3])
-    print(stateHistoryArr[0,1:4])
-
-    print(estimationOutput.final_parameters[3:6])
-    print(stateHistoryArr[0,4:7])
-
-    print(np.shape(np.ravel(simulatedObservationsDependentVars[0])))
-    print(np.shape(dependentVarsHistoryArray[:,0]))
-    print(np.ravel(simulatedObservationsDependentVars[0]))
+    # Print initial state estimate vs reality
+    if printInitialState := False:
+        print("Initial position: ==========")
+        print(f"Estimated:{estimationOutput.final_parameters[:3]}") 
+        print(f"Reality:{stateHistoryArr[0,1:4]}") 
+        print("Initial velocity: ==========")
+        print(f"Estimated:{estimationOutput.final_parameters[3:6]}") 
+        print(f"Reality:{stateHistoryArr[0,4:7]}") 
 
     # Relative distance plot. 
     if plotRange := False:
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         )
 
     # Plots the difference between "real" range and simulated observations. 
-    if plotRangeDifference := True :
+    if plotRangeDifference := False :
         # Check where epochs match between propagation and observations.
         matchedIndexes = np.where( np.isin( 
             dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]
@@ -155,14 +155,14 @@ if __name__ == "__main__":
         propRange = dependentVarsHistoryArray[matchedIndexes,1]
 
         # Calculate difference.
-        rangeDifference = abs(propRange - np.ravel(simulatedObservationsDependentVars[0]))
+        rangeDifference = abs(propRange - simulatedObservationValues)
 
         # Data and epoch dictionaries 
-        yVariables = { "Estimator Range": rangeDifference,
-                       #"Dynamics Range": dependentVarsHistoryArray[:,1]
+        yVariables = { "Estimator Range": simulatedObservationValues,
+                       "Dynamics Range": propRange
                     }
         xVariables = { "Estimator Range": np.array(simulatedObservationTimes) - simStartEpoch,
-                      #"Dynamics Range":  dependentVarsHistoryArray[:,0] - simStartEpoch
+                      "Dynamics Range":  np.array(simulatedObservationTimes) - simStartEpoch
                     }
 
         # Plots
