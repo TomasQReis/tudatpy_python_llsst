@@ -15,23 +15,32 @@ from tudatpy.estimation.estimation_analysis import Estimator
 
 if __name__ == "__main__":
 
-    # Simulation start and end dates. 
+    ### -----------------------------------------------------------------------
+    ### Propagation of "reality".
+    ### -----------------------------------------------------------------------
+
+    # Propagation start and end dates. 
     # Given as [Year, Month, Day]
     simStartDate    = [2026, 7, 31]
     simEndDate      = [2026, 8, 1]
+
+    # Propagation time step size. 
+    propTimeStep = 10.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
         startEpoch= simStartDate, endEpoch= simEndDate 
         )
 
-
     # Choose list of spacecraft for simulation. 
     spacecraftDicts = rociABList
 
-    # Set up environment bodies. 
-    simulationBodies = environment_bodies_low_fidelity( 
-        spacecrafts= spacecraftDicts )
+    # Set up true environment bodies. 
+    simulationBodies = environment_bodies_low_fidelity_true_model( 
+        spacecrafts= spacecraftDicts 
+    )
+
+    
 
     # Set up propagator settings. 
     propagatorSettings = environment_prop_settings_low_fidelity(
@@ -39,7 +48,7 @@ if __name__ == "__main__":
         bodies= simulationBodies,
         simStartEpoch= simStartEpoch,
         simEndEpoch= simEndEpoch,
-        timeStep= 10.0,
+        timeStep= propTimeStep,
         sHMoon= True,
         keepEnvironment= True
     )
@@ -49,6 +58,20 @@ if __name__ == "__main__":
         bodies= simulationBodies,
         propagationSettings= propagatorSettings
     )
+
+    # Convert reality propagation output into NDArrays. 
+    dependentVarsHistoryArray = result2array(dependentVarsHistory)
+    stateHistoryArr = result2array(stateHistory)
+
+    ### -----------------------------------------------------------------------
+    ### Simulating observations.
+    ### -----------------------------------------------------------------------
+
+    # Create set of observation times. 
+    observationsStep = 10.0
+    observationTimes = np.arange( simStartEpoch+observationsStep, 
+                                step= observationsStep,
+                                stop= simEndEpoch)
 
     # Create observation links.
     observationLinkDefinition = link_creation_owr(
@@ -62,35 +85,53 @@ if __name__ == "__main__":
         bodies= simulationBodies
     )
 
-    # Create set of observation times. 
-    observationsStep = 10.0
-    observationTimes = np.arange( simStartEpoch+observationsStep, 
-                                step= observationsStep,
-                                stop= simEndEpoch)
-
-    ### -----------------------------------------------------------------------
-    ### TODO: Put this into its own observations file
-
     # Simulate observations. 
     simulatedObservations, simulatedObservationsDependentVars = simulate_observations_owr(
-        observationTimes= observationTimes,
+        observationTimes= observationTimes.tolist(),
         owrLinkDefinition= observationLinkDefinition,
         owrObservationSimulator= observationModelSimulator,
         bodies= simulationBodies
     )
 
-    ### Same physical environment as simulated observations.
+    # Extract simulated observation data. 
+    simulatedObservationValues, simulatedObservationTimes = extract_data_observations_owr(
+        observationCollection= simulatedObservations
+    )
+
+    ### -----------------------------------------------------------------------
+    ### Estimating parameters.
+    ### -----------------------------------------------------------------------
+
+    # Set up estimation environment bodies. 
+    estimationBodies = environment_bodies_low_fidelity_estimation_model(
+        spacecrafts= spacecraftDicts
+    )
+
+    # Set up estimation propagation settings. 
+    estimationPropSettings = environment_prop_settings_low_fidelity(
+        spacecrafts= spacecraftDicts,
+        bodies= estimationBodies,
+        simStartEpoch= simStartEpoch,
+        simEndEpoch= simEndEpoch,
+        timeStep= propTimeStep,
+        sHMoon= False
+    )
+
+    # Set up desired estimation parameters.
     parameterSettings = dynamics.parameters_setup.initial_states( 
-        propagatorSettings, simulationBodies )
+        estimationPropSettings, estimationBodies 
+        )
+    parameterSet = dynamics.parameters_setup.create_parameter_set(
+        parameter_settings= parameterSettings,
+        bodies= estimationBodies
+        )
     
-    
+    # Creating estimator. 
     estimator = Estimator(
-        bodies= simulationBodies,
-        estimated_parameters= dynamics.parameters_setup.create_parameter_set(
-            parameter_settings= parameterSettings,
-            bodies= simulationBodies),
+        bodies= estimationBodies,
+        estimated_parameters= parameterSet,
         observation_settings= observationModelSettings,
-        propagator_settings= propagatorSettings
+        propagator_settings= estimationPropSettings
     )
 
     # Estimation settings. 
@@ -98,22 +139,15 @@ if __name__ == "__main__":
         observations_and_times= simulatedObservations
     )
 
-    # Perform initial state estimation.
+    # Perform parameter estimation.
     estimationOutput = estimator.perform_estimation(
         estimation_input= estimationSettings
     )
-    
-    # Extract simulated observation data. 
-    simulatedObservationValues, simulatedObservationTimes = extract_data_observations_owr(
-        observationCollection= simulatedObservations
-    )
 
     ### -----------------------------------------------------------------------
-    dependentVarsHistoryArray = result2array(dependentVarsHistory)
-    stateHistoryArr = result2array(stateHistory)
 
     # Print initial state estimate vs reality
-    if printInitialState := False:
+    if printInitialState := True:
         print("Initial position: ==========")
         print(f"Estimated:{estimationOutput.final_parameters[:3]}") 
         print(f"Reality:{stateHistoryArr[0,1:4]}") 
@@ -144,7 +178,7 @@ if __name__ == "__main__":
         )
 
     # Plots the difference between "real" range and simulated observations. 
-    if plotRangeDifference := True :
+    if plotRangeDifference := False :
         # Check where epochs match between propagation and observations.
         matchedIndexes = np.where( np.isin( 
             dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]
@@ -170,4 +204,4 @@ if __name__ == "__main__":
             yAxisLabel= "Range Difference [m]"
         )
 
-    # 
+    

@@ -15,10 +15,42 @@ from tudatpy.dynamics.environment import SystemOfBodies
 from tudatpy.dynamics.propagation_setup.propagator import TranslationalStatePropagatorSettings
 from tudatpy.astro import element_conversion
 
-
-def environment_bodies_low_fidelity( spacecrafts: list ):
+# Low fidelity truth model. 
+def environment_bodies_low_fidelity_true_model( spacecrafts: list ):
     """
-    Sets up low-fidelity simulation environment bodies.
+    Sets up low-fidelity "true" environment bodies. These are used in the low fidelity simulated observations. 
+
+    Args:
+        spacecraft (list): List of strings of spacecraft included in simulation.
+
+    Returns:
+        bodies ( SystemOfBodies ): Object containing the objects for bodies and environment models constituting the physical environment.   
+    """
+    # Default body settings for Sun, Earth and Moon.
+    bodiesToCreate              = ["Earth", "Moon", "Sun", "Jupiter", "Saturn", "Mars", "Venus"]
+
+    # Global frame origin set to Moon. Orientation to J2000.
+    globalFrameOrigin           = "Moon"
+    globalFrameOrientation      = "J2000"
+
+    # Body settings.
+    bodySettings              = environment_setup.get_default_body_settings(
+        bodiesToCreate, globalFrameOrigin, globalFrameOrientation
+    )
+
+    # Add spacecraft to body settings. 
+    for spacecraft in spacecrafts:
+        bodySettings.add_empty_settings( spacecraft["name"] )
+
+    # Create system of bodies. 
+    bodies = environment_setup.create_system_of_bodies( bodySettings )
+
+    return bodies
+
+# Low fidelity estimation model. 
+def environment_bodies_low_fidelity_estimation_model( spacecrafts: list ):
+    """
+    Sets up low-fidelity estimation model environment bodies. These are used in the low fidelity estimation. 
 
     Args:
         spacecraft (list): List of strings of spacecraft included in simulation.
