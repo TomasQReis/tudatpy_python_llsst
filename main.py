@@ -15,41 +15,15 @@ from tudatpy.estimation.estimation_analysis import Estimator
 
 if __name__ == "__main__":
 
-    # Propagation start and end dates. 
-    # Given as [Year, Month, Day]
-    simStartDate    = [2026, 7, 31]
-    simEndDate      = [2026, 8, 1]
 
-    # Propagation time step size. 
-    propTimeStep = 10.0
 
-    # Load SPICE kernels and return J2000 formatted epochs. 
-    simStartEpoch, simEndEpoch = load_spice( 
-        startEpoch= simStartDate, endEpoch= simEndDate 
-        )
 
-    # Choose list of spacecraft for simulation. 
-    spacecraftDicts = rociABList
-
-    # Set up true environment bodies. 
-    simulationBodies = environment_bodies_low_fidelity_true_model( 
-        spacecrafts= spacecraftDicts 
-    )
-
-    cosineCoefficients, sineCoefficients = return_sh_coefficients(
-        bodyName= "Moon",
-        systemOfBodies= simulationBodies,
-        maxDegree= 5,
-        maxOrder= 5
-    )
-
-    print(cosineCoefficients[2,2])
 
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
     ### -----------------------------------------------------------------------
 
-    if propagateReality:= False:
+    if propagateReality:= True:
         # Propagation start and end dates. 
         # Given as [Year, Month, Day]
         simStartDate    = [2026, 7, 31]
@@ -94,11 +68,19 @@ if __name__ == "__main__":
         dependentVarsHistoryArray = result2array(dependentVarsHistory)
         stateHistoryArr = result2array(stateHistory)
 
+        # Extract cosine and sine coefficients from propagated model. 
+        cosineCoefficients, sineCoefficients = return_sh_coefficients(
+            bodyName= "Moon",
+            systemOfBodies= simulationBodies,
+            maxDegree= 5,
+            maxOrder= 5
+        )
+
     ### -----------------------------------------------------------------------
     ### Simulating observations.
     ### -----------------------------------------------------------------------
 
-    if simulateObservations:= False:
+    if simulateObservations:= True:
         # Create set of observation times. 
         observationsStep = 10.0
         observationTimes = np.arange( simStartEpoch+observationsStep, 
@@ -134,7 +116,7 @@ if __name__ == "__main__":
     ### Estimating parameters.
     ### -----------------------------------------------------------------------
 
-    if estimateParameters:= False:
+    if estimateParameters:= True:
         # Set up estimation environment bodies. 
         estimationBodies = environment_bodies_low_fidelity_estimation_model(
             spacecrafts= spacecraftDicts
@@ -154,6 +136,17 @@ if __name__ == "__main__":
         parameterSettings = dynamics.parameters_setup.initial_states( 
             estimationPropSettings, estimationBodies 
             )
+        parameterSettings.append( 
+            dynamics.parameters_setup.spherical_harmonics_c_coefficients(
+                body= "Moon",
+                maximum_degree= 5,
+                maximum_order= 5,
+                minimum_degree= 1,
+                minimum_order= 0
+            )
+        )
+
+        # Create parameters set. 
         parameterSet = dynamics.parameters_setup.create_parameter_set(
             parameter_settings= parameterSettings,
             bodies= estimationBodies
@@ -178,6 +171,15 @@ if __name__ == "__main__":
         )
 
     ### -----------------------------------------------------------------------
+    ### Data processing and visualization.
+    ### -----------------------------------------------------------------------
+
+    flattenedCosineCoefficients = cosineCoefficients[1:,0:].flatten()[cosineCoefficients[1:,0:].flatten() != 0]
+    nonZeroEstimatedCosineCoefficients = estimationOutput.final_parameters[14:]
+
+    print(f"Estimation residuals:{flattenedCosineCoefficients - nonZeroEstimatedCosineCoefficients}")
+    print(f"Default coefficients:{flattenedCosineCoefficients}")
+
 
     # Print initial state estimate vs reality
     if printInitialState := False:

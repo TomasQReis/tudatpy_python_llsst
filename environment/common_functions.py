@@ -42,7 +42,7 @@ def load_spice(startEpoch: list, endEpoch: list, longEpoch: bool= False):
 
     return simStartEpoch, simEndEpoch
 
-
+# Extract spherical harmonic coefficients from a desired body. 
 def return_sh_coefficients(
     bodyName: str,
     systemOfBodies: environment.SystemOfBodies,
@@ -69,14 +69,15 @@ def return_sh_coefficients(
     # Extract gravity field model. 
     gravityFieldModel =  body.gravity_field_model
 
-    # Check whether extracted model is a spherical harmonics model. 
-    if type(gravityFieldModel) is environment.SphericalHarmonicsGravityField:
-        # Extracts coefficients, keeping the (i,j) = (degree,order) entry order. 
-        cosineCoefficients = gravityFieldModel.cosine_coefficients[:maxDegree+1, :maxOrder+1]
-        sineCoefficients = gravityFieldModel.sine_coefficients[:maxDegree+1, :maxOrder+1]
-    else:
-        print("ERROR: Provided body does not have a spherical harmonics model associated with it.")
-        return 0,0
-
+    # Check whether extracted model is not a spherical harmonics model. 
+    if type(gravityFieldModel) is not environment.SphericalHarmonicsGravityField:
+        raise TypeError(
+            f"ERROR: Body:{bodyName} does not have a spherical harmonics model associated with it."
+        )
+    
+    # Extracts coefficients, keeping the (i,j) = (degree,order) entry order. 
+    cosineCoefficients = gravityFieldModel.cosine_coefficients[:maxDegree+1, :maxOrder+1]
+    sineCoefficients = gravityFieldModel.sine_coefficients[:maxDegree+1, :maxOrder+1]
+    
     return cosineCoefficients, sineCoefficients
 
