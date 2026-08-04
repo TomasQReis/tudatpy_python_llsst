@@ -50,6 +50,7 @@ def link_creation_owr(
 
     return owrLinkDefinition
 
+
 # One-way range observation model simulator.
 # TODO: Implement light-time corrections, noise and bias (Later version)
 def observation_model_simulator_owr(
@@ -65,12 +66,6 @@ def observation_model_simulator_owr(
         owrObservationSimulator (list[ObservationSimulator]): List of ObservationSimulators to be used in estimation or simulating observations. 
     """
 
-    """ # First order Sun-dependent relativistic light-time correction settings. 
-    lightTimeCorrectionSettings = [ 
-        estimation.observable_models_setup.light_time_corrections.light_time_convergence_settings( 
-            maximum_number_of_iterations= 100
-         ) 
-    ] """
     # Empty light time corrections settings. 
     lightTimeCorrectionSettings = []
 
@@ -89,6 +84,7 @@ def observation_model_simulator_owr(
     )
 
     return owrObservationSimulator, owrObservationSettings
+
 
 # Create parameters for the simulated observations. 
 def simulate_observations_owr(
@@ -145,3 +141,38 @@ def simulate_observations_owr(
     )
 
     return owrSimulatedObservations, owrSimulatedObservationsDependentVars
+
+
+# Extract specific values from observation simulations.  
+def extract_data_observations_owr(
+        observationCollection: estimation.observations.ObservationCollection,
+):
+    """
+    Extracts subset of data from simulated observations. 
+    Args:
+        observationCollection (ObservationCollection): Simulated observations object. 
+    Returns:
+        observationValues (NDArray): Values extracted from the simulated observations. 
+        observationTimes (lst): Reference times for the observations. 
+    """
+    
+    # List of observationCollection parsers.
+    # Add other parsers in here if needed.
+    rangeParser = estimation.observations.observations_processing.observation_parser(
+        estimation.observable_models_setup.model_settings.one_way_range_type
+    )
+
+    observationValues, observationTimes = observationCollection.get_concatenated_observations_and_times(
+        rangeParser
+    )
+
+    return observationValues, observationTimes
+
+
+# Create estimator object. 
+
+
+
+
+
+

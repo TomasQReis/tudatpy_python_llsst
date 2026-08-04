@@ -40,7 +40,8 @@ if __name__ == "__main__":
         simStartEpoch= simStartEpoch,
         simEndEpoch= simEndEpoch,
         timeStep= 10.0,
-        sHMoon= True
+        sHMoon= True,
+        keepEnvironment= True
     )
 
     # Propagate orbit. 
@@ -70,6 +71,14 @@ if __name__ == "__main__":
     ### -----------------------------------------------------------------------
     ### TODO: Put this into its own observations file
 
+    # Simulate observations. 
+    simulatedObservations, simulatedObservationsDependentVars = simulate_observations_owr(
+        observationTimes= observationTimes,
+        owrLinkDefinition= observationLinkDefinition,
+        owrObservationSimulator= observationModelSimulator,
+        bodies= simulationBodies
+    )
+
     ### Same physical environment as simulated observations.
     parameterSettings = dynamics.parameters_setup.initial_states( 
         propagatorSettings, simulationBodies )
@@ -84,14 +93,6 @@ if __name__ == "__main__":
         propagator_settings= propagatorSettings
     )
 
-    # Simulate observations. 
-    simulatedObservations, simulatedObservationsDependentVars = simulate_observations_owr(
-        observationTimes= observationTimes,
-        owrLinkDefinition= observationLinkDefinition,
-        owrObservationSimulator= estimator.observation_simulators,
-        bodies= simulationBodies
-    )
-
     # Estimation settings. 
     estimationSettings = estimation.estimation_analysis.EstimationInput(
         observations_and_times= simulatedObservations
@@ -102,13 +103,9 @@ if __name__ == "__main__":
         estimation_input= estimationSettings
     )
     
-
     # Extract simulated observation data. 
-    rangeParser = estimation.observations.observations_processing.observation_parser(
-        estimation.observable_models_setup.model_settings.one_way_range_type
-    )
-    simulatedObservationValues, simulatedObservationTimes = simulatedObservations.get_concatenated_observations_and_times(
-        rangeParser
+    simulatedObservationValues, simulatedObservationTimes = extract_data_observations_owr(
+        observationCollection= simulatedObservations
     )
 
     ### -----------------------------------------------------------------------
@@ -147,7 +144,7 @@ if __name__ == "__main__":
         )
 
     # Plots the difference between "real" range and simulated observations. 
-    if plotRangeDifference := False :
+    if plotRangeDifference := True :
         # Check where epochs match between propagation and observations.
         matchedIndexes = np.where( np.isin( 
             dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]

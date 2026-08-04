@@ -54,6 +54,7 @@ def environment_prop_settings_low_fidelity(
         simEndEpoch: float,
         timeStep: float= 10.0,
         sHMoon: bool= False,
+        keepEnvironment: bool= False,
     ):
     """
     Creates the propagator settings for the low fidelity Sun-Earth-Moon 
@@ -154,8 +155,13 @@ def environment_prop_settings_low_fidelity(
         initial_time= simStartEpoch,
         termination_settings= terminationSettings,
         integrator_settings= integratorSettings,
-        output_variables= dependentVariablesList
+        output_variables= dependentVariablesList,
     )
+
+    # Keep propagation results as ehemeris at the end of propagation. 
+    if keepEnvironment:
+        propagatorSettings.processing_settings.set_integrated_result = True
+
 
     return propagatorSettings
     
