@@ -79,6 +79,7 @@ def environment_bodies_low_fidelity_estimation_model( spacecrafts: list ):
 
     return bodies
 
+
 def environment_prop_settings_low_fidelity( 
         spacecrafts: list, 
         bodies: SystemOfBodies,
@@ -196,6 +197,7 @@ def environment_prop_settings_low_fidelity(
 
 
     return propagatorSettings
+
     
 def environment_propagate_low_fidelity(
         bodies: SystemOfBodies,

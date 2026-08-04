@@ -15,7 +15,35 @@ from tudatpy.estimation.estimation_analysis import Estimator
 
 if __name__ == "__main__":
 
-    
+    # Propagation start and end dates. 
+    # Given as [Year, Month, Day]
+    simStartDate    = [2026, 7, 31]
+    simEndDate      = [2026, 8, 1]
+
+    # Propagation time step size. 
+    propTimeStep = 10.0
+
+    # Load SPICE kernels and return J2000 formatted epochs. 
+    simStartEpoch, simEndEpoch = load_spice( 
+        startEpoch= simStartDate, endEpoch= simEndDate 
+        )
+
+    # Choose list of spacecraft for simulation. 
+    spacecraftDicts = rociABList
+
+    # Set up true environment bodies. 
+    simulationBodies = environment_bodies_low_fidelity_true_model( 
+        spacecrafts= spacecraftDicts 
+    )
+
+    cosineCoefficients, sineCoefficients = return_sh_coefficients(
+        bodyName= "Moon",
+        systemOfBodies= simulationBodies,
+        maxDegree= 5,
+        maxOrder= 5
+    )
+
+    print(cosineCoefficients[2,2])
 
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
@@ -152,7 +180,7 @@ if __name__ == "__main__":
     ### -----------------------------------------------------------------------
 
     # Print initial state estimate vs reality
-    if printInitialState := True:
+    if printInitialState := False:
         print("Initial position: ==========")
         print(f"Estimated:{estimationOutput.final_parameters[:3]}") 
         print(f"Reality:{stateHistoryArr[0,1:4]}") 
