@@ -44,8 +44,6 @@ if __name__ == "__main__":
             spacecrafts= spacecraftDicts 
         )
 
-        
-
         # Set up propagator settings. 
         propagatorSettings = environment_prop_settings_low_fidelity(
             spacecrafts= spacecraftDicts,
@@ -53,6 +51,7 @@ if __name__ == "__main__":
             simStartEpoch= simStartEpoch,
             simEndEpoch= simEndEpoch,
             timeStep= propTimeStep,
+            trueModel= True,
             sHMoon= True,
             keepEnvironment= True
         )
@@ -99,11 +98,13 @@ if __name__ == "__main__":
         )
 
         # Simulate observations. 
-        simulatedObservations, simulatedObservationsDependentVars = simulate_observations_owr(
+        noiseAmplitude = 0.0
+        simulatedObservations = simulate_observations_owr(
             observationTimes= observationTimes.tolist(),
             owrLinkDefinition= observationLinkDefinition,
             owrObservationSimulator= observationModelSimulator,
-            bodies= simulationBodies
+            bodies= simulationBodies,
+            noiseAmplitude= noiseAmplitude
         )
 
         # Extract simulated observation data. 
@@ -131,6 +132,12 @@ if __name__ == "__main__":
             sHMoon= False
         )
 
+        # Create observation model for estimator.
+        observationModelSimulatorEstimator, observationModelSettingsEstimator = observation_model_simulator_owr(
+            owrLinkDefinition= observationLinkDefinition,
+            bodies= estimationBodies
+        )
+
         # Set up desired estimation parameters.
         parameterSettings = dynamics.parameters_setup.initial_states( 
             estimationPropSettings, estimationBodies 
@@ -155,7 +162,7 @@ if __name__ == "__main__":
         estimator = Estimator(
             bodies= estimationBodies,
             estimated_parameters= parameterSet,
-            observation_settings= observationModelSettings,
+            observation_settings= observationModelSettingsEstimator,
             propagator_settings= estimationPropSettings
         )
 
@@ -180,6 +187,10 @@ if __name__ == "__main__":
     # Prints the difference between the cosine coefficients used in the propagation (Reality)
     # and those estimated by the code. 
     print(f"Estimation residuals:{flattenedCosineCoefficients - nonZeroEstimatedCosineCoefficients}")
+    np.savetxt(
+        dataDir + f"estimated_coefficient_residuals_noiseAmp{noiseAmplitude}.txt", 
+        flattenedCosineCoefficients - nonZeroEstimatedCosineCoefficients
+        )
 
     # Print initial state estimate vs reality
     if printInitialState := False:

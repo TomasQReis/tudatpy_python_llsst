@@ -87,6 +87,7 @@ def environment_prop_settings_low_fidelity(
         simEndEpoch: float,
         timeStep: float= 10.0,
         sHMoon: bool= False,
+        trueModel: bool= False,
         keepEnvironment: bool= False,
     ):
     """
@@ -99,7 +100,8 @@ def environment_prop_settings_low_fidelity(
         simStartEpoch (float): Time since J2000 in seconds for the start of the propagation.
         simEndEpoch (float): Time since J2000 in seconds for the end of the propagation.
         timeStep (float): Fixed time-step for the rk4 integration. Defaults to 10.0s. 
-        sHMoon (bool): True when choosing to include a Spherical Harmonics degree/order 10 acceleration. 
+        sHMoon (bool): True when choosing to include a Spherical Harmonics degree/order 10 acceleration.
+        trueModel (bool): True when propagator settings are intended for use in "real" propagation (simulated observations). 
     Returns:
         propagatorSettings (TranslationalStatePropagatorSettings): Translational state propagator settings object.
     """
@@ -117,10 +119,20 @@ def environment_prop_settings_low_fidelity(
         Earth   = [propagation_setup.acceleration.point_mass_gravity()],
 
     )
+    # Check whether these are the propagation settings for "reality".
+    if trueModel:
+        environmentAccelerationSettings["Jupiter"] = [propagation_setup.acceleration.point_mass_gravity()]
+        environmentAccelerationSettings["Saturn"] = [propagation_setup.acceleration.point_mass_gravity()]
+        environmentAccelerationSettings["Mars"] = [propagation_setup.acceleration.point_mass_gravity()]
+        environmentAccelerationSettings["Venus"] = [propagation_setup.acceleration.point_mass_gravity()]
+
+    # Check if spherical harmonics should be included for the moon. 
     if sHMoon:
         environmentAccelerationSettings["Moon"] = [propagation_setup.acceleration.spherical_harmonic_gravity(10,10)]
     else:
         environmentAccelerationSettings["Moon"] = [propagation_setup.acceleration.point_mass_gravity()]
+
+
     
     # Spacecraft acceleration settings. 
     spacecraftAccelerationSettings = {

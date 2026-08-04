@@ -4,7 +4,7 @@
 
 # Tudat imports. 
 from tudatpy import estimation
-from tudatpy.estimation.observable_models_setup import links
+from tudatpy.estimation.observations_setup import random_noise
 from tudatpy.estimation.observable_models_setup.links import LinkEndType
 from tudatpy.dynamics.environment import SystemOfBodies
 
@@ -50,7 +50,6 @@ def link_creation_owr(
 
     return owrLinkDefinition
 
-
 # One-way range observation model simulator.
 # TODO: Implement light-time corrections, noise and bias (Later version)
 def observation_model_simulator_owr(
@@ -92,6 +91,7 @@ def simulate_observations_owr(
         owrLinkDefinition: estimation.observable_models_setup.links.LinkDefinition,
         owrObservationSimulator: list[estimation.observable_models.observables_simulation.ObservationSimulator],
         bodies: SystemOfBodies,
+        noiseAmplitude: float= 0.0
 ):
     """
     Performs the observations simulation.
@@ -100,6 +100,7 @@ def simulate_observations_owr(
         owrLinkDefintion (LinkDefinition): LinkEnds definition as given by the link_creation_owr function.
         owrObservationsSimulator: (list): List of ObservationSimulator as given by the estimator property observation_simulators or the create_observation_simulators function.
         bodies (SystemOfBodies): System of bodies for the observation model environment. 
+        noiseAmplitude (float): Standard deviation defining the un-biased Gaussian distribution for the noise. 
     Returns:
         owrSimulatedObservations (ObservationCollection): Simulated observations object. 
         owrSimulatedObservationsDependentVars (NDArray): Dependent variables from the observations simulation. 
@@ -112,21 +113,19 @@ def simulate_observations_owr(
         simulation_times= observationTimes,
     )
 
-    # NOTE: Additional simulated observation settings should be added here
-    # after the nominal settings are created.
-    # Adds range between links dependent variable. 
-    dependentVariableRangeSettings = estimation.observations_setup.observations_dependent_variables.target_range_between_link_ends_dependent_variable()
-    dependentVariableCoGRangeSettings = estimation.observations_setup.observations_dependent_variables.body_center_distance_dependent_variable(
-        body_name= "rociA",
-        start_link_end_id= owrLinkDefinition.link_end_id( LinkEndType.transmitter ),
-        end_link_end_id= owrLinkDefinition.link_end_id( LinkEndType.receiver )
-    )
-    estimation.observations_setup.observations_dependent_variables.add_dependent_variables_to_all(
-        dependent_variable_settings= [ dependentVariableRangeSettings ],
-        observation_simulation_settings= [ owrSimulatedObservationSettings ],
-        bodies= bodies
-    )
+    ### -----------------------------------------------------------------------
+    ### NOTE: Additional simulated observation settings should be added here
+    ### after the nominal settings are created.
 
+    if noiseAmplitude != 0.0:
+        print("Adding noise to observations.")
+        # Adds random noise to the observations simulator. 
+        random_noise.add_gaussian_noise_to_all(
+            observation_simulation_settings_list= [ owrSimulatedObservationSettings ],
+            noise_amplitude= noiseAmplitude
+        )
+    
+    ### -----------------------------------------------------------------------
 
     # Simulates observations. 
     owrSimulatedObservations = estimation.observations_setup.observations_wrapper.simulate_observations(
@@ -135,12 +134,7 @@ def simulate_observations_owr(
         bodies= bodies
     )
 
-    # Retrieves dependent variables. 
-    owrSimulatedObservationsDependentVars = owrSimulatedObservations.dependent_variable(
-        dependent_variable_settings= dependentVariableRangeSettings
-    )
-
-    return owrSimulatedObservations, owrSimulatedObservationsDependentVars
+    return owrSimulatedObservations
 
 
 # Extract specific values from observation simulations.  
@@ -169,7 +163,6 @@ def extract_data_observations_owr(
     return observationValues, observationTimes
 
 
-# Create estimator object. 
 
 
 
