@@ -15,9 +15,8 @@ from tudatpy.estimation.estimation_analysis import Estimator
 
 if __name__ == "__main__":
 
-
-
-
+    # Data directory. 
+    dataDir = "data/"
 
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
@@ -174,12 +173,13 @@ if __name__ == "__main__":
     ### Data processing and visualization.
     ### -----------------------------------------------------------------------
 
+    # Flattens the non-zero cosine coefficients from the parameter estimation. 
     flattenedCosineCoefficients = cosineCoefficients[1:,0:].flatten()[cosineCoefficients[1:,0:].flatten() != 0]
     nonZeroEstimatedCosineCoefficients = estimationOutput.final_parameters[14:]
 
+    # Prints the difference between the cosine coefficients used in the propagation (Reality)
+    # and those estimated by the code. 
     print(f"Estimation residuals:{flattenedCosineCoefficients - nonZeroEstimatedCosineCoefficients}")
-    print(f"Default coefficients:{flattenedCosineCoefficients}")
-
 
     # Print initial state estimate vs reality
     if printInitialState := False:
