@@ -6,6 +6,9 @@
 # Basically just for me to get to know the program bit by bit and play around.
 ### 
 
+### Self-made imports.
+from vehicles.vehicles_common import spacecraft
+
 ### External library imports.
 import numpy as np
 
@@ -14,9 +17,10 @@ from tudatpy.dynamics import environment_setup, propagation_setup, simulator
 from tudatpy.dynamics.environment import SystemOfBodies
 from tudatpy.dynamics.propagation_setup.propagator import TranslationalStatePropagatorSettings
 from tudatpy.astro import element_conversion
+from tudatpy.astro import gravitation
 
 # Low fidelity truth model. 
-def environment_bodies_low_fidelity_true_model( spacecrafts: list ):
+def environment_bodies_low_fidelity_true_model( spacecrafts: list[spacecraft] ):
     """
     Sets up low-fidelity "true" environment bodies. These are used in the low fidelity simulated observations. 
 
@@ -29,7 +33,7 @@ def environment_bodies_low_fidelity_true_model( spacecrafts: list ):
     # Default body settings for Sun, Earth and Moon.
     bodiesToCreate              = ["Earth", "Moon", "Sun", "Jupiter", "Saturn", "Mars", "Venus"]
 
-    # Global frame origin set to Moon. Orientation to J2000.
+    # Global frame origin set to SSB. Orientation to J2000.
     globalFrameOrigin           = "Moon"
     globalFrameOrientation      = "J2000"
 
@@ -40,29 +44,44 @@ def environment_bodies_low_fidelity_true_model( spacecrafts: list ):
 
     # Add spacecraft to body settings. 
     for spacecraft in spacecrafts:
-        bodySettings.add_empty_settings( spacecraft["name"] )
+        bodySettings.add_empty_settings( spacecraft.name )
+        bodySettings.get( spacecraft.name ).constant_mass = spacecraft.mass
+
+    ### NOTE: Temporary
+    # Adds example graz station. 
+    grazPosition = [ 4194426.1, 1162694.5, 4647246.9 ]
+    grazStationSettings = environment_setup.ground_station.basic_station( "Graz", grazPosition )
+
+    earthStationsSettingsList = list()
+    earthStationsSettingsList.append( grazStationSettings )
+
+    bodySettings.get("Earth").ground_station_settings = earthStationsSettingsList
 
     # Create system of bodies. 
     bodies = environment_setup.create_system_of_bodies( bodySettings )
 
     return bodies
 
+# TODO: Refactor using spacecraft class. 
 # Low fidelity estimation model. 
-def environment_bodies_low_fidelity_estimation_model( spacecrafts: list ):
+def environment_bodies_low_fidelity_estimation_model( 
+        spacecrafts: list[spacecraft],
+        harmonicCoeffOrder: int= 0 ):
     """
     Sets up low-fidelity estimation model environment bodies. These are used in the low fidelity estimation. 
 
     Args:
         spacecraft (list): List of strings of spacecraft included in simulation.
+        harmonicCoeffOrder (int): Maximum order/degree of SH created for target body. 
 
     Returns:
         bodies ( SystemOfBodies ): Object containing the objects for bodies and environment models constituting the physical environment.   
     """
-    # Default body settings for Sun, Earth and Moon.
-    bodiesToCreate              = ["Earth", "Moon", "Sun"]
+    # Default body settings for Sun, Earth.
+    bodiesToCreate              = ["Earth", "Sun"]
 
     # Global frame origin set to Moon. Orientation to J2000.
-    globalFrameOrigin           = "Moon"
+    globalFrameOrigin           = "SSB"
     globalFrameOrientation      = "J2000"
 
     # Body settings.
@@ -70,9 +89,44 @@ def environment_bodies_low_fidelity_estimation_model( spacecrafts: list ):
         bodiesToCreate, globalFrameOrigin, globalFrameOrientation
     )
 
+    # Add specific settings for the Moon.
+    bodySettings.add_empty_settings( "Moon" )
+    # Add default spice ephemeris. 
+    bodySettings.get( "Moon" ).ephemeris_settings = environment_setup.ephemeris.direct_spice(
+        frame_origin= "SSB",
+        frame_orientation= "J2000"
+    )
+    # Add default rotation model.
+    bodySettings.get( "Moon" ).rotation_model_settings = environment_setup.rotation_model.spice(
+        base_frame= "J2000",
+        target_frame= "IAU_Moon"
+    )
+
+    # Create empty sets of un-normalized cosine coefficients. 
+    unnormalizedCosineCoeffs = np.zeros( [harmonicCoeffOrder +1, harmonicCoeffOrder +1] ) 
+    unnormalizedSineCoeffs = np.zeros( [harmonicCoeffOrder +1, harmonicCoeffOrder +1] ) 
+    
+
+    # Normalize initialized guesses. 
+    normalizedCosineCoeffs, normalizedSineCoeffs = gravitation.normalize_spherical_harmonic_coefficients(
+        unnormalized_cosine_coefficients= unnormalizedCosineCoeffs,
+        unnormalized_sine_coefficients= unnormalizedSineCoeffs
+    )
+
+    # Set initial guess for SH gravity field. 
+    bodySettings.get( "Moon" ).gravity_field_settings = environment_setup.gravity_field.spherical_harmonic(
+        gravitational_parameter= 4.9028001224453001E+12,    # Value for gggrx1200 [m^3/s^2]
+        reference_radius= 1738000.0,                        # Value for gggrx1200 [m]
+        normalized_cosine_coefficients= normalizedCosineCoeffs,
+        normalized_sine_coefficients=   normalizedSineCoeffs,
+        associated_reference_frame= "IAU_Moon"
+    )
+    
+
     # Add spacecraft to body settings. 
     for spacecraft in spacecrafts:
         bodySettings.add_empty_settings( spacecraft["name"] )
+        bodySettings.get( spacecraft["name"] ).constant_mass = spacecraft["mass"]
 
     # Create system of bodies. 
     bodies = environment_setup.create_system_of_bodies( bodySettings )
@@ -81,14 +135,15 @@ def environment_bodies_low_fidelity_estimation_model( spacecrafts: list ):
 
 
 def environment_prop_settings_low_fidelity( 
-        spacecrafts: list, 
+        spacecrafts: list[spacecraft], 
         bodies: SystemOfBodies,
         simStartEpoch: float,
         simEndEpoch: float,
         timeStep: float= 10.0,
-        sHMoon: bool= False,
+        harmonicCoeffOrder: int= 0,
         trueModel: bool= False,
         keepEnvironment: bool= False,
+        stateOffset= np.zeros(6),
     ):
     """
     Creates the propagator settings for the low fidelity Sun-Earth-Moon 
@@ -100,14 +155,14 @@ def environment_prop_settings_low_fidelity(
         simStartEpoch (float): Time since J2000 in seconds for the start of the propagation.
         simEndEpoch (float): Time since J2000 in seconds for the end of the propagation.
         timeStep (float): Fixed time-step for the rk4 integration. Defaults to 10.0s. 
-        sHMoon (bool): True when choosing to include a Spherical Harmonics degree/order 10 acceleration.
+        harmonicCoeffOrder (int): Defines SH coefficient maximum order/degree to use in propagation.
         trueModel (bool): True when propagator settings are intended for use in "real" propagation (simulated observations). 
     Returns:
         propagatorSettings (TranslationalStatePropagatorSettings): Translational state propagator settings object.
     """
 
     # Bodies to propagate. 
-    bodiesToPropagate = [spacecraft["name"] for spacecraft in spacecrafts]
+    bodiesToPropagate = [spacecraft.name for spacecraft in spacecrafts]
 
     # Central bodies of propagation. 
     centralBodies = ["Moon" for _ in spacecrafts]
@@ -120,15 +175,16 @@ def environment_prop_settings_low_fidelity(
 
     )
     # Check whether these are the propagation settings for "reality".
-    if trueModel:
+    """ if trueModel:
         environmentAccelerationSettings["Jupiter"] = [propagation_setup.acceleration.point_mass_gravity()]
         environmentAccelerationSettings["Saturn"] = [propagation_setup.acceleration.point_mass_gravity()]
         environmentAccelerationSettings["Mars"] = [propagation_setup.acceleration.point_mass_gravity()]
-        environmentAccelerationSettings["Venus"] = [propagation_setup.acceleration.point_mass_gravity()]
+        environmentAccelerationSettings["Venus"] = [propagation_setup.acceleration.point_mass_gravity()] """
 
     # Check if spherical harmonics should be included for the moon. 
-    if sHMoon:
-        environmentAccelerationSettings["Moon"] = [propagation_setup.acceleration.spherical_harmonic_gravity(10,10)]
+    if harmonicCoeffOrder != 0:
+        environmentAccelerationSettings["Moon"] = [propagation_setup.acceleration.spherical_harmonic_gravity(
+            harmonicCoeffOrder,harmonicCoeffOrder)]
     else:
         environmentAccelerationSettings["Moon"] = [propagation_setup.acceleration.point_mass_gravity()]
 
@@ -136,7 +192,7 @@ def environment_prop_settings_low_fidelity(
     
     # Spacecraft acceleration settings. 
     spacecraftAccelerationSettings = {
-        spacecraft["name"] : environmentAccelerationSettings for spacecraft in spacecrafts}
+        spacecraft.name : environmentAccelerationSettings for spacecraft in spacecrafts}
 
     # Create acceleration models. 
     acccelerationModels = propagation_setup.create_acceleration_models(
@@ -146,22 +202,33 @@ def environment_prop_settings_low_fidelity(
         central_bodies=                 centralBodies
     )
     
-    # Empty initial cartesian state and dependent variables list. 
+    # Empty initial cartesian state list. 
     initialCartesianStatesList = []
+
+    #print(f"Top of for loop:{simStartEpoch}")
+
     for spacecraft in spacecrafts:
         # Define initial cartesian states.
-        # Convert from keplerian initial state to cartesian coords. 
-        cartesianState = element_conversion.keplerian_to_cartesian_elementwise(
-            gravitational_parameter= bodies.get("Moon").gravitational_parameter,
-            semi_major_axis= spacecraft["keplerianElems"][0],
-            eccentricity= spacecraft["keplerianElems"][1],
-            inclination= spacecraft["keplerianElems"][2],
-            argument_of_periapsis= spacecraft["keplerianElems"][3],
-            longitude_of_ascending_node= spacecraft["keplerianElems"][4],
-            true_anomaly= spacecraft["keplerianElems"][5],
-        )
-        # Save initial state to spacecraft.
-        spacecraft["cartesianInitial"] = cartesianState
+        # When true assumes taking initial state from stored keplerian elements. 
+        if trueModel:
+            # Convert from keplerian initial state to cartesian coords. 
+            cartesianState = element_conversion.keplerian_to_cartesian_elementwise(
+                gravitational_parameter= bodies.get("Moon").gravitational_parameter,
+                semi_major_axis= spacecraft.keplerianElems[0],
+                eccentricity= spacecraft.keplerianElems[1],
+                inclination= spacecraft.keplerianElems[2],
+                argument_of_periapsis= spacecraft.keplerianElems[3],
+                longitude_of_ascending_node= spacecraft.keplerianElems[4],
+                true_anomaly= spacecraft.keplerianElems[5],
+            ) 
+
+        else: 
+            # If not the truth simulation, uses offset true state at given sim
+            # start epoch as the initial state. 
+            cartesianState = spacecraft.find_cartesian_state( 
+                stateEpoch= simStartEpoch
+            ) + stateOffset
+
         # Append to initial states. 
         initialCartesianStatesList.append( cartesianState )
 
@@ -171,8 +238,8 @@ def environment_prop_settings_low_fidelity(
     # NOTE: TEMPORARY!
     dependentVariablesList = [
         propagation_setup.dependent_variable.relative_distance(
-            body= spacecrafts[0]["name"],
-            relative_body= spacecrafts[1]["name"]
+            body= spacecrafts[0].name,
+            relative_body= spacecrafts[1].name
         )
     ]
 
@@ -206,7 +273,6 @@ def environment_prop_settings_low_fidelity(
     # Keep propagation results as ehemeris at the end of propagation. 
     if keepEnvironment:
         propagatorSettings.processing_settings.set_integrated_result = True
-
 
     return propagatorSettings
 

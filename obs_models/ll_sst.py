@@ -2,7 +2,10 @@
 # This includes links setup, observation model setup and simulated observations
 # code. 
 
-# Tudat imports. 
+### Self-made imports.
+from vehicles.vehicles_common import spacecraft
+
+### Tudat imports. 
 from tudatpy import estimation
 from tudatpy.estimation.observations_setup import random_noise
 from tudatpy.estimation.observable_models_setup.links import LinkEndType
@@ -14,14 +17,14 @@ from tudatpy.dynamics.environment import SystemOfBodies
 
 # One-way range link creation. 
 def link_creation_owr(
-        transmitterDict: dict, 
-        receiverDict: dict, 
+        transmitter: spacecraft, 
+        receiver: spacecraft, 
         gSTransmitter: bool= False):
     """
     Creates link ends for one-way range observables. 
     Args:
-        transmitter (dict): Dictionary containing transmitter properties. Accepts ground station and spacecraft dictionaries as formatted in the vehicles file.
-        receiver (dict): Dictionary containing receiver properties. Accepts ground station and spacecraft dictionaries as formatted in the vehicles file.
+        transmitter (spacecraft): Spacecraft object containing transmitter properties.
+        receiver (spacecraft): Spacecraft containing receiver properties.
         gSTransmitter (bool): True when transmitter is a ground station. 
     Returns:
         owrLinkDefinition (LinkDefinition): Link definition for owr observational model. 
@@ -32,17 +35,18 @@ def link_creation_owr(
     # Checks if the transmitter is a ground station and defines link accordingly.
     # Otherwise, transmitter set to center of mass of transmitter dict object. 
     if gSTransmitter:
+        # NOTE: Might have to change stuff so that this can be generalized to a ground station. 
         owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
-            "Earth", transmitterDict[ "name" ] 
+            "Earth", transmitter.name
             )
     else:
         owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-            transmitterDict[ "name" ] 
+            transmitter.name 
             )
 
     # Receiver link.
     owrLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-        receiverDict[ "name" ] 
+        receiver.name 
         )
 
     # Link definition 
@@ -72,9 +76,28 @@ def observation_model_simulator_owr(
     owrObservationSettings = []
     owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range( 
         owrLinkDefinition,
-        light_time_correction_settings= lightTimeCorrectionSettings,
         ),
     )
+
+    ### NOTE: Temporary
+    # Creates new set of link definition for Graz station.
+    dopplerLinks = dict()
+    dopplerLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
+                "Earth", "Graz")
+    dopplerLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
+        "rociA" 
+        )
+    dopplerLinksDefinition = estimation.observable_models_setup.links.link_definition( dopplerLinks )
+
+    # Adds one way range measurement. 
+    owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range(
+        link_ends= dopplerLinksDefinition
+    ) )
+    # Adds instantaneous way doppler measurement. 
+    owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_doppler_instantaneous(
+        link_ends= dopplerLinksDefinition
+    ))
+    
 
     # Create observational simulator. 
     owrObservationSimulator = estimation.observations_setup.observations_simulation_settings.create_observation_simulators(
@@ -111,6 +134,7 @@ def simulate_observations_owr(
         observable_type= estimation.observable_models_setup.model_settings.one_way_range_type,
         link_ends= owrLinkDefinition,
         simulation_times= observationTimes,
+        reference_link_end_type= estimation.observable_models_setup.links.transmitter
     )
 
     ### -----------------------------------------------------------------------

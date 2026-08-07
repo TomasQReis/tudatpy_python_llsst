@@ -1,19 +1,20 @@
 ###
-# This file contains all code pertaining to deifning the test vehicles
+# This file contains all data pertaining to deifning the test vehicles
 # used in low-fidelity simulated observations and parameter estimation.
 # Basically just for me to get to know the program bit by bit and play around.
 # "Donnager class"
 ### 
 
+### Imports for self-made functions 
+from vehicles.vehicles_common import spacecraft
+from auxiliary.math_functions import *
+
 ### External library imports.
 import numpy as np
 
-### Imports for self-made functions 
-from auxiliary.math import law_cosines_anomaly_spacing
-
-# Roci A and B dictionaries. 
+### Roci A and B dictionaries. 
 # Contain vehicle characteristics and initial keplerian states. 
-rociA = {
+rociADict = {
     "name": "rociA",
     "mass": 100,        # kg
     # Ordered as [semiMajorAxis, eccentricity, inclination, argOfPeriapsis,
@@ -25,28 +26,37 @@ rociA = {
         np.deg2rad(5),
         np.deg2rad(10),
         np.deg2rad(0)
-    ],
-    # Initial cartesian state list. 
-    "cartesianInitial": []
+    ]
 }
 
-
-rociB = {
+rociBDict = {
     "name": "rociB",
     "mass": 100,        # kg
     "keplerianElems": [     
-        rociA["keplerianElems"][0],        
-        rociA["keplerianElems"][1],
-        rociA["keplerianElems"][2],
-        rociA["keplerianElems"][3],
-        rociA["keplerianElems"][4],
-        rociA["keplerianElems"][5] + law_cosines_anomaly_spacing(
-            orbitRadius= rociA["keplerianElems"][0],
+        rociADict["keplerianElems"][0],        
+        rociADict["keplerianElems"][1],
+        rociADict["keplerianElems"][2],
+        rociADict["keplerianElems"][3],
+        rociADict["keplerianElems"][4],
+        rociADict["keplerianElems"][5] + law_cosines_anomaly_spacing(
+            orbitRadius= rociADict["keplerianElems"][0],
             desiredSpacing= 1000    # Separation between rociA and rociB [m].
         )
-    ],
-    "cartesianInitial": np.array([])
+    ]
 }
 
+### Spacecraft class objects. 
+rociA = spacecraft(
+    name= "rociA",
+    mass= 100.0,
+    keplerianElems= rociADict["keplerianElems"]
+)
+
+rociB = spacecraft(
+    name= "rociB",
+    mass= 100.0,
+    keplerianElems= rociBDict["keplerianElems"]
+)
+
 # List of dictionaries for use in creating body settings. 
-rociABList = [rociA, rociB]
+rociList = [rociA, rociB]
