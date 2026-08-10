@@ -2,13 +2,18 @@
 # This includes links setup, observation model setup and simulated observations
 # code. 
 
+### Library imports. 
+from typing import Sequence
+
 ### Self-made imports.
-from vehicles.vehicles_common import spacecraft
+from bodies.common import spacecraft, groundStation, body
 
 ### Tudat imports. 
 from tudatpy import estimation
 from tudatpy.estimation.observations_setup import random_noise
+from tudatpy.estimation.observable_models_setup.model_settings import one_way_range_type
 from tudatpy.estimation.observable_models_setup.links import LinkEndType
+from tudatpy.estimation.observable_models_setup import links
 from tudatpy.dynamics.environment import SystemOfBodies
 
 ###---------------------------------------------
@@ -17,47 +22,56 @@ from tudatpy.dynamics.environment import SystemOfBodies
 
 # One-way range link creation. 
 def link_creation_owr(
-        transmitter: spacecraft, 
-        receiver: spacecraft, 
-        gSTransmitter: bool= False):
+        transmitters: Sequence[body], 
+        receivers: Sequence[body]
+        ):
     """
-    Creates link ends for one-way range observables. 
+    Creates a list of one-way-range observables and their respective link definitions. 
+    The function assumes the order of the input lists matches the linking of its members.
+    I.e, transmitters[0] is the one corresponding to receivers[0].
     Args:
         transmitter (spacecraft): Spacecraft object containing transmitter properties.
         receiver (spacecraft): Spacecraft containing receiver properties.
         gSTransmitter (bool): True when transmitter is a ground station. 
     Returns:
-        owrLinkDefinition (LinkDefinition): Link definition for owr observational model. 
+        one-way-range-type (one_way_range_type): Link type for one way range observations. 
+        owrLinkDefinitions list[LinkDefinition]: List of link definitions for owr observational model. 
     """
-    # Empty dictionary
-    owrLinks = dict()
 
-    # Checks if the transmitter is a ground station and defines link accordingly.
-    # Otherwise, transmitter set to center of mass of transmitter dict object. 
-    if gSTransmitter:
-        # NOTE: Might have to change stuff so that this can be generalized to a ground station. 
-        owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
-            "Earth", transmitter.name
+    # Empty list of link definitions. 
+    owrLinkDefinitions = []
+
+    for index, transmitter in enumerate(transmitters):
+        # Empty dictionary
+        owrLinks = dict()
+
+        # Checks if the transmitter is a ground station and defines link accordingly.
+        # Otherwise, transmitter set to center of mass of transmitter dict object. 
+        if isinstance(transmitter, groundStation): 
+            owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
+                transmitter.parentBody, transmitter.name
+                )
+        else:
+            owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
+                transmitter.name 
+                )
+
+        # Receiver link.
+        owrLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
+            receivers[index].name 
             )
-    else:
-        owrLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-            transmitter.name 
-            )
 
-    # Receiver link.
-    owrLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-        receiver.name 
-        )
+        # Appends to link definition list
+        owrLinkDefinitions.append(
+            estimation.observable_models_setup.links.link_definition( owrLinks ))
 
-    # Link definition 
-    owrLinkDefinition = estimation.observable_models_setup.links.link_definition( owrLinks )
+    return one_way_range_type, owrLinkDefinitions
 
-    return owrLinkDefinition
 
 # One-way range observation model simulator.
 # TODO: Implement light-time corrections, noise and bias (Later version)
 def observation_model_simulator_owr(
-        owrLinkDefinition: estimation.observable_models_setup.links.LinkDefinition,
+        owrLinkDefinitions: list[estimation.observable_models_setup.links.LinkDefinition],
         bodies: SystemOfBodies):
     """
     Creates an observation simulator for later use in either estimating 
@@ -74,30 +88,20 @@ def observation_model_simulator_owr(
 
     # Observation settings list. 
     owrObservationSettings = []
-    owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range( 
-        owrLinkDefinition,
-        ),
-    )
+    for owrLinkDefinition in owrLinkDefinitions:
+        owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range( 
+            owrLinkDefinition,
+            ),
+        )   
 
     ### NOTE: Temporary
     # Creates new set of link definition for Graz station.
-    dopplerLinks = dict()
-    dopplerLinks[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
-                "Earth", "Graz")
-    dopplerLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-        "rociA" 
-        )
-    dopplerLinksDefinition = estimation.observable_models_setup.links.link_definition( dopplerLinks )
-
-    # Adds one way range measurement. 
-    owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range(
-        link_ends= dopplerLinksDefinition
-    ) )
-    # Adds instantaneous way doppler measurement. 
-    owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_doppler_instantaneous(
-        link_ends= dopplerLinksDefinition
-    ))
-    
+    if earthObservs:= False:
+        dopplerLinks = dict()
+        # Adds instantaneous way doppler measurement. 
+        owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_doppler_instantaneous(
+            link_ends= dopplerLinksDefinition
+        ))
 
     # Create observational simulator. 
     owrObservationSimulator = estimation.observations_setup.observations_simulation_settings.create_observation_simulators(
@@ -111,7 +115,7 @@ def observation_model_simulator_owr(
 # Create parameters for the simulated observations. 
 def simulate_observations_owr(
         observationTimes: list,
-        owrLinkDefinition: estimation.observable_models_setup.links.LinkDefinition,
+        linkEndsPerObservatble,
         owrObservationSimulator: list[estimation.observable_models.observables_simulation.ObservationSimulator],
         bodies: SystemOfBodies,
         noiseAmplitude: float= 0.0
@@ -130,9 +134,8 @@ def simulate_observations_owr(
     """
     
     # Create simulated observations settings. 
-    owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings(
-        observable_type= estimation.observable_models_setup.model_settings.one_way_range_type,
-        link_ends= owrLinkDefinition,
+    owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings_list(
+        link_ends_per_observable= linkEndsPerObservatble,
         simulation_times= observationTimes,
         reference_link_end_type= estimation.observable_models_setup.links.transmitter
     )
@@ -145,7 +148,7 @@ def simulate_observations_owr(
         print("Adding noise to observations.")
         # Adds random noise to the observations simulator. 
         random_noise.add_gaussian_noise_to_all(
-            observation_simulation_settings_list= [ owrSimulatedObservationSettings ],
+            observation_simulation_settings_list= owrSimulatedObservationSettings,
             noise_amplitude= noiseAmplitude
         )
     
@@ -153,7 +156,7 @@ def simulate_observations_owr(
 
     # Simulates observations. 
     owrSimulatedObservations = estimation.observations_setup.observations_wrapper.simulate_observations(
-        simulation_settings= [ owrSimulatedObservationSettings ],
+        simulation_settings= owrSimulatedObservationSettings ,
         observation_simulators= owrObservationSimulator,
         bodies= bodies
     )
@@ -164,6 +167,7 @@ def simulate_observations_owr(
 # Extract specific values from observation simulations.  
 def extract_data_observations_owr(
         observationCollection: estimation.observations.ObservationCollection,
+        transmitter: body
 ):
     """
     Extracts subset of data from simulated observations. 
@@ -175,13 +179,25 @@ def extract_data_observations_owr(
     """
     
     # List of observationCollection parsers.
-    # Add other parsers in here if needed.
-    rangeParser = estimation.observations.observations_processing.observation_parser(
-        estimation.observable_models_setup.model_settings.one_way_range_type
-    )
+    parserList = []
+
+    # Provides a transmitter parser. Different processes for ground station and spacecraft. 
+    if isinstance(transmitter, groundStation):
+        parserList= estimation.observations.observations_processing.observation_parser(
+            single_link_end= (
+                links.transmitter, 
+                links.LinkEndId( transmitter.parentBody, transmitter.name ))
+        )
+    else:
+        parserList= estimation.observations.observations_processing.observation_parser(
+            single_link_end= (
+                links.transmitter,
+                links.LinkEndId( transmitter.name )
+            )
+        )
 
     observationValues, observationTimes = observationCollection.get_concatenated_observations_and_times(
-        rangeParser
+        parserList
     )
 
     return observationValues, observationTimes

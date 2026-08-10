@@ -6,7 +6,7 @@
 ### 
 
 ### Imports for self-made functions 
-from vehicles.vehicles_common import spacecraft
+from bodies.common import spacecraft
 from auxiliary.math_functions import *
 
 ### External library imports.

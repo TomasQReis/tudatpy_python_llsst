@@ -7,7 +7,7 @@
 ### 
 
 ### Self-made imports.
-from vehicles.vehicles_common import spacecraft
+from bodies.common import spacecraft, groundStation
 
 ### External library imports.
 import numpy as np
@@ -20,7 +20,9 @@ from tudatpy.astro import element_conversion
 from tudatpy.astro import gravitation
 
 # Low fidelity truth model. 
-def environment_bodies_low_fidelity_true_model( spacecrafts: list[spacecraft] ):
+def environment_bodies_low_fidelity_true_model( 
+        spacecrafts: list[spacecraft],
+        groundStations: list[groundStation]= [] ):
     """
     Sets up low-fidelity "true" environment bodies. These are used in the low fidelity simulated observations. 
 
@@ -33,7 +35,7 @@ def environment_bodies_low_fidelity_true_model( spacecrafts: list[spacecraft] ):
     # Default body settings for Sun, Earth and Moon.
     bodiesToCreate              = ["Earth", "Moon", "Sun", "Jupiter", "Saturn", "Mars", "Venus"]
 
-    # Global frame origin set to SSB. Orientation to J2000.
+    # Global frame origin set to Moon. Orientation to J2000.
     globalFrameOrigin           = "Moon"
     globalFrameOrientation      = "J2000"
 
@@ -47,15 +49,20 @@ def environment_bodies_low_fidelity_true_model( spacecrafts: list[spacecraft] ):
         bodySettings.add_empty_settings( spacecraft.name )
         bodySettings.get( spacecraft.name ).constant_mass = spacecraft.mass
 
-    ### NOTE: Temporary
-    # Adds example graz station. 
-    grazPosition = [ 4194426.1, 1162694.5, 4647246.9 ]
-    grazStationSettings = environment_setup.ground_station.basic_station( "Graz", grazPosition )
 
-    earthStationsSettingsList = list()
-    earthStationsSettingsList.append( grazStationSettings )
+    # If ground stations list is not empty adds settings to environment. 
+    # TODO: Add generalization for parent body. 
+    if groundStations:
+        # Empty stations settings list. 
+        earthStationsSettingsList = []
+        for groundStation in groundStations:
+            # Adds station settings to list. 
+            earthStationsSettingsList.append(
+                groundStation.ground_station_settings()
+            )
 
-    bodySettings.get("Earth").ground_station_settings = earthStationsSettingsList
+        # Adds ground station settings to respective body. 
+        bodySettings.get("Earth").ground_station_settings = earthStationsSettingsList
 
     # Create system of bodies. 
     bodies = environment_setup.create_system_of_bodies( bodySettings )
@@ -188,8 +195,6 @@ def environment_prop_settings_low_fidelity(
     else:
         environmentAccelerationSettings["Moon"] = [propagation_setup.acceleration.point_mass_gravity()]
 
-
-    
     # Spacecraft acceleration settings. 
     spacecraftAccelerationSettings = {
         spacecraft.name : environmentAccelerationSettings for spacecraft in spacecrafts}
@@ -223,7 +228,7 @@ def environment_prop_settings_low_fidelity(
             ) 
 
         else: 
-            # If not the truth simulation, uses offset true state at given sim
+            # If not the truth simulation, uses true state (offset) at given sim
             # start epoch as the initial state. 
             cartesianState = spacecraft.find_cartesian_state( 
                 stateEpoch= simStartEpoch
@@ -255,7 +260,7 @@ def environment_prop_settings_low_fidelity(
     # Numerical integrator settings.
     integratorSettings = propagation_setup.integrator.runge_kutta_fixed_step(
         time_step= timeStep,
-        coefficient_set= propagation_setup.integrator.CoefficientSets.rk_4
+        coefficient_set= propagation_setup.integrator.CoefficientSets.rkf_78
     )
 
     # Create propagation settings. 

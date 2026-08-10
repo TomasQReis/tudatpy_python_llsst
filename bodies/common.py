@@ -5,8 +5,21 @@ from auxiliary.math_functions import *
 import numpy as np
 from numpy.typing import NDArray
 
+### Tudat imports. 
+import tudatpy.dynamics as dynamics
+from tudatpy.dynamics.environment_setup.ground_station import GroundStationSettings
+
+### Base bodies class.
+class body:
+    def __init__(
+        self,
+        name: str,
+    ):
+        self.name = name
+
+
 ### Spacecraft class.
-class spacecraft:
+class spacecraft (body):
     # Stored simulation cartesian states. 
     cartesianStates = np.array([])
 
@@ -64,6 +77,31 @@ class spacecraft:
 
         print(f"{self.name} initial state: {self.cartesianStates[0,:]}")
 
+### Ground station class. 
+class groundStation (body):
+    def __init__(
+        self, 
+        name: str,
+        position: list,
+        parentBody: str
+        ):
 
+        self.name = name
+        self.position = position
+        self.parentBody = parentBody
 
+    def ground_station_settings(self) -> GroundStationSettings:
+        """
+        Returns settings for the given ground station.
+        Args:
+            None
+        Returns:
+            groundStationSettings (GroundStationSettings) : Object containing ground station settings.
+        """
+        return dynamics.environment_setup.ground_station.basic_station(
+            self.name,
+            self.position
+        )
 
+        
+        

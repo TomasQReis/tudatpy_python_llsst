@@ -2,8 +2,9 @@
 from environment.low_fidelity import *
 from environment.common_functions import *
 from obs_models.ll_sst import *
-from vehicles.vehicles_common import *
-from vehicles.roci_ab import *
+from bodies.common import *
+from bodies.roci_ab import *
+from bodies.ground_stations import *
 from visualization.plotting import *
 
 ### External library imports.
@@ -39,10 +40,13 @@ if __name__ == "__main__":
 
         # Choose list of spacecraft for simulation. 
         spacecrafts = rociList
+        # Choose list of ground stations for simulation.
+        groundStations = [grazStation]
 
         # Set up true environment bodies. 
         simulationBodies = environment_bodies_low_fidelity_true_model( 
-            spacecrafts= spacecrafts 
+            spacecrafts= spacecrafts,
+            groundStations= groundStations
         )
 
         # Set up propagator settings. 
@@ -94,7 +98,7 @@ if __name__ == "__main__":
             )
 
         # Create set of observation times. 
-        observationsStep = 30.0
+        observationsStep = 20.0
         observationTimes = np.arange( observationStartEpoch, 
                                     step= observationsStep,
                                     stop= observationEndEpoch)
@@ -102,45 +106,56 @@ if __name__ == "__main__":
         # Define noise amplitude for observations. 
         noiseAmplitude = 0.5
 
+        # Define transmitters and receivers for one way range observations.
+        owrReceivers = [rociB, rociA]
+        owrTransmitters = [rociA, grazStation]
+
         # Create observation links.
-        observationLinkDefinition = link_creation_owr(
-            transmitter= spacecrafts[0],
-            receiver= spacecrafts[1]
+        owrObservationType, owrObservationLinkDefinitions = link_creation_owr(
+            transmitters= owrTransmitters,
+            receivers= owrReceivers
         )
 
         # Create observation model simulator.
         observationModelSimulator, observationModelSettings = observation_model_simulator_owr(
-            owrLinkDefinition= observationLinkDefinition,
+            owrLinkDefinitions= owrObservationLinkDefinitions,
             bodies= simulationBodies
         )
-        # TODO: Need to add complete list of links here in order to include
-        # the doppler and range observations. 
+
+        # Dictionary of observation types and their respective link definitions. 
+        linkEndsPerObservable = {
+            owrObservationType: owrObservationLinkDefinitions
+        }
 
         # Simulate observations. 
         simulatedObservationsNoisy = simulate_observations_owr(
             observationTimes= observationTimes.tolist(),
-            owrLinkDefinition= observationLinkDefinition,
+            linkEndsPerObservatble= linkEndsPerObservable,
             owrObservationSimulator= observationModelSimulator,
             bodies= simulationBodies,
             noiseAmplitude= noiseAmplitude
         )
 
+    
         # Simulate clean observations. 
         simulatedObservationsClean = simulate_observations_owr(
             observationTimes= observationTimes.tolist(),
-            owrLinkDefinition= observationLinkDefinition,
+            linkEndsPerObservatble= linkEndsPerObservable,
             owrObservationSimulator= observationModelSimulator,
             bodies= simulationBodies,
             noiseAmplitude= 0.0
         )
 
         # Extract simulated observation data. 
-        simulatedObservationValuesNoisy, simulatedObservationTimes = extract_data_observations_owr(
-            observationCollection= simulatedObservationsNoisy
+        simulatedRociObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
+            observationCollection= simulatedObservationsNoisy,
+            transmitter= rociA
         )
-        simulatedObservationValuesClean, simulatedObservationTimes = extract_data_observations_owr(
-            observationCollection= simulatedObservationsClean
+        simulatedGrazObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
+            observationCollection= simulatedObservationsClean,
+            transmitter= grazStation
         )
+
 
     ### -----------------------------------------------------------------------
     ### Estimating parameters.
@@ -260,25 +275,25 @@ if __name__ == "__main__":
             )
 
     # Print initial state estimate vs reality
-    if printInitialState := True:
+    if printInitialState := False:
         print("========== Difference in state ==========")
         print("Roci A: ")
         print(f":{np.abs(estimationOutput.final_parameters[:6] - rociA.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
         print("Roci B: ")
         print(f":{np.abs(estimationOutput.final_parameters[6:12] - rociB.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
-
+        
     # Relative distance plot. 
     if plotRange := False:
         
         # Assembles times dictionary
         epochDict = {
             "Relative Distance": dependentVarsHistoryArray[:,0] - simStartEpoch,
-            "Range Measurement": np.array(observationTimes) - simStartEpoch
+            "Range Measurement": np.array(observationTimes) - simStartEpoch,
         }
         # Assembles data dictionary for use in plotting. 
         dataDict = {
             "Relative Distance": dependentVarsHistoryArray[:,1],
-            "Range Measurement": simulatedObservationValuesClean
+            "Range Measurement": simulatedRociObservationsClean,
         }
 
         generalized_plot_2d(
