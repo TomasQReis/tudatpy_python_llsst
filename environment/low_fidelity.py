@@ -210,8 +210,6 @@ def environment_prop_settings_low_fidelity(
     # Empty initial cartesian state list. 
     initialCartesianStatesList = []
 
-    #print(f"Top of for loop:{simStartEpoch}")
-
     for spacecraft in spacecrafts:
         # Define initial cartesian states.
         # When true assumes taking initial state from stored keplerian elements. 
@@ -244,7 +242,11 @@ def environment_prop_settings_low_fidelity(
     dependentVariablesList = [
         propagation_setup.dependent_variable.relative_distance(
             body= spacecrafts[0].name,
-            relative_body= spacecrafts[1].name
+            relative_body= "Earth"
+        ),
+        propagation_setup.dependent_variable.relative_distance(
+            body= spacecrafts[0].name,
+            relative_body= "Earth"
         )
     ]
 

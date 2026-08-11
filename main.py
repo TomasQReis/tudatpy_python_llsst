@@ -39,7 +39,7 @@ if __name__ == "__main__":
             )
 
         # Choose list of spacecraft for simulation. 
-        spacecrafts = rociList
+        spacecrafts = [ rociA, rociB ]
         # Choose list of ground stations for simulation.
         groundStations = [ grazStation ]
 
@@ -98,7 +98,7 @@ if __name__ == "__main__":
             )
 
         # Create set of observation times. 
-        observationsStep = 30.0
+        observationsStep = 60.0
         observationTimes = np.arange( observationStartEpoch, 
                                     step= observationsStep,
                                     stop= observationEndEpoch)
@@ -107,11 +107,11 @@ if __name__ == "__main__":
         noiseAmplitude = 0.5
 
         # Define transmitters and receivers for one way range observations.
-        owrReceivers = [rociB, grazStation]
-        owrTransmitters = [rociA, rociA]
+        owrReceivers = [ rociB, rociA, grazStation, grazStation ]
+        owrTransmitters = [ rociA, rociB, rociA, rociB ]
 
         # Create observation links.
-        owrObservationType, owrObservationLinkDefinitions = link_creation_owr(
+        owrObservationType, owrObservationLinkDefinitions = link_creation_one_way(
             transmitters= owrTransmitters,
             receivers= owrReceivers
         )
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         # Create observation model simulator.
         observationModelSimulator, observationModelSettings = observation_model_simulator_owr(
             owrLinkDefinitions= owrObservationLinkDefinitions,
-            bodies= simulationBodies
+            bodies= simulationBodies,
         )
 
         # Dictionary of observation types and their respective link definitions. 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     if estimateParameters:= True:
         ### Estimation Parameters. 
         # Sets up estimation step time. 
-        estimationStep = observationsStep
+        estimationStep = 30.0
         # Sets up maximum order of estimated SH parameters. 
         estimationMaxOrder = 0
         # Estimation maximum number of iterations. 
@@ -178,6 +178,9 @@ if __name__ == "__main__":
         ) """
         estimationBodies = simulationBodies
 
+        # Initial state offset. 
+        stateOffset = np.array([10,10,10,0.1,0.1,0.1])
+
         # Set up estimation propagation settings. 
         estimationPropSettings = environment_prop_settings_low_fidelity(
             spacecrafts= spacecrafts,
@@ -187,7 +190,7 @@ if __name__ == "__main__":
             timeStep= estimationStep,
             trueModel= False,
             harmonicCoeffOrder= estimationMaxOrder,
-            stateOffset = np.array([10,10,10,1,1,1])
+            stateOffset = stateOffset
         )
 
         # Create observation model for estimator.
@@ -229,7 +232,7 @@ if __name__ == "__main__":
         estimator = Estimator(
             bodies= estimationBodies,
             estimated_parameters= parameterSet,
-            observation_settings= observationModelSettingsEstimator,
+            observation_settings= observationModelSettings,
             propagator_settings= estimationPropSettings,
             integrate_on_creation= True
         )
@@ -240,9 +243,6 @@ if __name__ == "__main__":
             convergence_checker= estimation.estimation_analysis.estimation_convergence_checker(
                 maximum_iterations= estimationMaxIterations
             )
-        )
-        estimationSettings.define_estimation_settings(
-            reintegrate_variational_equations= False
         )
 
         # Perform parameter estimation.
@@ -275,7 +275,7 @@ if __name__ == "__main__":
             )
 
     # Print initial state estimate vs reality
-    if printInitialState := False:
+    if printInitialState := True:
         print("========== Difference in state ==========")
         print("Roci A: ")
         print(f":{np.abs(estimationOutput.final_parameters[:6] - rociA.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
@@ -308,21 +308,27 @@ if __name__ == "__main__":
     if plotObservations := False:
         plotTitle = "Observations Plot"
          
-        plot1Name = "ll-SST Range"
-        plot2Name = "Ground Station Range"
+        plot1Name = "ll-SST Range rociA"
+        plot2Name = "Graz Station Range"
+
+        plot3Name = "True rociA-Earth Distance"
+
+        # Check where epochs match between propagation and observations.
+        matchedIndexes = np.where( np.isin( 
+            dependentVarsHistoryArray[:,0], np.array(observationTimes) ) )[0]
         
         # Assembles times dictionary
         epochDict = {
             plot1Name: np.array(observationTimes) - simStartEpoch,
             plot2Name: np.array(observationTimes) - simStartEpoch,
+            plot3Name: dependentVarsHistoryArray[matchedIndexes,0] - simStartEpoch
         }
         # Assembles data dictionary for use in plotting. 
         dataDict = {
             plot1Name: simulatedRociObservationsClean,
-            plot2Name: simulatedGrazObservationsClean / 1e3,
+            plot2Name: simulatedGrazObservationsClean/1e3,
+            plot3Name: dependentVarsHistoryArray[matchedIndexes,2]/1e3
         }
-        # Secondary axis key. 
-        
 
         generalized_plot_2d(
             yVariables= dataDict,
@@ -330,7 +336,7 @@ if __name__ == "__main__":
             title= plotTitle,
             xAxisLabel= "Time since start of Simulation [s]",
             yAxisLabel= "Relative Distance [m]",
-            secondaryAxisKeys= [ plot2Name ],
+            secondaryAxisKeys= [ plot2Name, plot3Name ],
             secondaryAxisLabel= "Relative Distance [km]"
         )
 

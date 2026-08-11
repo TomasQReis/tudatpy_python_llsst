@@ -25,10 +25,10 @@ from tudatpy.estimation.observable_models_setup import light_time_corrections
 ###---------------------------------------------
 
 # One-way range link creation. 
-def link_creation_owr(
+def link_creation_one_way(
         transmitters: Sequence[body], 
         receivers: Sequence[body]
-        ):
+        ) :
     """
     Creates a list of one-way-range observables and their respective link definitions. 
     The function assumes the order of the input lists matches the linking of its members.
@@ -105,14 +105,6 @@ def observation_model_simulator_owr(
             )   
         )
 
-    ### NOTE: Temporary
-    # Creates new set of link definition for Graz station.
-    if earthObservs:= False:
-        dopplerLinks = dict()
-        # Adds instantaneous way doppler measurement. 
-        owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_doppler_instantaneous(
-            link_ends= dopplerLinksDefinition
-        ))
 
     # Create observational simulator. 
     owrObservationSimulator = estimation.observations_setup.observations_simulation_settings.create_observation_simulators(
