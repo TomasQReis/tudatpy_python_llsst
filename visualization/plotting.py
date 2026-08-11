@@ -6,6 +6,7 @@ from numpy import ndarray
 from tudatpy.util import result2array
 
 lineStyles = ["-", "--", "-.", ":"]
+lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
 
 def trajectory_plot_3d( 
         spacecrafts: list,
@@ -53,8 +54,13 @@ def generalized_plot_2d(
         title: str,
         # TODO: Add a better method for generalized x-y axes. 
         xAxisLabel: str,
-        yAxisLabel: str
+        yAxisLabel: str,
+        secondaryAxisKeys: list = None, # type: ignore
+        secondaryAxisLabel: str = None, # type: ignore
 ):
+
+    if secondaryAxisKeys is None:
+        secondaryAxisKeys = []
     
     # Figure and axes initialization.
     # TODO: Implement different y-axes for same x-axis. 
@@ -62,14 +68,21 @@ def generalized_plot_2d(
     ax = fig.add_subplot()
     ax.set_title(title)
 
+    # Create secondary axis only if needed.
+    ax2 = ax.twinx() if secondaryAxisKeys else None
+
     # Iterate through dictionary of data. 
     i = 0
+
+    # Iterates through data dictionaries and plots.  
     for key, data in yVariables.items():
-        ax.plot(
+        targetAx = ax2 if key in secondaryAxisKeys else ax
+        targetAx.plot(
             xVariables[key],
             data,
-            label= key,
-            linestyle=lineStyles[i % len(lineStyles)]
+            label=key,
+            linestyle=lineStyles[i % len(lineStyles)],
+            color=lineColors[i % len(lineColors)]
         )
         i += 1
 
@@ -77,6 +90,16 @@ def generalized_plot_2d(
     ax.legend()
     ax.set_xlabel(xAxisLabel)
     ax.set_ylabel(yAxisLabel)
+    if ax2 is not None:
+        ax2.set_ylabel(secondaryAxisLabel)
+
+    # Combine legends from both axes into one.
+    lines, labels = ax.get_legend_handles_labels()
+    if ax2 is not None:
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        lines += lines2
+        labels += labels2
+    ax.legend(lines, labels)
     
     ax.grid()
     

@@ -98,7 +98,7 @@ if __name__ == "__main__":
             )
 
         # Create set of observation times. 
-        observationsStep = 20.0
+        observationsStep = 30.0
         observationTimes = np.arange( observationStartEpoch, 
                                     step= observationsStep,
                                     stop= observationEndEpoch)
@@ -127,6 +127,9 @@ if __name__ == "__main__":
             owrObservationType: owrObservationLinkDefinitions
         }
 
+        print(linkEndsPerObservable
+              )
+
         # Simulate observations. 
         simulatedObservationsNoisy = simulate_observations_owr(
             observationTimes= observationTimes.tolist(),
@@ -148,7 +151,7 @@ if __name__ == "__main__":
 
         # Extract simulated observation data. 
         simulatedRociObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
-            observationCollection= simulatedObservationsNoisy,
+            observationCollection= simulatedObservationsClean,
             transmitter= rociA
         )
         simulatedGrazObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
@@ -161,7 +164,7 @@ if __name__ == "__main__":
     ### Estimating parameters.
     ### -----------------------------------------------------------------------
 
-    if estimateParameters:= True:
+    if estimateParameters:= False:
         ### Estimation Parameters. 
         # Sets up estimation step time. 
         estimationStep = observationsStep
@@ -184,7 +187,7 @@ if __name__ == "__main__":
             bodies= estimationBodies,
             simStartEpoch= observationStartEpoch,
             simEndEpoch= observationEndEpoch,
-            timeStep= observationsStep,
+            timeStep= estimationStep,
             trueModel= False,
             harmonicCoeffOrder= estimationMaxOrder,
             stateOffset = np.array([10,10,10,1,1,1])
@@ -192,7 +195,7 @@ if __name__ == "__main__":
 
         # Create observation model for estimator.
         observationModelSimulatorEstimator, observationModelSettingsEstimator = observation_model_simulator_owr(
-            owrLinkDefinition= observationLinkDefinition,
+            owrLinkDefinitions= owrObservationLinkDefinitions,
             bodies= estimationBodies
         )
 
@@ -302,6 +305,36 @@ if __name__ == "__main__":
             title= "Relative Distance Plot",
             xAxisLabel= "Time since start of Simulation [s]",
             yAxisLabel= "Relative Distance [m]"
+        )
+
+    # Observations plot.
+    if plotObservations := True:
+        plotTitle = "Observations Plot"
+         
+        plot1Name = "ll-SST Range"
+        plot2Name = "Ground Station Range"
+        
+        # Assembles times dictionary
+        epochDict = {
+            plot1Name: np.array(observationTimes) - simStartEpoch,
+            plot2Name: np.array(observationTimes) - simStartEpoch,
+        }
+        # Assembles data dictionary for use in plotting. 
+        dataDict = {
+            plot1Name: simulatedRociObservationsClean,
+            plot2Name: simulatedGrazObservationsClean / 1e3,
+        }
+        # Secondary axis key. 
+        
+
+        generalized_plot_2d(
+            yVariables= dataDict,
+            xVariables= epochDict,
+            title= plotTitle,
+            xAxisLabel= "Time since start of Simulation [s]",
+            yAxisLabel= "Relative Distance [m]",
+            secondaryAxisKeys= [ plot2Name ],
+            secondaryAxisLabel= "Relative Distance [km]"
         )
 
     # Plots the difference between "real" range and simulated observations. 

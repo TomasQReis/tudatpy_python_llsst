@@ -3,7 +3,7 @@
 # code. 
 
 ### Library imports. 
-from typing import Sequence
+from typing import Sequence, Mapping
 
 ### Self-made imports.
 from bodies.common import spacecraft, groundStation, body
@@ -11,10 +11,14 @@ from bodies.common import spacecraft, groundStation, body
 ### Tudat imports. 
 from tudatpy import estimation
 from tudatpy.estimation.observations_setup import random_noise
-from tudatpy.estimation.observable_models_setup.model_settings import one_way_range_type
-from tudatpy.estimation.observable_models_setup.links import LinkEndType
+from tudatpy.estimation.observations_setup.observations_simulation_settings import tabulated_simulation_settings
+
+from tudatpy.estimation.observable_models_setup.model_settings import one_way_range_type, ObservableType
+from tudatpy.estimation.observable_models_setup.links import LinkEndType, LinkDefinition
 from tudatpy.estimation.observable_models_setup import links
+
 from tudatpy.dynamics.environment import SystemOfBodies
+from tudatpy.estimation.observable_models_setup import light_time_corrections
 
 ###---------------------------------------------
 ### One-way range observation model functions
@@ -90,9 +94,9 @@ def observation_model_simulator_owr(
     owrObservationSettings = []
     for owrLinkDefinition in owrLinkDefinitions:
         owrObservationSettings.append( estimation.observable_models_setup.model_settings.one_way_range( 
-            owrLinkDefinition,
-            ),
-        )   
+            owrLinkDefinition
+            )   
+        )
 
     ### NOTE: Temporary
     # Creates new set of link definition for Graz station.
@@ -115,7 +119,7 @@ def observation_model_simulator_owr(
 # Create parameters for the simulated observations. 
 def simulate_observations_owr(
         observationTimes: list,
-        linkEndsPerObservatble,
+        linkEndsPerObservatble: Mapping[ObservableType, Sequence[LinkDefinition]],
         owrObservationSimulator: list[estimation.observable_models.observables_simulation.ObservationSimulator],
         bodies: SystemOfBodies,
         noiseAmplitude: float= 0.0
@@ -139,6 +143,24 @@ def simulate_observations_owr(
         simulation_times= observationTimes,
         reference_link_end_type= estimation.observable_models_setup.links.transmitter
     )
+
+
+    # Empty list of simulated observations. 
+    owrSimulatedObservationSettings = []
+
+    # For loop 
+    for observableType in linkEndsPerObservatble:
+        for linkEndIndex in range( len( linkEndsPerObservatble[observableType] ) ):
+            owrSimulatedObservationSettings.append( tabulated_simulation_settings(
+                #NOTE: TEMP. Final for loop needs to iterate through all present observable types.
+                observable_type= observableType,
+                #NOTE: TEMP. Final loop needs to iterate through all link ends for a specific observable type. 
+                link_ends= linkEndsPerObservatble[observableType][linkEndIndex],
+                simulation_times= observationTimes
+                # Depending on ground station link end chooses receiver or transmitter. 
+                #reference_link_end_type=
+            ) ) 
+
 
     ### -----------------------------------------------------------------------
     ### NOTE: Additional simulated observation settings should be added here
