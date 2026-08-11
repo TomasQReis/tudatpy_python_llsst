@@ -41,7 +41,7 @@ if __name__ == "__main__":
         # Choose list of spacecraft for simulation. 
         spacecrafts = rociList
         # Choose list of ground stations for simulation.
-        groundStations = [grazStation]
+        groundStations = [ grazStation ]
 
         # Set up true environment bodies. 
         simulationBodies = environment_bodies_low_fidelity_true_model( 
@@ -107,8 +107,8 @@ if __name__ == "__main__":
         noiseAmplitude = 0.5
 
         # Define transmitters and receivers for one way range observations.
-        owrReceivers = [rociB, rociA]
-        owrTransmitters = [rociA, grazStation]
+        owrReceivers = [rociB, grazStation]
+        owrTransmitters = [rociA, rociA]
 
         # Create observation links.
         owrObservationType, owrObservationLinkDefinitions = link_creation_owr(
@@ -126,9 +126,6 @@ if __name__ == "__main__":
         linkEndsPerObservable = {
             owrObservationType: owrObservationLinkDefinitions
         }
-
-        print(linkEndsPerObservable
-              )
 
         # Simulate observations. 
         simulatedObservationsNoisy = simulate_observations_owr(
@@ -164,7 +161,7 @@ if __name__ == "__main__":
     ### Estimating parameters.
     ### -----------------------------------------------------------------------
 
-    if estimateParameters:= False:
+    if estimateParameters:= True:
         ### Estimation Parameters. 
         # Sets up estimation step time. 
         estimationStep = observationsStep
@@ -308,7 +305,7 @@ if __name__ == "__main__":
         )
 
     # Observations plot.
-    if plotObservations := True:
+    if plotObservations := False:
         plotTitle = "Observations Plot"
          
         plot1Name = "ll-SST Range"
@@ -388,4 +385,13 @@ if __name__ == "__main__":
             title= "Simulated range observations",
             xAxisLabel= "Time since start of propagation [s]",
             yAxisLabel= "Range [m]"
+        )
+
+    # Plot trajectories. 
+    if plotTrajectories := False:
+
+        trajectory_plot_3d(
+            spacecrafts= spacecrafts,
+            stateHistoryArray= stateHistoryArr,
+            title= "Roci A and B trajectories."
         )

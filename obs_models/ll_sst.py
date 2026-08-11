@@ -44,10 +44,11 @@ def link_creation_owr(
 
     # Empty list of link definitions. 
     owrLinkDefinitions = []
+    # Empty dictionary of linkEndIds. 
+    owrLinks = dict()
 
+    # Cycles through transmitters. 
     for index, transmitter in enumerate(transmitters):
-        # Empty dictionary
-        owrLinks = dict()
 
         # Checks if the transmitter is a ground station and defines link accordingly.
         # Otherwise, transmitter set to center of mass of transmitter dict object. 
@@ -60,10 +61,16 @@ def link_creation_owr(
                 transmitter.name 
                 )
 
-        # Receiver link.
-        owrLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-            receivers[index].name 
-            )
+        receiver = receivers[index]
+        # Receiver links. Performs same ground station check.
+        if isinstance(receiver, groundStation): 
+            owrLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
+                receiver.parentBody, receiver.name
+                )
+        else:
+            owrLinks[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
+                receiver.name 
+                )
 
         # Appends to link definition list
         owrLinkDefinitions.append(
@@ -138,11 +145,11 @@ def simulate_observations_owr(
     """
     
     # Create simulated observations settings. 
-    owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings_list(
+    """ owrSimulatedObservationSettings = estimation.observations_setup.observations_simulation_settings.tabulated_simulation_settings_list(
         link_ends_per_observable= linkEndsPerObservatble,
         simulation_times= observationTimes,
         reference_link_end_type= estimation.observable_models_setup.links.transmitter
-    )
+    ) """
 
 
     # Empty list of simulated observations. 
@@ -151,16 +158,22 @@ def simulate_observations_owr(
     # For loop 
     for observableType in linkEndsPerObservatble:
         for linkEndIndex in range( len( linkEndsPerObservatble[observableType] ) ):
-            owrSimulatedObservationSettings.append( tabulated_simulation_settings(
-                #NOTE: TEMP. Final for loop needs to iterate through all present observable types.
-                observable_type= observableType,
-                #NOTE: TEMP. Final loop needs to iterate through all link ends for a specific observable type. 
-                link_ends= linkEndsPerObservatble[observableType][linkEndIndex],
-                simulation_times= observationTimes
-                # Depending on ground station link end chooses receiver or transmitter. 
-                #reference_link_end_type=
-            ) ) 
+            # Extracts transmitter name.
+            transmitterBody = linkEndsPerObservatble[observableType][linkEndIndex].link_end_id(
+                link_end_type= links.LinkEndType.transmitter ).body_name
+            # If transmitter is Earth, sets reference link to receiver. 
+            # NOTE: Hopefully temporary. Need to understand what's causing  light-time
+            # corrections to source epochs outside of the propagation range. 
+            if transmitterBody == "Earth": referenceLink = LinkEndType.receiver
+            else: referenceLink = LinkEndType.transmitter
 
+            owrSimulatedObservationSettings.append( tabulated_simulation_settings(
+                observable_type= observableType,
+                link_ends= linkEndsPerObservatble[observableType][linkEndIndex],
+                simulation_times= observationTimes,
+                # Depending on ground station link end chooses receiver or transmitter. 
+                reference_link_end_type= referenceLink
+            ) )
 
     ### -----------------------------------------------------------------------
     ### NOTE: Additional simulated observation settings should be added here

@@ -1,6 +1,9 @@
 ### External library imports.
 from matplotlib import pyplot as plt
-from numpy import ndarray
+from numpy.typing import NDArray
+
+### Internal library imports. 
+from bodies.common import spacecraft
 
 ### Tudat imports
 from tudatpy.util import result2array
@@ -9,8 +12,8 @@ lineStyles = ["-", "--", "-.", ":"]
 lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
 
 def trajectory_plot_3d( 
-        spacecrafts: list,
-        stateHistory: dict,
+        spacecrafts: list[spacecraft],
+        stateHistoryArray: NDArray,
         title: str
  ):
     """
@@ -22,8 +25,6 @@ def trajectory_plot_3d(
         stateHistory (dict): Dictionary whose keys are the timestamps of the propagation. Each key contains a flattenned numpy array of the states of each spacecraft at the given epoch, organized such that each set of 6 values corresponds to one spacecraft.
         title (str): Title of plot. 
     """
-    # Convert state history into a numpy array. 
-    stateHistoryArray = result2array(stateHistory)
 
     # Define a 3D figure using pyplot
     fig = plt.figure(figsize=(6,6), dpi=125)
@@ -36,9 +37,9 @@ def trajectory_plot_3d(
         ax.plot(stateHistoryArray[:, index*6+1], 
                 stateHistoryArray[:, index*6+2], 
                 stateHistoryArray[:, index*6+3], 
-                label=spacecraft["name"], 
+                label=spacecraft.name, 
                 linestyle=lineStyles[index % len(lineStyles)])
-        ax.scatter(0.0, 0.0, 0.0, label="Moon", marker='o', color='blue')
+        ax.scatter(0, 0, 0, label="Moon", marker='o', color='blue')
 
     # Add the legend and labels, then show the plot
     ax.legend()
