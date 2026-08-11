@@ -57,7 +57,7 @@ if __name__ == "__main__":
             simEndEpoch= simEndEpoch,
             timeStep= propTimeStep,
             trueModel= True,
-            harmonicCoeffOrder= 0,
+            harmonicCoeffOrder= 5,
             keepEnvironment= True
         )
 
@@ -75,13 +75,6 @@ if __name__ == "__main__":
         rociA.save_cartesian_state( cartesianStates= stateHistoryArr[:,:7] )
         rociB.save_cartesian_state( cartesianStates= np.hstack([stateHistoryArr[:,0:1], stateHistoryArr[:,7:]]) )
 
-        # Extract cosine and sine coefficients from propagated model. 
-        cosineCoefficients, sineCoefficients = return_sh_coefficients(
-            bodyName= "Moon",
-            systemOfBodies= simulationBodies,
-            maxDegree= 5,
-            maxOrder= 5
-        )
 
     ### -----------------------------------------------------------------------
     ### Simulating observations.
@@ -98,7 +91,7 @@ if __name__ == "__main__":
             )
 
         # Create set of observation times. 
-        observationsStep = 60.0
+        observationsStep = 30.0
         observationTimes = np.arange( observationStartEpoch, 
                                     step= observationsStep,
                                     stop= observationEndEpoch)
@@ -107,6 +100,7 @@ if __name__ == "__main__":
         noiseAmplitude = 0.5
 
         # Define transmitters and receivers for one way range observations.
+        # Order of elements matters. Receivers[0] corresponds to transmitters[0].
         owrReceivers = [ rociB, rociA, grazStation, grazStation ]
         owrTransmitters = [ rociA, rociB, rociA, rociB ]
 
@@ -164,22 +158,47 @@ if __name__ == "__main__":
     if estimateParameters:= True:
         ### Estimation Parameters. 
         # Sets up estimation step time. 
-        estimationStep = 30.0
-        # Sets up maximum order of estimated SH parameters. 
-        estimationMaxOrder = 0
+        estimationStep = observationsStep
+        
         # Estimation maximum number of iterations. 
-        estimationMaxIterations = 20
+        estimationMaxIterations = 10
+
+        # Initial State offset. 
+        stateOffset = np.array([10,10,10,0.1,0.1,0.1])
+
+        # Sets up maximum order of estimated SH parameters. 
+        estimationMaxOrder = 5
+
+        # Extract cosine and sine coefficients from propagated model. 
+        cosineCoefficientsReference, sineCoefficientsReference, referenceRadius, graviationalParameterReference = return_sh_coefficients(
+            bodyName= "Moon",
+            systemOfBodies= simulationBodies,
+            maxDegree= estimationMaxOrder,
+            maxOrder= estimationMaxOrder
+        )
+
+        print(cosineCoefficientsReference)
 
         ### Estimation creation. 
         # Set up estimation environment bodies. 
-        """ estimationBodies = environment_bodies_low_fidelity_estimation_model(
+        estimationBodies = environment_bodies_low_fidelity_estimation_model(
             spacecrafts= spacecrafts,
-            harmonicCoeffOrder= estimationMaxOrder
-        ) """
-        estimationBodies = simulationBodies
+            groundStations= groundStations,
+            cosineCoefficients= cosineCoefficientsReference,
+            sineCoefficients= sineCoefficientsReference,
+            gravitationalParameter= graviationalParameterReference,
+            referenceRadius= referenceRadius,
+            coefficientOffset = 1e-5
+        )
 
-        # Initial state offset. 
-        stateOffset = np.array([10,10,10,0.1,0.1,0.1])
+        #estimationBodies = simulationBodies
+
+        cosCoefficientsForecast, sinCoefficientsForecast,_,_ = return_sh_coefficients(
+            bodyName= "Moon",
+            systemOfBodies= estimationBodies,
+            maxDegree= 5,
+            maxOrder= 5
+        )
 
         # Set up estimation propagation settings. 
         estimationPropSettings = environment_prop_settings_low_fidelity(
@@ -190,7 +209,7 @@ if __name__ == "__main__":
             timeStep= estimationStep,
             trueModel= False,
             harmonicCoeffOrder= estimationMaxOrder,
-            stateOffset = stateOffset
+            stateOffset = stateOffset,
         )
 
         # Create observation model for estimator.
@@ -203,7 +222,7 @@ if __name__ == "__main__":
         parameterSettings = dynamics.parameters_setup.initial_states( 
             estimationPropSettings, estimationBodies 
             )
-        """ parameterSettings.append( 
+        parameterSettings.append( 
             dynamics.parameters_setup.spherical_harmonics_c_coefficients(
                 body= "Moon",
                 maximum_degree= estimationMaxOrder,
@@ -220,7 +239,7 @@ if __name__ == "__main__":
                 minimum_degree= 1,
                 minimum_order= 1
             )
-        ) """
+        )
 
         # Create parameters set. 
         parameterSet = dynamics.parameters_setup.create_parameter_set(
@@ -254,25 +273,24 @@ if __name__ == "__main__":
     ### Data processing and visualization.
     ### -----------------------------------------------------------------------
 
-    if coeffDifference := False:
-        # Saved file title.
-        fileTitle = f"estimated_coefficient_residuals_noiseAmp{noiseAmplitude}_sampleTime{observationsStep}.txt"
-
+    if coeffDifference := True:
         # Flattens the non-zero cosine coefficients from the parameter estimation. 
-        flattenedCosineCoefficients = cosineCoefficients[1:,0:].flatten()[cosineCoefficients[1:,0:].flatten() != 0]
-        nonZeroEstimatedCosineCoefficients = estimationOutput.final_parameters[14:]
+        flattenedCosineCoefficients = cosineCoefficientsReference[1:,0:].flatten()[cosineCoefficientsReference[1:,0:].flatten() != 0]
+        flattenedSineCoefficients = sineCoefficientsReference[1:,0:].flatten()[sineCoefficientsReference[1:,0:].flatten() != 0]
 
-        # Adds zero coefficients for non-estimated higher degrees.
-        nonEstimatedDegrees = np.size(flattenedCosineCoefficients) - np.size(nonZeroEstimatedCosineCoefficients)
-        paddedEstimatedCosineCoefficients = np.pad(nonZeroEstimatedCosineCoefficients, (0, nonEstimatedDegrees), mode= "constant")
+        flattenedReferenceCoefficients = np.append(flattenedCosineCoefficients, flattenedSineCoefficients)
 
-        # Prints the difference between the cosine coefficients used in the propagation (Reality)
-        # and those estimated by the code. 
-        print(f"Estimation residuals:{flattenedCosineCoefficients - paddedEstimatedCosineCoefficients}")
-        np.savetxt(
-            dataDir + fileTitle, 
-            flattenedCosineCoefficients - paddedEstimatedCosineCoefficients
-            )
+        # Extracts estimated coefficients. 
+        estimatedCoefficients = estimationOutput.final_parameters[12:]
+
+        print(cosineCoefficientsReference)
+        print(estimationOutput.final_parameters[12:])
+
+        print(np.shape(estimationOutput.final_parameters))
+        print(np.shape(estimatedCoefficients))
+
+        # Compares coefficients. 
+        print(abs(estimatedCoefficients - flattenedReferenceCoefficients))
 
     # Print initial state estimate vs reality
     if printInitialState := True:
@@ -281,7 +299,7 @@ if __name__ == "__main__":
         print(f":{np.abs(estimationOutput.final_parameters[:6] - rociA.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
         print("Roci B: ")
         print(f":{np.abs(estimationOutput.final_parameters[6:12] - rociB.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
-        
+
     # Relative distance plot. 
     if plotRange := False:
         

@@ -8,16 +8,36 @@
 
 ### Self-made imports.
 from bodies.common import spacecraft, groundStation
+from bodies.gggrx1200 import gggrx_coefficients
 
 ### External library imports.
 import numpy as np
+from numpy.typing import NDArray
 
 ### Tudat imports.
 from tudatpy.dynamics import environment_setup, propagation_setup, simulator
-from tudatpy.dynamics.environment import SystemOfBodies
+from tudatpy.dynamics.environment import SystemOfBodies 
 from tudatpy.dynamics.propagation_setup.propagator import TranslationalStatePropagatorSettings
 from tudatpy.astro import element_conversion
 from tudatpy.astro import gravitation
+
+def ground_station_settings(
+        bodySettings: environment_setup.BodyListSettings, 
+        groundStations: list[groundStation] = [],
+):
+    # Empty stations settings list. 
+    stationsSettingsList = []
+    # Iterates throught ground stations. 
+    for groundStation in groundStations:
+        # Adds station settings to list. 
+        stationsSettingsList.append(
+            groundStation.ground_station_settings()
+        )
+
+    # Adds ground station settings to respective body. 
+    bodySettings.get(groundStation.parentBody).ground_station_settings = stationsSettingsList
+
+    return bodySettings
 
 # Low fidelity truth model. 
 def environment_bodies_low_fidelity_true_model( 
@@ -51,18 +71,11 @@ def environment_bodies_low_fidelity_true_model(
 
 
     # If ground stations list is not empty adds settings to environment. 
-    # TODO: Add generalization for parent body. 
     if groundStations:
-        # Empty stations settings list. 
-        earthStationsSettingsList = []
-        for groundStation in groundStations:
-            # Adds station settings to list. 
-            earthStationsSettingsList.append(
-                groundStation.ground_station_settings()
-            )
-
-        # Adds ground station settings to respective body. 
-        bodySettings.get("Earth").ground_station_settings = earthStationsSettingsList
+        bodySettings = ground_station_settings(
+            bodySettings= bodySettings,
+            groundStations= groundStations
+        )
 
     # Create system of bodies. 
     bodies = environment_setup.create_system_of_bodies( bodySettings )
@@ -73,7 +86,13 @@ def environment_bodies_low_fidelity_true_model(
 # Low fidelity estimation model. 
 def environment_bodies_low_fidelity_estimation_model( 
         spacecrafts: list[spacecraft],
-        harmonicCoeffOrder: int= 0 ):
+        cosineCoefficients: NDArray, 
+        sineCoefficients: NDArray,
+        referenceRadius: float,
+        gravitationalParameter: float,
+        groundStations: list[groundStation]= [],
+        coefficientOffset: float= 0.0
+        ):
     """
     Sets up low-fidelity estimation model environment bodies. These are used in the low fidelity estimation. 
 
@@ -84,11 +103,11 @@ def environment_bodies_low_fidelity_estimation_model(
     Returns:
         bodies ( SystemOfBodies ): Object containing the objects for bodies and environment models constituting the physical environment.   
     """
-    # Default body settings for Sun, Earth.
-    bodiesToCreate              = ["Earth", "Sun"]
+    # Default body settings for Sun, Earth and Moon. 
+    bodiesToCreate              = ["Earth", "Sun", "Moon"]
 
     # Global frame origin set to Moon. Orientation to J2000.
-    globalFrameOrigin           = "SSB"
+    globalFrameOrigin           = "Moon"
     globalFrameOrientation      = "J2000"
 
     # Body settings.
@@ -96,44 +115,34 @@ def environment_bodies_low_fidelity_estimation_model(
         bodiesToCreate, globalFrameOrigin, globalFrameOrientation
     )
 
-    # Add specific settings for the Moon.
-    bodySettings.add_empty_settings( "Moon" )
-    # Add default spice ephemeris. 
-    bodySettings.get( "Moon" ).ephemeris_settings = environment_setup.ephemeris.direct_spice(
-        frame_origin= "SSB",
-        frame_orientation= "J2000"
-    )
-    # Add default rotation model.
-    bodySettings.get( "Moon" ).rotation_model_settings = environment_setup.rotation_model.spice(
-        base_frame= "J2000",
-        target_frame= "IAU_Moon"
-    )
+    # Modifies reference coefficients with an offset multiplier and re-normalizes them. 
+    offsetCosineCoefficients = cosineCoefficients
+    offsetCosineCoefficients[2:,:] += coefficientOffset
 
-    # Create empty sets of un-normalized cosine coefficients. 
-    unnormalizedCosineCoeffs = np.zeros( [harmonicCoeffOrder +1, harmonicCoeffOrder +1] ) 
-    unnormalizedSineCoeffs = np.zeros( [harmonicCoeffOrder +1, harmonicCoeffOrder +1] ) 
-    
+    offsetSineCoefficients  = sineCoefficients
+    offsetSineCoefficients[2:,:] += coefficientOffset
 
-    # Normalize initialized guesses. 
-    normalizedCosineCoeffs, normalizedSineCoeffs = gravitation.normalize_spherical_harmonic_coefficients(
-        unnormalized_cosine_coefficients= unnormalizedCosineCoeffs,
-        unnormalized_sine_coefficients= unnormalizedSineCoeffs
-    )
-
-    # Set initial guess for SH gravity field. 
+    # Modify moon settings to include a less accurate set of SH coefficients.
+    # (Initial Guess) 
     bodySettings.get( "Moon" ).gravity_field_settings = environment_setup.gravity_field.spherical_harmonic(
-        gravitational_parameter= 4.9028001224453001E+12,    # Value for gggrx1200 [m^3/s^2]
-        reference_radius= 1738000.0,                        # Value for gggrx1200 [m]
-        normalized_cosine_coefficients= normalizedCosineCoeffs,
-        normalized_sine_coefficients=   normalizedSineCoeffs,
+        gravitational_parameter= gravitationalParameter,    
+        reference_radius= referenceRadius,                        
+        normalized_cosine_coefficients= offsetCosineCoefficients,
+        normalized_sine_coefficients= offsetSineCoefficients,
         associated_reference_frame= "IAU_Moon"
     )
     
-
     # Add spacecraft to body settings. 
     for spacecraft in spacecrafts:
-        bodySettings.add_empty_settings( spacecraft["name"] )
-        bodySettings.get( spacecraft["name"] ).constant_mass = spacecraft["mass"]
+        bodySettings.add_empty_settings( spacecraft.name )
+        bodySettings.get( spacecraft.name ).constant_mass = spacecraft.mass
+
+    # If ground stations list is not empty adds settings to environment. 
+    if groundStations:
+        bodySettings = ground_station_settings(
+            bodySettings= bodySettings,
+            groundStations= groundStations
+        )
 
     # Create system of bodies. 
     bodies = environment_setup.create_system_of_bodies( bodySettings )
@@ -182,11 +191,11 @@ def environment_prop_settings_low_fidelity(
 
     )
     # Check whether these are the propagation settings for "reality".
-    """ if trueModel:
+    if trueModel:
         environmentAccelerationSettings["Jupiter"] = [propagation_setup.acceleration.point_mass_gravity()]
         environmentAccelerationSettings["Saturn"] = [propagation_setup.acceleration.point_mass_gravity()]
         environmentAccelerationSettings["Mars"] = [propagation_setup.acceleration.point_mass_gravity()]
-        environmentAccelerationSettings["Venus"] = [propagation_setup.acceleration.point_mass_gravity()] """
+        environmentAccelerationSettings["Venus"] = [propagation_setup.acceleration.point_mass_gravity()]
 
     # Check if spherical harmonics should be included for the moon. 
     if harmonicCoeffOrder != 0:

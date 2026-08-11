@@ -113,6 +113,12 @@ def return_sh_coefficients(
     # Extracts coefficients, keeping the (i,j) = (degree,order) entry order. 
     cosineCoefficients = gravityFieldModel.cosine_coefficients[:maxDegree+1, :maxOrder+1]
     sineCoefficients = gravityFieldModel.sine_coefficients[:maxDegree+1, :maxOrder+1]
+
+    # Extract gravitational parameter.
+    gravitationalParameter = body.gravitational_parameter 
+
+    # Extract reference radius. 
+    referenceRadius = gravityFieldModel.reference_radius
     
-    return cosineCoefficients, sineCoefficients
+    return cosineCoefficients, sineCoefficients, referenceRadius, gravitationalParameter
 
