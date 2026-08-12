@@ -75,16 +75,6 @@ if __name__ == "__main__":
         # Saves cartesian states to spacecraft. 
         rociA.save_cartesian_state( cartesianStates= stateHistoryArr[:,:7] )
         rociB.save_cartesian_state( cartesianStates= np.hstack([stateHistoryArr[:,0:1], stateHistoryArr[:,7:]]) )
-
-
-
-        # Extract cosine and sine coefficients from reference model. 
-        cosineCoefficientsReference, sineCoefficientsReference, referenceRadius, graviationalParameterReference = return_sh_coefficients(
-            bodyName= "Moon",
-            systemOfBodies= simulationBodies,
-            maxDegree= 5,
-            maxOrder= 5
-        )
         
     ### -----------------------------------------------------------------------
     ### Simulating observations.
@@ -184,6 +174,8 @@ if __name__ == "__main__":
 
         # Initial State offset. 
         stateOffset = np.array([10,10,10,0.1,0.1,0.1])
+        # SH Coefficient offset. 
+        coefficientOffset = 1e-5
 
         # Extract cosine and sine coefficients from reference model. 
         cosineCoefficientsReference, sineCoefficientsReference, referenceRadius, graviationalParameterReference = return_sh_coefficients(
@@ -202,7 +194,7 @@ if __name__ == "__main__":
             sineCoefficients= sineCoefficientsReference,
             gravitationalParameter= graviationalParameterReference,
             referenceRadius= referenceRadius,
-            coefficientOffset = 1e-5
+            coefficientOffset = coefficientOffset
         )
 
         # Extract cosine and sine coefficients from forecast model. 
