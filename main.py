@@ -375,11 +375,15 @@ if __name__ == "__main__":
 
     # Print initial state estimate vs reality
     if printInitialState := False:
+        # Extract final initial state estimates.
+        finalStates = finalParameters[:12]
+
+        # Compares initial states. 
         print("========== Difference in state ==========")
         print("Roci A: ")
-        print(f":{np.abs(estimationOutput.final_parameters[:6] - rociA.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
+        print(f":{np.abs(finalStates[:6] - rociA.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
         print("Roci B: ")
-        print(f":{np.abs(estimationOutput.final_parameters[6:12] - rociB.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
+        print(f":{np.abs(finalStates[6:12] - rociB.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
 
     # Relative distance plot. 
     if plotRange := False:
