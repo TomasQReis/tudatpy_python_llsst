@@ -86,7 +86,6 @@ if __name__ == "__main__":
             maxOrder= 5
         )
         
-
     ### -----------------------------------------------------------------------
     ### Simulating observations.
     ### -----------------------------------------------------------------------
@@ -295,15 +294,12 @@ if __name__ == "__main__":
         finalParameters = np.loadtxt(
             resultsDir + estimationFile
             )
-
-
-
                 
     ### -----------------------------------------------------------------------
     ### Data processing and visualization.
     ### -----------------------------------------------------------------------
 
-    if coeffDifference := True:
+    if coeffDifference := False:
         # Comparison filename.
         comparisonFile = "processed_results.txt"
 
