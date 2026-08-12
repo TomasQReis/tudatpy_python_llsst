@@ -53,7 +53,6 @@ def generalized_plot_2d(
         yVariables: dict,
         xVariables: dict,
         title: str,
-        # TODO: Add a better method for generalized x-y axes. 
         xAxisLabel: str,
         yAxisLabel: str,
         secondaryAxisKeys: list = None, # type: ignore
@@ -64,7 +63,6 @@ def generalized_plot_2d(
         secondaryAxisKeys = []
     
     # Figure and axes initialization.
-    # TODO: Implement different y-axes for same x-axis. 
     fig = plt.figure(figsize=(6,6), dpi=125)
     ax = fig.add_subplot()
     ax.set_title(title)

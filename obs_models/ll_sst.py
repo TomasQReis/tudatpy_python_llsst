@@ -80,7 +80,7 @@ def link_creation_one_way(
 
 
 # One-way range observation model simulator.
-# TODO: Implement light-time corrections, noise and bias (Later version)
+# TODO: Implement noise and bias (Later version)
 def observation_model_simulator_owr(
         owrLinkDefinitions: list[estimation.observable_models_setup.links.LinkDefinition],
         bodies: SystemOfBodies):

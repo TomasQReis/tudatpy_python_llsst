@@ -16,6 +16,12 @@ from tudatpy.util import result2array
 from tudatpy import dynamics
 from tudatpy.estimation.estimation_analysis import Estimator
 
+### LIST OF TODO's ###
+# TODO: Implement noise and bias in low_fidelity.
+# TODO: Test functionality with other celestial bodies. 
+# TODO: Function for converting an altitude into a basic set of kepler 
+# elements for a given planet. (Args: Altitude and Planet)
+
 if __name__ == "__main__":
 
     # Data directory. 

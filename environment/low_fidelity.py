@@ -82,7 +82,6 @@ def environment_bodies_low_fidelity_true_model(
 
     return bodies
 
-# TODO: Refactor using spacecraft class. 
 # Low fidelity estimation model. 
 def environment_bodies_low_fidelity_estimation_model( 
         spacecrafts: list[spacecraft],
@@ -249,15 +248,9 @@ def environment_prop_settings_low_fidelity(
         # Append to initial states. 
         initialCartesianStatesList.append( cartesianState )
 
-    # TODO: Implement a method for ensuring correct relative distance measure
-    # for more than two satellites in constellation. 
-    # Something with an array with the pairs we want to have as links?
+
     # NOTE: TEMPORARY!
     dependentVariablesList = [
-        propagation_setup.dependent_variable.relative_distance(
-            body= spacecrafts[0].name,
-            relative_body= "Earth"
-        ),
         propagation_setup.dependent_variable.relative_distance(
             body= spacecrafts[0].name,
             relative_body= "Earth"
