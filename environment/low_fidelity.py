@@ -115,12 +115,17 @@ def environment_bodies_low_fidelity_estimation_model(
         bodiesToCreate, globalFrameOrigin, globalFrameOrientation
     )
 
-    # Modifies reference coefficients with an offset multiplier and re-normalizes them. 
-    offsetCosineCoefficients = cosineCoefficients
-    offsetCosineCoefficients[2:,:] += coefficientOffset
+    # Sweeps through valid degree/order combinations and applies offset. 
+    # Degrees smaller than two are left unaltered. 
+    for degree in range( 2, np.shape( cosineCoefficients )[0] ):
+        for order in range( degree + 1 ):
 
-    offsetSineCoefficients  = sineCoefficients
-    offsetSineCoefficients[2:,:] += coefficientOffset
+            # Applies offset to valid terms. 
+            offsetCosineCoefficients = np.array(cosineCoefficients)
+            offsetCosineCoefficients[ degree , order ] += coefficientOffset
+
+            offsetSineCoefficients = np.array(sineCoefficients)
+            offsetSineCoefficients[ degree , order ] += coefficientOffset
 
     # Modify moon settings to include a less accurate set of SH coefficients.
     # (Initial Guess) 

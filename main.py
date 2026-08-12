@@ -9,6 +9,7 @@ from visualization.plotting import *
 
 ### External library imports.
 import numpy as np
+from pathlib import Path
 
 ### Tudat imports
 from tudatpy.util import result2array
@@ -18,7 +19,7 @@ from tudatpy.estimation.estimation_analysis import Estimator
 if __name__ == "__main__":
 
     # Data directory. 
-    dataDir = "data/"
+    resultsDir = "data/results/"
 
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
@@ -75,6 +76,16 @@ if __name__ == "__main__":
         rociA.save_cartesian_state( cartesianStates= stateHistoryArr[:,:7] )
         rociB.save_cartesian_state( cartesianStates= np.hstack([stateHistoryArr[:,0:1], stateHistoryArr[:,7:]]) )
 
+
+
+        # Extract cosine and sine coefficients from reference model. 
+        cosineCoefficientsReference, sineCoefficientsReference, referenceRadius, graviationalParameterReference = return_sh_coefficients(
+            bodyName= "Moon",
+            systemOfBodies= simulationBodies,
+            maxDegree= 5,
+            maxOrder= 5
+        )
+        
 
     ### -----------------------------------------------------------------------
     ### Simulating observations.
@@ -150,12 +161,21 @@ if __name__ == "__main__":
             transmitter= grazStation
         )
 
-
     ### -----------------------------------------------------------------------
     ### Estimating parameters.
     ### -----------------------------------------------------------------------
 
-    if estimateParameters:= True:
+    # Estimates file name.
+    estimationFile = "estimates.txt"
+
+    # Sets up maximum order of estimated/read SH parameters. 
+    estimationMaxOrder = 5
+
+    # Sets whether the estimation process will be conducted...
+    # and new results saved. 
+    newEstimates = False
+
+    if not Path(resultsDir + estimationFile).exists() or newEstimates:
         ### Estimation Parameters. 
         # Sets up estimation step time. 
         estimationStep = observationsStep
@@ -166,18 +186,13 @@ if __name__ == "__main__":
         # Initial State offset. 
         stateOffset = np.array([10,10,10,0.1,0.1,0.1])
 
-        # Sets up maximum order of estimated SH parameters. 
-        estimationMaxOrder = 5
-
-        # Extract cosine and sine coefficients from propagated model. 
+        # Extract cosine and sine coefficients from reference model. 
         cosineCoefficientsReference, sineCoefficientsReference, referenceRadius, graviationalParameterReference = return_sh_coefficients(
             bodyName= "Moon",
             systemOfBodies= simulationBodies,
             maxDegree= estimationMaxOrder,
             maxOrder= estimationMaxOrder
         )
-
-        print(cosineCoefficientsReference)
 
         ### Estimation creation. 
         # Set up estimation environment bodies. 
@@ -191,13 +206,12 @@ if __name__ == "__main__":
             coefficientOffset = 1e-5
         )
 
-        #estimationBodies = simulationBodies
-
-        cosCoefficientsForecast, sinCoefficientsForecast,_,_ = return_sh_coefficients(
+        # Extract cosine and sine coefficients from forecast model. 
+        cosineCoefficientsForecast, sineCoefficientsForecast, _, _ = return_sh_coefficients(
             bodyName= "Moon",
             systemOfBodies= estimationBodies,
-            maxDegree= 5,
-            maxOrder= 5
+            maxDegree= estimationMaxOrder,
+            maxOrder= estimationMaxOrder
         )
 
         # Set up estimation propagation settings. 
@@ -227,7 +241,7 @@ if __name__ == "__main__":
                 body= "Moon",
                 maximum_degree= estimationMaxOrder,
                 maximum_order= estimationMaxOrder,
-                minimum_degree= 1,
+                minimum_degree= 2,
                 minimum_order= 0
             )
         )
@@ -236,7 +250,7 @@ if __name__ == "__main__":
                 body= "Moon",
                 maximum_degree= estimationMaxOrder,
                 maximum_order= estimationMaxOrder,
-                minimum_degree= 1,
+                minimum_degree= 2,
                 minimum_order= 1
             )
         )
@@ -253,7 +267,7 @@ if __name__ == "__main__":
             estimated_parameters= parameterSet,
             observation_settings= observationModelSettings,
             propagator_settings= estimationPropSettings,
-            integrate_on_creation= True
+            integrate_on_creation= False
         )
 
         # Estimation settings. 
@@ -263,17 +277,40 @@ if __name__ == "__main__":
                 maximum_iterations= estimationMaxIterations
             )
         )
-
+                    
         # Perform parameter estimation.
         estimationOutput = estimator.perform_estimation(
             estimation_input= estimationSettings
         )
+        
+        # Save farameters to file. 
+        finalParameters = estimationOutput.final_parameters
+        np.savetxt( 
+            resultsDir + estimationFile, 
+            finalParameters
+            )
+                
+    else:
+        # Use existing parameters. 
+        finalParameters = np.loadtxt(
+            resultsDir + estimationFile
+            )
 
+
+
+                
     ### -----------------------------------------------------------------------
     ### Data processing and visualization.
     ### -----------------------------------------------------------------------
 
     if coeffDifference := True:
+        # Comparison filename.
+        comparisonFile = "processed_results.txt"
+
+        # Compares coefficients. 
+        print()
+        print("===== SH Coefficient Estimation Results =====")
+
         # Flattens the non-zero cosine coefficients from the parameter estimation. 
         flattenedCosineCoefficients = cosineCoefficientsReference[1:,0:].flatten()[cosineCoefficientsReference[1:,0:].flatten() != 0]
         flattenedSineCoefficients = sineCoefficientsReference[1:,0:].flatten()[sineCoefficientsReference[1:,0:].flatten() != 0]
@@ -281,19 +318,67 @@ if __name__ == "__main__":
         flattenedReferenceCoefficients = np.append(flattenedCosineCoefficients, flattenedSineCoefficients)
 
         # Extracts estimated coefficients. 
-        estimatedCoefficients = estimationOutput.final_parameters[12:]
+        estimatedCoefficients = finalParameters[12:]
 
-        print(cosineCoefficientsReference)
-        print(estimationOutput.final_parameters[12:])
+        # Absolute error between mismatched coefficients:
+        # Degree >= 2 and Order >= 0 ( >= 1 for sine coefficients )
+        absoluteError = abs(estimatedCoefficients - flattenedReferenceCoefficients)
 
-        print(np.shape(estimationOutput.final_parameters))
-        print(np.shape(estimatedCoefficients))
+        # Relative Error. 
+        relativeError = absoluteError / flattenedReferenceCoefficients
 
-        # Compares coefficients. 
-        print(abs(estimatedCoefficients - flattenedReferenceCoefficients))
+        print("Absolute Error: -----")
+        print(absoluteError)
+
+        print("Relative Error: -----")
+        print(relativeError)
+
+        # Creates coefficient indices. 
+        degreeRange = np.arange(2, estimationMaxOrder +1)
+        degrees = np.repeat(degreeRange, degreeRange + 1).astype(int)
+        orders = np.concatenate([np.arange(d + 1) for d in degreeRange]).astype(int)
+
+        # Splits estimated coefficients into cosine and sine coefficients. 
+        estimatedCosineCoefficients = estimatedCoefficients[:np.size(degrees)]
+        reducedEstimatedSineCoefficients = estimatedCoefficients[np.size(degrees):]
+
+        # Same split for errors. 
+        cosineCoefficientAbsoluteErrors = absoluteError[:np.size(degrees)]
+        sineCoefficientReducedAbsoluteErrors = absoluteError[np.size(degrees):]
+
+        cosineCoefficientRelativeErrors = relativeError[:np.size(degrees)]
+        sineCoefficientReducedRelativeErrors = relativeError[np.size(degrees):]
+
+        # Mask for indices where order is zero. 
+        zeroOrderMask = np.ones( np.size( degrees ), dtype= bool )
+        zeroOrderMask[ np.where( orders == 0 )[0] ] = False
+
+        estimatedSineCoefficients = np.zeros( np.size( degrees ) )
+        sineCoefficientAbsoluteErrors = np.zeros( np.size( degrees ) )
+        sineCoefficientRelativeErrors = np.zeros( np.size( degrees ) )
+
+        # Inserts zeros into order 0 sine coefficients. 
+        estimatedSineCoefficients[zeroOrderMask] = reducedEstimatedSineCoefficients
+        sineCoefficientAbsoluteErrors[zeroOrderMask] = sineCoefficientReducedAbsoluteErrors
+        sineCoefficientRelativeErrors[zeroOrderMask] = sineCoefficientReducedRelativeErrors
+
+        # Header. 
+        header = "Degree - Order -    C    -    S    - Absolute Error (C - S) - Relative Error (C - S)"
+
+        # Column stacks.
+        saveData = np.column_stack([
+            degrees, orders, estimatedCosineCoefficients, estimatedSineCoefficients, 
+            cosineCoefficientAbsoluteErrors, sineCoefficientAbsoluteErrors,
+            cosineCoefficientRelativeErrors, sineCoefficientRelativeErrors])
+
+        # Save indexed values. 
+        np.savetxt( resultsDir + comparisonFile, saveData, header= header,
+                    fmt= ["%2i", "%2i", "% .10e", "% .10e", "% .10e", 
+                          "% .10e", "% .10e", "% .10e"],
+                    delimiter= ",")
 
     # Print initial state estimate vs reality
-    if printInitialState := True:
+    if printInitialState := False:
         print("========== Difference in state ==========")
         print("Roci A: ")
         print(f":{np.abs(estimationOutput.final_parameters[:6] - rociA.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
