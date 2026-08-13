@@ -9,7 +9,9 @@ from visualization.plotting import *
 
 ### External library imports.
 import numpy as np
+from copy import deepcopy
 from pathlib import Path
+
 
 ### Tudat imports
 from tudatpy.util import result2array
@@ -22,140 +24,160 @@ from tudatpy.estimation.estimation_analysis import Estimator
 # TODO: Function for converting an altitude into a basic set of kepler 
 # elements for a given planet. (Args: Altitude and Planet)
 
+
 if __name__ == "__main__":
 
     # Data directory. 
     resultsDir = "data/results/"
 
-    ### -----------------------------------------------------------------------
-    ### Propagation of "reality".
-    ### -----------------------------------------------------------------------
+    distances = [1000.0, 5000.0, 1e4, 5e4]
+    simulatedObservations = np.array([])
+    dependentVariables = np.array([])
 
-    if propagateReality:= True:
-        # Propagation start and end dates. 
-        # Given as [Year, Month, Day]
-        simStartDate    = [2026, 7, 30]
-        simEndDate      = [2026, 8, 2]
+    for index, distance in enumerate(distances):
+        ### -----------------------------------------------------------------------
+        ### Propagation of "reality".
+        ### -----------------------------------------------------------------------
 
-        # Propagation time step size. 
-        propTimeStep = 10.0
+        if propagateReality:= True:
+            # Propagation start and end dates. 
+            # Given as [Year, Month, Day]
+            simStartDate    = [2026, 7, 31]
+            simEndDate      = [2026, 8, 1]
 
-        # Load SPICE kernels and return J2000 formatted epochs. 
-        simStartEpoch, simEndEpoch = load_spice( 
-            startEpoch= simStartDate, endEpoch= simEndDate 
+            # Propagation time step size. 
+            propTimeStep = 10.0
+
+            # Load SPICE kernels and return J2000 formatted epochs. 
+            simStartEpoch, simEndEpoch = load_spice( 
+                startEpoch= simStartDate, endEpoch= simEndDate,
+                longEpoch= False
+                )
+
+            # Choose list of spacecraft for simulation. 
+            spacecrafts = [ rociA, rociB ]
+            # Sets the desired distance between rociA and B.
+            rociB.set_distance_from_co_orbiting(
+                distance= distance
             )
 
-        # Choose list of spacecraft for simulation. 
-        spacecrafts = [ rociA, rociB ]
-        # Choose list of ground stations for simulation.
-        groundStations = [ grazStation ]
+            # Choose list of ground stations for simulation.
+            groundStations = [ grazStation ]
 
-        # Set up true environment bodies. 
-        simulationBodies = environment_bodies_low_fidelity_true_model( 
-            spacecrafts= spacecrafts,
-            groundStations= groundStations
-        )
+            # Set up true environment bodies. 
+            simulationBodies = environment_bodies_low_fidelity_true_model( 
+                spacecrafts= spacecrafts,
+                groundStations= groundStations
+            )
 
-        # Set up propagator settings. 
-        propagatorSettings = environment_prop_settings_low_fidelity(
-            spacecrafts= spacecrafts,
-            bodies= simulationBodies,
-            simStartEpoch= simStartEpoch,
-            simEndEpoch= simEndEpoch,
-            timeStep= propTimeStep,
-            trueModel= True,
-            harmonicCoeffOrder= 5,
-            keepEnvironment= True
-        )
+            # Set up propagator settings. 
+            propagatorSettings = environment_prop_settings_low_fidelity(
+                spacecrafts= spacecrafts,
+                bodies= simulationBodies,
+                simStartEpoch= simStartEpoch,
+                simEndEpoch= simEndEpoch,
+                timeStep= propTimeStep,
+                trueModel= True,
+                harmonicCoeffOrder= 5,
+                keepEnvironment= True
+            )
 
-        # Propagate orbit. 
-        stateHistory, dependentVarsHistory = environment_propagate_low_fidelity(
-            bodies= simulationBodies,
-            propagationSettings= propagatorSettings
-        )
+            # Propagate orbit. 
+            stateHistory, dependentVarsHistory = environment_propagate_low_fidelity(
+                bodies= simulationBodies,
+                propagationSettings= propagatorSettings
+            )
 
-        # Convert reality propagation output into NDArrays. 
-        dependentVarsHistoryArray = result2array(dependentVarsHistory)
-        stateHistoryArr = result2array(stateHistory)
+            # Convert reality propagation output into NDArrays. 
+            dependentVarsHistoryArray = result2array(dependentVarsHistory)
+            stateHistoryArr = result2array(stateHistory)
 
-        # Saves cartesian states to spacecraft. 
-        rociA.save_cartesian_state( cartesianStates= stateHistoryArr[:,:7] )
-        rociB.save_cartesian_state( cartesianStates= np.hstack([stateHistoryArr[:,0:1], stateHistoryArr[:,7:]]) )
+            # Saves cartesian states to spacecraft. 
+            rociA.save_cartesian_state( cartesianStates= stateHistoryArr[:,:7] )
+            rociB.save_cartesian_state( cartesianStates= np.hstack([stateHistoryArr[:,0:1], stateHistoryArr[:,7:]]) )
+            
+        ### -----------------------------------------------------------------------
+        ### Simulating observations.
+        ### -----------------------------------------------------------------------
+
+        if simulateObservations:= True:
+            # Create observation times. 
+            observStartDate    = [2026, 7, 31]
+            observEndDate      = [2026, 8, 1]
+
+            # Load SPICE kernels and return J2000 formatted epochs. 
+            observationStartEpoch, observationEndEpoch = convert_time( 
+                startEpoch= observStartDate, endEpoch= observEndDate 
+                )
+
+            # Create set of observation times. 
+            observationsStep = 30.0
+            observationTimes = np.arange( observationStartEpoch, 
+                                        step= observationsStep,
+                                        stop= observationEndEpoch)
+
+            # Define noise amplitude for observations. 
+            noiseAmplitude = 0.5
+
+            # Define transmitters and receivers for one way range observations.
+            # Order of elements matters. Receivers[0] corresponds to transmitters[0].
+            #owrReceivers = [ rociB, rociA, grazStation, grazStation ]
+            #owrTransmitters = [ rociA, rociB, rociA, rociB ]
+
+            owrReceivers = [ rociB, rociA ]
+            owrTransmitters = [ rociA, grazStation ]
+
+            # Create observation links.
+            owrObservationType, owrObservationLinkDefinitions = link_creation_one_way(
+                transmitters= owrTransmitters,
+                receivers= owrReceivers
+            )
+
+            # Create observation model simulator.
+            observationModelSimulator, observationModelSettings = observation_model_simulator_owr(
+                owrLinkDefinitions= owrObservationLinkDefinitions,
+                bodies= simulationBodies,
+            )
+
+            # Dictionary of observation types and their respective link definitions. 
+            linkEndsPerObservable = {
+                owrObservationType: owrObservationLinkDefinitions
+            }
+
+            # Simulate observations. 
+            simulatedObservationsNoisy = simulate_observations_owr(
+                observationTimes= observationTimes.tolist(),
+                linkEndsPerObservatble= linkEndsPerObservable,
+                owrObservationSimulator= observationModelSimulator,
+                bodies= simulationBodies,
+                noiseAmplitude= noiseAmplitude
+            )
+
         
-    ### -----------------------------------------------------------------------
-    ### Simulating observations.
-    ### -----------------------------------------------------------------------
-
-    if simulateObservations:= True:
-        # Create observation times. 
-        observStartDate    = [2026, 7, 31]
-        observEndDate      = [2026, 8, 1]
-
-        # Load SPICE kernels and return J2000 formatted epochs. 
-        observationStartEpoch, observationEndEpoch = convert_time( 
-            startEpoch= observStartDate, endEpoch= observEndDate 
+            # Simulate clean observations. 
+            simulatedObservationsClean = simulate_observations_owr(
+                observationTimes= observationTimes.tolist(),
+                linkEndsPerObservatble= linkEndsPerObservable,
+                owrObservationSimulator= observationModelSimulator,
+                bodies= simulationBodies,
+                noiseAmplitude= 0.0
             )
 
-        # Create set of observation times. 
-        observationsStep = 30.0
-        observationTimes = np.arange( observationStartEpoch, 
-                                    step= observationsStep,
-                                    stop= observationEndEpoch)
+            # Extract simulated observation data. 
+            simulatedRociObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
+                observationCollection= simulatedObservationsClean,
+                transmitter= rociA
+            )
+            simulatedGrazObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
+                observationCollection= simulatedObservationsClean,
+                transmitter= grazStation
+            )
 
-        # Define noise amplitude for observations. 
-        noiseAmplitude = 0.5
+        simulatedObservations = np.vstack( [simulatedObservations, simulatedRociObservationsClean] ) if simulatedObservations.size else simulatedRociObservationsClean
+        dependentVariables = np.vstack( [dependentVariables, dependentVarsHistoryArray[:,1].T] ) if dependentVariables.size else dependentVarsHistoryArray[:,1].T
 
-        # Define transmitters and receivers for one way range observations.
-        # Order of elements matters. Receivers[0] corresponds to transmitters[0].
-        owrReceivers = [ rociB, rociA, grazStation, grazStation ]
-        owrTransmitters = [ rociA, rociB, rociA, rociB ]
-
-        # Create observation links.
-        owrObservationType, owrObservationLinkDefinitions = link_creation_one_way(
-            transmitters= owrTransmitters,
-            receivers= owrReceivers
-        )
-
-        # Create observation model simulator.
-        observationModelSimulator, observationModelSettings = observation_model_simulator_owr(
-            owrLinkDefinitions= owrObservationLinkDefinitions,
-            bodies= simulationBodies,
-        )
-
-        # Dictionary of observation types and their respective link definitions. 
-        linkEndsPerObservable = {
-            owrObservationType: owrObservationLinkDefinitions
-        }
-
-        # Simulate observations. 
-        simulatedObservationsNoisy = simulate_observations_owr(
-            observationTimes= observationTimes.tolist(),
-            linkEndsPerObservatble= linkEndsPerObservable,
-            owrObservationSimulator= observationModelSimulator,
-            bodies= simulationBodies,
-            noiseAmplitude= noiseAmplitude
-        )
-
-    
-        # Simulate clean observations. 
-        simulatedObservationsClean = simulate_observations_owr(
-            observationTimes= observationTimes.tolist(),
-            linkEndsPerObservatble= linkEndsPerObservable,
-            owrObservationSimulator= observationModelSimulator,
-            bodies= simulationBodies,
-            noiseAmplitude= 0.0
-        )
-
-        # Extract simulated observation data. 
-        simulatedRociObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
-            observationCollection= simulatedObservationsClean,
-            transmitter= rociA
-        )
-        simulatedGrazObservationsClean, simulatedObservationTimes = extract_data_observations_owr(
-            observationCollection= simulatedObservationsClean,
-            transmitter= grazStation
-        )
-
+    print(simulatedObservations.shape)
+    print(dependentVariables.shape)
     ### -----------------------------------------------------------------------
     ### Estimating parameters.
     ### -----------------------------------------------------------------------
@@ -422,13 +444,13 @@ if __name__ == "__main__":
         epochDict = {
             plot1Name: np.array(observationTimes) - simStartEpoch,
             plot2Name: np.array(observationTimes) - simStartEpoch,
-            plot3Name: dependentVarsHistoryArray[matchedIndexes,0] - simStartEpoch
+            #plot3Name: dependentVarsHistoryArray[matchedIndexes,0] - simStartEpoch
         }
         # Assembles data dictionary for use in plotting. 
         dataDict = {
             plot1Name: simulatedRociObservationsClean,
             plot2Name: simulatedGrazObservationsClean/1e3,
-            plot3Name: dependentVarsHistoryArray[matchedIndexes,2]/1e3
+            #plot3Name: dependentVarsHistoryArray[matchedIndexes,2]/1e3
         }
 
         generalized_plot_2d(
@@ -442,20 +464,27 @@ if __name__ == "__main__":
         )
 
     # Plots the difference between "real" range and simulated observations. 
-    if plotRangeDifference := False :
+    if plotRangeDifference := True :
         # Check where epochs match between propagation and observations.
         matchedIndexes = np.where( np.isin( 
             dependentVarsHistoryArray[:,0], np.array(simulatedObservationTimes) ) )[0]
 
-        # Extract propagation range for matching indices
-        propRange = dependentVarsHistoryArray[matchedIndexes,1]
-
-        # Calculate difference.
-        rangeDifference = abs(propRange - simulatedObservationValuesNoisy)
+        # Empty variable dictionaries. 
+        yVariables = dict(); xVariables = dict()
 
         # Data and epoch dictionaries 
-        yVariables = { "Range Difference": rangeDifference}
-        xVariables = { "Range Difference": np.array(simulatedObservationTimes) - simStartEpoch}
+        for distanceIndex, distance in enumerate(distances):
+            # Extract propagation range for matching indices
+            propRange = dependentVariables[distanceIndex,matchedIndexes]
+    
+            # Calculate difference.
+            rangeDifference = abs(propRange - simulatedObservations[distanceIndex,:])
+
+            key = f"Distance: {distance/1e3} km"
+
+            yVariables[key] = rangeDifference
+            xVariables[key] = np.array(simulatedObservationTimes) - simStartEpoch
+
         # Plots
         generalized_plot_2d(
             yVariables= yVariables,

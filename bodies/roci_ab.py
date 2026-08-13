@@ -11,6 +11,7 @@ from auxiliary.math_functions import *
 
 ### External library imports.
 import numpy as np
+from copy import deepcopy
 
 ### Roci A and B dictionaries. 
 # Contain vehicle characteristics and initial keplerian states. 
@@ -29,21 +30,7 @@ rociADict = {
     ]
 }
 
-rociBDict = {
-    "name": "rociB",
-    "mass": 100,        # kg
-    "keplerianElems": [     
-        rociADict["keplerianElems"][0],        
-        rociADict["keplerianElems"][1],
-        rociADict["keplerianElems"][2],
-        rociADict["keplerianElems"][3],
-        rociADict["keplerianElems"][4],
-        rociADict["keplerianElems"][5] + law_cosines_anomaly_spacing(
-            orbitRadius= rociADict["keplerianElems"][0],
-            desiredSpacing= 1000    # Separation between rociA and rociB [m].
-        )
-    ]
-}
+rociBDict = deepcopy(rociADict)
 
 ### Spacecraft class objects. 
 rociA = spacecraft(
@@ -58,5 +45,4 @@ rociB = spacecraft(
     keplerianElems= rociBDict["keplerianElems"]
 )
 
-# List of dictionaries for use in creating body settings. 
-rociList = [rociA, rociB]
+

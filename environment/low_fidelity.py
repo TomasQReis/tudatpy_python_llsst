@@ -253,7 +253,7 @@ def environment_prop_settings_low_fidelity(
     dependentVariablesList = [
         propagation_setup.dependent_variable.relative_distance(
             body= spacecrafts[0].name,
-            relative_body= "Earth"
+            relative_body= spacecrafts[1].name
         )
     ]
 
