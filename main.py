@@ -42,11 +42,17 @@ if __name__ == "__main__":
 
         # Load SPICE kernels and return J2000 formatted epochs. 
         simStartEpoch, simEndEpoch = load_spice( 
-            startEpoch= simStartDate, endEpoch= simEndDate 
+            startEpoch= simStartDate, endEpoch= simEndDate,
+            longEpoch= False
             )
 
         # Choose list of spacecraft for simulation. 
         spacecrafts = [ rociA, rociB ]
+        # Sets the desired distance between rociA and B.
+        rociB.set_distance_from_co_orbiting(
+            distance= 1000.0
+        )
+
         # Choose list of ground stations for simulation.
         groundStations = [ grazStation ]
 
@@ -107,8 +113,11 @@ if __name__ == "__main__":
 
         # Define transmitters and receivers for one way range observations.
         # Order of elements matters. Receivers[0] corresponds to transmitters[0].
-        owrReceivers = [ rociB, rociA, grazStation, grazStation ]
-        owrTransmitters = [ rociA, rociB, rociA, rociB ]
+        #owrReceivers = [ rociB, rociA, grazStation, grazStation ]
+        #owrTransmitters = [ rociA, rociB, rociA, rociB ]
+
+        owrReceivers = [ rociB, rociA ]
+        owrTransmitters = [ rociA, grazStation ]
 
         # Create observation links.
         owrObservationType, owrObservationLinkDefinitions = link_creation_one_way(
@@ -384,7 +393,7 @@ if __name__ == "__main__":
         print(f":{np.abs(finalStates[6:12] - rociB.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
 
     # Relative distance plot. 
-    if plotRange := False:
+    if plotRange := True:
         
         # Assembles times dictionary
         epochDict = {
@@ -451,7 +460,7 @@ if __name__ == "__main__":
         propRange = dependentVarsHistoryArray[matchedIndexes,1]
 
         # Calculate difference.
-        rangeDifference = abs(propRange - simulatedObservationValuesNoisy)
+        rangeDifference = abs(propRange - simulatedRociObservationsClean)
 
         # Data and epoch dictionaries 
         yVariables = { "Range Difference": rangeDifference}
