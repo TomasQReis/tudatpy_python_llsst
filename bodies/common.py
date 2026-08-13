@@ -17,7 +17,6 @@ class body:
     ):
         self.name = name
 
-
 ### Spacecraft class.
 class spacecraft (body):
     # Stored simulation cartesian states. 
@@ -27,11 +26,49 @@ class spacecraft (body):
             self, 
             name: str,
             mass: float, 
+            # semiMajorAxis, eccentricity, inclination, argOfPeriapsis,
+            # longOfAscending, trueAnom 
             keplerianElems: NDArray):
         
         self.name = name
         self.mass = mass
         self.keplerianElems = keplerianElems
+
+    def set_distance_from_co_orbiting(self, distance):
+        """
+        Adds the necessary true anomaly spacing to ensure distance to a co-orbiting
+        spacecraft. Assumes co-planar orbit for the co-orbiting spacecraft and
+        that said spacecraft has a true anomaly of zero as an initial state. 
+        Derivation presented in readme file. 
+        Args:
+            distance (float): desired distance in meters to the co-orbiting spacecraft. 
+        """
+        # Auxiliary phi variable. 
+        phiAuxiliary =  (
+            distance**2 / ( self.keplerianElems[0] * (1 - self.keplerianElems[1]**2) )**2 
+            - ( 1 / ( 1 + self.keplerianElems[1] ) )**2 )
+
+        # Sets up elements of required for solving quadratic equation.
+        c = ( 1 + self.keplerianElems[1] ) * ( 1 - phiAuxiliary )
+        b = -2 - phiAuxiliary*( 2*self.keplerianElems[1] + 2*self.keplerianElems[1]**2 )
+        a = -2*self.keplerianElems[1] - phiAuxiliary*( self.keplerianElems[1]**2 + self.keplerianElems[1]**3 )
+
+        # Solve quadratic. 
+        quadraticResults = np.roots( [ a, b, c ] )
+        # Filters results that are valid for x = cos(theta). 
+        validQuadraticResults = quadraticResults[ abs(quadraticResults) < 1 ]
+        # Checks if list of valid results is empty. 
+        if validQuadraticResults.size == 0:
+            raise ValueError(
+                f"Quadratic solve did not output valid results: {quadraticResults}"
+            )
+
+        # Arccos of results.
+        trueAnomalyResults = np.arccos( validQuadraticResults )[0]
+
+        # Adds to initial true anomaly 
+        # (Assumed same as reference spacecraft before this function is called)
+        self.keplerianElems[5] = trueAnomalyResults
 
     def save_cartesian_state(self, cartesianStates: NDArray) -> None:
 

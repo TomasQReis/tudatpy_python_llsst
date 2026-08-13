@@ -11,6 +11,7 @@ from auxiliary.math_functions import *
 
 ### External library imports.
 import numpy as np
+from copy import deepcopy
 
 ### Roci A and B dictionaries. 
 # Contain vehicle characteristics and initial keplerian states. 
@@ -51,6 +52,8 @@ rociA = spacecraft(
     mass= 100.0,
     keplerianElems= rociADict["keplerianElems"]
 )
+
+rociBDict = deepcopy(rociADict)
 
 rociB = spacecraft(
     name= "rociB",
