@@ -30,8 +30,18 @@ if __name__ == "__main__":
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
     ### -----------------------------------------------------------------------
+    # Propagation start and end dates. 
+    # Given as [Year, Month, Day]
+    simStartDate    = [2000, 1, 1]
+    simEndDate      = [2005, 12, 30]
 
-    if propagateReality:= True:
+    # Load SPICE kernels and return J2000 formatted epochs. 
+    simStartEpoch, simEndEpoch = load_spice( 
+        simStartDate= simStartDate, simEndDate= simEndDate
+        )
+
+
+    if propagateReality:= False:
         # Propagation start and end dates. 
         # Given as [Year, Month, Day]
         simStartDate    = [2026, 7, 30]
@@ -42,8 +52,8 @@ if __name__ == "__main__":
 
         # Load SPICE kernels and return J2000 formatted epochs. 
         simStartEpoch, simEndEpoch = load_spice( 
-            startEpoch= simStartDate, endEpoch= simEndDate,
-            longEpoch= False
+            simStartDate= simStartDate, simEndDate= simEndDate,
+            longDate= False
             )
 
         # Choose list of spacecraft for simulation. 
@@ -92,7 +102,7 @@ if __name__ == "__main__":
     ### Simulating observations.
     ### -----------------------------------------------------------------------
 
-    if simulateObservations:= True:
+    if simulateObservations:= False:
         # Create observation times. 
         observStartDate    = [2026, 7, 31]
         observEndDate      = [2026, 8, 1]
@@ -393,7 +403,7 @@ if __name__ == "__main__":
         print(f":{np.abs(finalStates[6:12] - rociB.find_cartesian_state( stateEpoch= observationStartEpoch ))}") 
 
     # Relative distance plot. 
-    if plotRange := True:
+    if plotRange := False:
         
         # Assembles times dictionary
         epochDict = {
