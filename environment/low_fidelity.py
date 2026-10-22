@@ -7,7 +7,7 @@
 ### 
 
 ### Self-made imports.
-from bodies.common import spacecraft, groundStation
+from bodies.bodies import spacecraft, groundStation
 from bodies.gggrx1200 import gggrx_coefficients
 
 ### External library imports.
@@ -25,19 +25,12 @@ def ground_station_settings(
         bodySettings: environment_setup.BodyListSettings, 
         groundStations: list[groundStation] = [],
 ):
-    # Empty stations settings list. 
-    stationsSettingsList = []
-    # Iterates throught ground stations. 
-    for groundStation in groundStations:
-        # Adds station settings to list. 
-        stationsSettingsList.append(
-            groundStation.ground_station_settings()
-        )
-
-    # Adds ground station settings to respective body. 
-    bodySettings.get(groundStation.parentBody).ground_station_settings = stationsSettingsList
-
+    
     return bodySettings
+
+
+
+
 
 # Low fidelity truth model. 
 def environment_bodies_low_fidelity_true_model( 

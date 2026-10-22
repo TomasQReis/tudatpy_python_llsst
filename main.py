@@ -1,11 +1,14 @@
 ### Imports for self-made functions
 from environment.low_fidelity import *
-from environment.common_functions import *
+from environment.environment import *
 from obs_models.ll_sst import *
-from bodies.common import *
+from bodies.bodies import *
 from bodies.roci_ab import *
 from bodies.ground_stations import *
 from visualization.plotting import *
+
+# NOTE: TEMP IMPORTS
+from environment.moon_environment import moonEnvironment
 
 ### External library imports.
 import numpy as np
@@ -16,11 +19,6 @@ from tudatpy.util import result2array
 from tudatpy import dynamics
 from tudatpy.estimation.estimation_analysis import Estimator
 
-### LIST OF TODO's ###
-# TODO: Implement noise and bias in low_fidelity.
-# TODO: Test functionality with other celestial bodies. 
-# TODO: Function for converting an altitude into a basic set of kepler 
-# elements for a given planet. (Args: Altitude and Planet)
 
 if __name__ == "__main__":
 
@@ -30,30 +28,58 @@ if __name__ == "__main__":
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
     ### -----------------------------------------------------------------------
+    
+
     # Propagation start and end dates. 
     # Given as [Year, Month, Day]
     simStartDate    = [2000, 1, 1]
-    simEndDate      = [2005, 12, 30]
+    simEndDate      = [2000, 1, 2]
+
+    # Propagation time step size. 
+    propTimeStep = 10.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
         simStartDate= simStartDate, simEndDate= simEndDate
         )
 
+    # Choose list of spacecraft for simulation. 
+    spacecrafts = [ rociA, rociB ]
+    # Sets the desired distance between rociA and B.
+    rociB.set_distance_from_co_orbiting(
+        distance= 1000.0
+    )
+
+    # Choose list of ground stations for simulation.
+    groundStations = [ grazStation ]
+
+
+    simulationEnvironment = moonEnvironment(
+        level= 2,
+        simStartEpoch= simStartEpoch,
+        simEndEpoch= simEndEpoch,
+        timeStep= 10.0,
+        spacecrafts= spacecrafts,
+    )
+
+    simulationEnvironment.make_propagation_settings()
+    stateHistory, dependentVarsHistory = simulationEnvironment.propagate()
+
+    print(result2array(stateHistory))
+
 
     if propagateReality:= False:
         # Propagation start and end dates. 
         # Given as [Year, Month, Day]
-        simStartDate    = [2026, 7, 30]
-        simEndDate      = [2026, 8, 2]
+        simStartDate    = [2000, 1, 1]
+        simEndDate      = [2005, 12, 30]
 
         # Propagation time step size. 
         propTimeStep = 10.0
 
         # Load SPICE kernels and return J2000 formatted epochs. 
         simStartEpoch, simEndEpoch = load_spice( 
-            simStartDate= simStartDate, simEndDate= simEndDate,
-            longDate= False
+            simStartDate= simStartDate, simEndDate= simEndDate
             )
 
         # Choose list of spacecraft for simulation. 

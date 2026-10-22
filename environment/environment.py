@@ -5,6 +5,8 @@ from tudatpy.interface import spice
 from tudatpy.astro.time_representation import DateTime
 from tudatpy.dynamics import environment
 
+### Custom imports. 
+from environment.moon_environment import *
 
 
 def convert_to_j2000(date: list):
@@ -15,7 +17,7 @@ def convert_to_j2000(date: list):
         minute, seconds].
         longEpoch (bool): True if long date list. 
     Returns:
-        dateJ2000 (float): Seconds since J2000. 
+        dateJ2000 (Time): Seconds since J2000. 
     """
 
     if len(date) == 6:
@@ -38,7 +40,7 @@ def convert_to_j2000(date: list):
 def check_timespan_limit(simStartEpoch: float, simEndEpoch: float):
         """
         Checks whether timespan is within R3-1 limits (1 day to 5 years). 
-        Returns True if timespan is within limits, False Otherwise. 
+        Returns True if timespan is within limits. 
         Args:
             simStartEpoch (float): seconds since J2000 for start of simulation timespan.
             simEndEpoch (float): seconds since J2000 for end of simulation timespan. 
@@ -50,8 +52,16 @@ def check_timespan_limit(simStartEpoch: float, simEndEpoch: float):
 
         timeSpan = simEndEpoch - simStartEpoch
          
-        if timeSpan > maxSpan or timeSpan < minSpan:
-            return False
+        if timeSpan > maxSpan:
+            raise RuntimeError(
+                f"Timespan larger than maximum:\n"
+                f"User: {timeSpan} -- Max: {maxSpan}"
+            )
+        elif timeSpan < minSpan:
+            raise RuntimeError(
+                f"Timespan smaller than minimum:\n"
+                f"User: {timeSpan} -- Min: {minSpan}"
+            )
         else:
             return True
 
@@ -84,11 +94,6 @@ def load_spice(simStartDate: list, simEndDate: list):
             simStartEpoch= simStartEpoch,
             simEndEpoch= simEndEpoch
         ):  print("Timespan Within Limits")
-    else: 
-        raise RuntimeError(
-            f"Timespan is outside of allowable limits.\n"
-            f"Attempted Timespan: {simEndEpoch - simStartEpoch} s"
-        )
 
 
     return simStartEpoch, simEndEpoch
@@ -137,4 +142,24 @@ def return_sh_coefficients(
     referenceRadius = gravityFieldModel.reference_radius
     
     return cosineCoefficients, sineCoefficients, referenceRadius, gravitationalParameter
+
+# Environment selector
+"""def environment_selector(
+    centralBody: str= "Moon",
+    level: int= 1,
+    harmonicsMaxDegree: int= 10,
+    harmonicsCustomFieldFile: str= "",
+    # Will require additional inputs for higher levels. 
+): 
+    match centralBody:
+        case "Moon":
+            match level:
+                case 1:
+                    
+                case 2:
+
+                case 3:
+    
+    return simulationEnvironment
+"""
 

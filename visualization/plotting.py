@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
 ### Internal library imports. 
-from bodies.common import spacecraft
+from bodies.bodies import spacecraft
 
 ### Tudat imports
 from tudatpy.util import result2array
