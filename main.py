@@ -32,8 +32,8 @@ if __name__ == "__main__":
 
     # Propagation start and end dates. 
     # Given as [Year, Month, Day]
-    simStartDate    = [2000, 1, 1]
-    simEndDate      = [2000, 1, 2]
+    simStartDate    = [2000, 1, 1, 0, 0, 0]
+    simEndDate      = [2000, 1, 1, 12, 0, 0]
 
     # Propagation time step size. 
     propTimeStep = 10.0
