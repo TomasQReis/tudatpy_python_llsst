@@ -34,7 +34,7 @@ if __name__ == "__main__":
     simEndDate      = [2000, 1, 1, 12, 0, 0]
 
     # Propagation time step size. 
-    propTimeStep = 10.0
+    propTimeStep = 20.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
@@ -43,24 +43,10 @@ if __name__ == "__main__":
 
     # Choose list of spacecraft for simulation. 
     spacecrafts = [ rociA ]
-    # Sets the desired distance between rociA and B.
-    """rociB.set_distance_from_co_orbiting(
-        distance= 1000.0
-    )"""
 
     # Choose list of ground stations for simulation.
     groundStations = [ grazStation ]
 
-
-    environmentLoadedHarmonics = moonEnvironment(
-        level= 3,
-        simStartEpoch= simStartEpoch,   # type: ignore
-        simEndEpoch= simEndEpoch,       # type: ignore
-        timeStep= 10.0,                 # type: ignore
-        spacecrafts= spacecrafts,       
-        customHarmonicsBool= True,
-        customHarmonicsFile= GGRX1200L
-    )
 
     environmentDefaultHarmonics = moonEnvironment(
         level= 3,
@@ -71,17 +57,14 @@ if __name__ == "__main__":
         customHarmonicsBool= False
     )
 
-    environmentLoadedHarmonics.make_propagation_settings( harmonicsDegree= 20 )
     environmentDefaultHarmonics.make_propagation_settings( harmonicsDegree= 20 )
 
     
-    stateHistoryLoaded, _ = environmentLoadedHarmonics.propagate()
     stateHistoryDefault, _ = environmentDefaultHarmonics.propagate()
 
-    stateArrayLoaded = result2array(stateHistoryLoaded)
+    
     stateArrayDefault = result2array(stateHistoryDefault)
 
-    print( stateArrayLoaded - stateArrayDefault )
 
     if propagateReality:= False:
         # Propagation start and end dates. 
