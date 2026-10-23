@@ -38,7 +38,8 @@ if __name__ == "__main__":
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
-        simStartDate= simStartDate, simEndDate= simEndDate
+        simStartDate= simStartDate, simEndDate= simEndDate,
+        skipTimespanCheck= True
         )
 
     # Choose list of spacecraft for simulation. 
@@ -57,12 +58,12 @@ if __name__ == "__main__":
         customHarmonicsBool= False
     )
 
-    environmentDefaultHarmonics.make_propagation_settings( harmonicsDegree= 20 )
+    environmentDefaultHarmonics.make_single_arc_propagation_settings( harmonicsDegree= 20 )
 
     
     stateHistoryDefault, _ = environmentDefaultHarmonics.propagate()
 
-    
+
     stateArrayDefault = result2array(stateHistoryDefault)
 
 

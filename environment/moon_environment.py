@@ -21,7 +21,9 @@ class moonEnvironment ( environmentClass ):
             level: int= 1,
             groundStations: list[groundStation]= [],
             customHarmonicsBool: bool= False,
-            customHarmonicsFile: str= "", ):
+            customHarmonicsFile: str= "",
+            numberOfArcs: int= 1
+            ):
         
         # Calls inherited initalization. 
         environmentClass.__init__(
@@ -33,7 +35,8 @@ class moonEnvironment ( environmentClass ):
             level= level,
             groundStations= groundStations,
             customHarmonicsBool= customHarmonicsBool,
-            customHarmonicsFile= customHarmonicsFile
+            customHarmonicsFile= customHarmonicsFile,
+            numberOfArcs= numberOfArcs
             )
         # Sets frame origin body as moon.
         self.frameOriginBody = "Moon"

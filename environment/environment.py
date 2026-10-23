@@ -23,6 +23,11 @@ atmoModelsDir       = "data/models/atmosphere/"
 GGRX1200A           = gravityModelsDir + "gggrx_1200a_formatted.csv"
 GGRX1200L           = gravityModelsDir + "gggrx_1200l_formatted.csv"
 
+### Overall limits for arc and simulation timespans. 
+# Uses seconds between 1st Jan 2000 and 1st Jan 2005 as approximation for 5 year limit.
+MAXSPAN             = 157766400.0
+# 1 day as minimum timespan.
+MINSPAN             = 24*60**2      
 
 def convert_to_j2000(date: list):
     """
@@ -60,29 +65,49 @@ def check_timespan_limit(simStartEpoch: float, simEndEpoch: float):
             simStartEpoch (float): seconds since J2000 for start of simulation timespan.
             simEndEpoch (float): seconds since J2000 for end of simulation timespan. 
         """
-        # Uses seconds between 1st Jan 2000 and 1st Jan 2005 as approximation for 5 year limit.
-        maxSpan = 157766400.0
-        # 1/2 day as minimum timespan.
-        # TODO: Correct back to 1 day. 
-        minSpan = 12*60**2
-
         timeSpan = simEndEpoch - simStartEpoch
          
-        if timeSpan > maxSpan:
+        if timeSpan > MAXSPAN:
             raise RuntimeError(
                 f"Timespan larger than maximum:\n"
-                f"User: {timeSpan} -- Max: {maxSpan}"
+                f"User: {timeSpan} -- Max: {MAXSPAN}"
             )
-        elif timeSpan < minSpan:
+        elif timeSpan < MINSPAN:
             raise RuntimeError(
                 f"Timespan smaller than minimum:\n"
-                f"User: {timeSpan} -- Min: {minSpan}"
+                f"User: {timeSpan} -- Min: {MINSPAN}"
             )
         else:
             return True
 
+
+def check_arc_timespan_limit( arcLength: float, timeSpan: float ):
+    """
+    Checks whether arc length is within R3-1 limits (1 day to 5 years) and if 
+    it is smaller than the entire simulation timespan. Returns true if so. 
+    Args:
+        arcLength (float): seconds since J2000 for arc length.
+        timeSpan (float): seconds since J2000 for simulation timespan. 
+    """
+
+    if arcLength < MINSPAN or arcLength > MAXSPAN:
+        raise RuntimeError(
+            f"Arclength out of bounds:\n"
+            f"Arc: {timeSpan} -- Min/Max: {MINSPAN}/{MAXSPAN}"
+        )
+    elif arcLength > timeSpan:
+        raise RuntimeError(
+            f"Arc longer than simulation timespan:\n"
+            f"Arc: {arcLength} -- Sim: {timeSpan}"
+        )
+    else:
+        return True
+
+
 # Load spice kernels and convert time epochs to seconds since J2000. 
-def load_spice(simStartDate: list, simEndDate: list):
+def load_spice(simStartDate: list, 
+               simEndDate: list, 
+               skipTimespanCheck: bool= False):
     """
     Loads NAIF SPICE kernels with the given start and end epochs, returns 
     given epochs in seconds since J2000.
@@ -108,7 +133,7 @@ def load_spice(simStartDate: list, simEndDate: list):
     if check_timespan_limit(
             simStartEpoch= simStartEpoch,
             simEndEpoch= simEndEpoch
-        ):  print("Timespan Within Limits")
+        ) or skipTimespanCheck:  print("Timespan Within Limits")
 
 
     return simStartEpoch, simEndEpoch
@@ -170,6 +195,7 @@ class environmentClass ():
         groundStations: list[groundStation]= [],
         customHarmonicsBool: bool= False,
         customHarmonicsFile: str= "",
+        numberOfArcs: int= 1,
         ):
 
         self.level = level
@@ -180,6 +206,8 @@ class environmentClass ():
         self.simStartEpoch = simStartEpoch
         self.simEndEpoch = simEndEpoch
         self.timeStep = timeStep
+        self.numberOfArcs = numberOfArcs
+
         self.frameOriginBody = ""
         self.systemOfBodies: SystemOfBodies
         self.accelerationSettings: dict
@@ -254,7 +282,9 @@ class environmentClass ():
     def make_propagation_settings( 
             self, 
             dependentVariables: list= [],
-            harmonicsDegree: int= 10 ):
+            harmonicsDegree: int= 10,
+            arcTimeLength: float= 0.0 ):
+
 
         # Selects propagation level. 
         self.select_propagation_level( harmonicsDegree= harmonicsDegree )

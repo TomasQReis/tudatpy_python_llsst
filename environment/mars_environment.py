@@ -19,7 +19,8 @@ class marsEnvironment ( environmentClass ):
             level: int= 1,
             groundStations: list[groundStation]= [],
             customHarmonicsBool: bool= False,
-            customHarmonicsFile: str= "", ):
+            customHarmonicsFile: str= "", 
+            numberOfArcs: int= 1):
         
         # Calls inherited initalization. 
         environmentClass.__init__(
@@ -31,7 +32,8 @@ class marsEnvironment ( environmentClass ):
             level= level,
             groundStations= groundStations,
             customHarmonicsBool= customHarmonicsBool,
-            customHarmonicsFile= customHarmonicsFile
+            customHarmonicsFile= customHarmonicsFile,
+            numberOfArcs= numberOfArcs
             )
         # Sets frame origin body as moon.
         self.frameOriginBody = "Mars"
@@ -72,7 +74,7 @@ class marsEnvironment ( environmentClass ):
             Deimos  = [propagation_setup.acceleration.point_mass_gravity()]
         )
 
-    def make_level_03_acceleration_settings( self, harmonicsDegree: int= 10 ):
+    def make_level_03_acceleration_settings ( self, harmonicsDegree: int= 10 ):
          # Acceleration settings dict. 
         self.accelerationSettings = dict(
             Mars    = [propagation_setup.acceleration.spherical_harmonic_gravity(
