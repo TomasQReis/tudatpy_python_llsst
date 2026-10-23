@@ -22,6 +22,7 @@ atmoModelsDir       = "data/models/atmosphere/"
 # Gravity 
 GGRX1200A           = gravityModelsDir + "gggrx_1200a_formatted.csv"
 GGRX1200L           = gravityModelsDir + "gggrx_1200l_formatted.csv"
+LP150Q              = gravityModelsDir + "lp150q_formatted.csv"
 
 ### Overall limits for arc and simulation timespans. 
 # Uses seconds between 1st Jan 2000 and 1st Jan 2005 as approximation for 5 year limit.
@@ -130,10 +131,10 @@ def load_spice(simStartDate: list,
         date= simEndDate
     )
 
-    if check_timespan_limit(
+    if skipTimespanCheck or check_timespan_limit(
             simStartEpoch= simStartEpoch,
             simEndEpoch= simEndEpoch
-        ) or skipTimespanCheck:  print("Timespan Within Limits")
+        ):  print("Timespan Within Limits")
 
 
     return simStartEpoch, simEndEpoch
@@ -340,7 +341,7 @@ class environmentClass ():
         )
 
         # Extract state history and dependent variables
-        stateHistory = dynamicsSimulator.propagation_results.state_history
-        dependentVarsHistory = dynamicsSimulator.propagation_results.dependent_variable_history
+        stateHistory = dynamicsSimulator.propagation_results.state_history # type: ignore
+        dependentVarsHistory = dynamicsSimulator.propagation_results.dependent_variable_history # type: ignore
 
         return stateHistory, dependentVarsHistory

@@ -34,7 +34,7 @@ if __name__ == "__main__":
     simEndDate      = [2000, 1, 1, 12, 0, 0]
 
     # Propagation time step size. 
-    propTimeStep = 20.0
+    propTimeStep = 40.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
@@ -53,19 +53,28 @@ if __name__ == "__main__":
         level= 3,
         simStartEpoch= simStartEpoch,   # type: ignore
         simEndEpoch= simEndEpoch,       # type: ignore
-        timeStep= 10.0,                 # type: ignore
+        timeStep= propTimeStep,         # type: ignore
         spacecrafts= spacecrafts,
         customHarmonicsBool= False
     )
+    moonLP150Enviro = moonEnvironment(
+        level= 3,
+        simStartEpoch= simStartEpoch,   # type: ignore
+        simEndEpoch= simEndEpoch,       # type: ignore
+        timeStep= propTimeStep,         # type: ignore
+        spacecrafts= spacecrafts,
+        customHarmonicsBool= True,
+        customHarmonicsFile= LP150Q
+    )
 
-    environmentDefaultHarmonics.make_single_arc_propagation_settings( harmonicsDegree= 20 )
-
+    environmentDefaultHarmonics.make_propagation_settings( harmonicsDegree= 20 )
+    moonLP150Enviro.make_propagation_settings( harmonicsDegree= 20 )
     
     stateHistoryDefault, _ = environmentDefaultHarmonics.propagate()
-
+    stateHistoryLP150, _ = moonLP150Enviro.propagate()
 
     stateArrayDefault = result2array(stateHistoryDefault)
-
+    stateArrayLP150 = result2array(stateHistoryLP150)
 
     if propagateReality:= False:
         # Propagation start and end dates. 
