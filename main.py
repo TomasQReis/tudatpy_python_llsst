@@ -6,8 +6,6 @@ from bodies.bodies import *
 from bodies.roci_ab import *
 from bodies.ground_stations import *
 from visualization.plotting import *
-
-# NOTE: TEMP IMPORTS
 from environment.moon_environment import moonEnvironment
 
 ### External library imports.
@@ -44,29 +42,46 @@ if __name__ == "__main__":
         )
 
     # Choose list of spacecraft for simulation. 
-    spacecrafts = [ rociA, rociB ]
+    spacecrafts = [ rociA ]
     # Sets the desired distance between rociA and B.
-    rociB.set_distance_from_co_orbiting(
+    """rociB.set_distance_from_co_orbiting(
         distance= 1000.0
-    )
+    )"""
 
     # Choose list of ground stations for simulation.
     groundStations = [ grazStation ]
 
 
-    simulationEnvironment = moonEnvironment(
-        level= 2,
-        simStartEpoch= simStartEpoch,
-        simEndEpoch= simEndEpoch,
-        timeStep= 10.0,
-        spacecrafts= spacecrafts,
+    environmentLoadedHarmonics = moonEnvironment(
+        level= 3,
+        simStartEpoch= simStartEpoch,   # type: ignore
+        simEndEpoch= simEndEpoch,       # type: ignore
+        timeStep= 10.0,                 # type: ignore
+        spacecrafts= spacecrafts,       
+        customHarmonicsBool= True,
+        customHarmonicsFile= GGRX1200L
     )
 
-    simulationEnvironment.make_propagation_settings()
-    stateHistory, dependentVarsHistory = simulationEnvironment.propagate()
+    environmentDefaultHarmonics = moonEnvironment(
+        level= 3,
+        simStartEpoch= simStartEpoch,   # type: ignore
+        simEndEpoch= simEndEpoch,       # type: ignore
+        timeStep= 10.0,                 # type: ignore
+        spacecrafts= spacecrafts,
+        customHarmonicsBool= False
+    )
 
-    print(result2array(stateHistory))
+    environmentLoadedHarmonics.make_propagation_settings( harmonicsDegree= 20 )
+    environmentDefaultHarmonics.make_propagation_settings( harmonicsDegree= 20 )
 
+    
+    stateHistoryLoaded, _ = environmentLoadedHarmonics.propagate()
+    stateHistoryDefault, _ = environmentDefaultHarmonics.propagate()
+
+    stateArrayLoaded = result2array(stateHistoryLoaded)
+    stateArrayDefault = result2array(stateHistoryDefault)
+
+    print( stateArrayLoaded - stateArrayDefault )
 
     if propagateReality:= False:
         # Propagation start and end dates. 
