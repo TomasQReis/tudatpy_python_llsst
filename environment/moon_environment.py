@@ -20,6 +20,7 @@ class moonEnvironment ( environmentClass ):
             spacecrafts: list[spacecraft],
             level: int= 1,
             groundStations: list[groundStation]= [],
+            customHarmonicsBool: bool= False,
             customHarmonicsFile: str= "", ):
         
         # Calls inherited initalization. 
@@ -31,6 +32,7 @@ class moonEnvironment ( environmentClass ):
             spacecrafts= spacecrafts,
             level= level,
             groundStations= groundStations,
+            customHarmonicsBool= customHarmonicsBool,
             customHarmonicsFile= customHarmonicsFile
             )
         # Sets frame origin body as moon.
@@ -53,7 +55,17 @@ class moonEnvironment ( environmentClass ):
             Jupiter = [propagation_setup.acceleration.point_mass_gravity()]
         )
 
-    def select_propagation_level( self ):
+    def make_level_03_acceleration_settings ( self, harmonicsDegree: int= 10 ):
+        # Acceleration settings dict. 
+            self.accelerationSettings = dict(
+                Moon    = [propagation_setup.acceleration.spherical_harmonic_gravity(
+                    harmonicsDegree, harmonicsDegree)],
+                Earth   = [propagation_setup.acceleration.point_mass_gravity()],
+                Sun     = [propagation_setup.acceleration.point_mass_gravity()],
+                Jupiter = [propagation_setup.acceleration.point_mass_gravity()]
+            )
+
+    def select_propagation_level( self, harmonicsDegree: int= 10 ):
         # NOTE: This defines the cartesian state with default Moon mu if default
         # harmonics are used. 
         self.make_environment_bodies( bodies = ["Moon"] )
@@ -71,5 +83,9 @@ class moonEnvironment ( environmentClass ):
                 self.make_environment_bodies(
                     bodies= ["Moon", "Earth", "Sun", "Jupiter"]
                 )
+                self.make_level_03_acceleration_settings( 
+                    harmonicsDegree= harmonicsDegree
+                )
+
 
     

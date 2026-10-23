@@ -14,6 +14,16 @@ import numpy as np
 ### Self-made imports.
 from bodies.bodies import spacecraft, groundStation
 
+### Directories for models 
+gravityModelsDir    = "data/models/gravity/"
+atmoModelsDir       = "data/models/atmosphere/"
+
+### Variables for models. 
+# Gravity 
+GGRX1200A           = gravityModelsDir + "gggrx_1200a_formatted.csv"
+GGRX1200L           = gravityModelsDir + "gggrx_1200l_formatted.csv"
+
+
 def convert_to_j2000(date: list):
     """
     Converts given date to seconds since J2000. 
@@ -185,17 +195,16 @@ class environmentClass ():
         bodySettings      = environment_setup.get_default_body_settings(
             bodies, frameOrigin, frameOrientation
         )
-        # TODO: Custom spherical harmonics model. 
+
+        # Custom spherical harmonics model. 
         if self.customHarmonicsBool:
             bodySettings.get( self.frameOriginBody ).gravity_field_settings = \
-                environment_setup.gravity_field.spherical_harmonic(
-                    gravitational_parameter= None, #FromFile
-                    reference_radius= None, #From File
-                    normalized_cosine_coefficients= None, #From File
-                    normalized_sine_coefficients= None, #From File
-                    associated_reference_frame= "IAU_" + self.frameOriginBody
+                environment_setup.gravity_field.from_file_spherical_harmonic(
+                    file= self.customHarmonicsFile,
+                    maximum_degree  = 420,
+                    maximum_order   = 420
                 )
-
+            
         # Add spacecraft to body settings. 
         for spacecraft in self.spacecrafts:
             bodySettings.add_empty_settings( spacecraft.name )
@@ -239,13 +248,16 @@ class environmentClass ():
         self.spacecraftInitialStates = np.concatenate( spacecraftInitialStates )
 
     # Empty propagation level selector. 
-    def select_propagation_level( self ): return None
+    def select_propagation_level( self, harmonicsDegree: int= 10 ): return None
 
     # Propagation settings creator. 
-    def make_propagation_settings( self, dependentVariables: list= [] ):
+    def make_propagation_settings( 
+            self, 
+            dependentVariables: list= [],
+            harmonicsDegree: int= 10 ):
 
         # Selects propagation level. 
-        self.select_propagation_level( )
+        self.select_propagation_level( harmonicsDegree= harmonicsDegree )
     
         # Bodies to propagate. 
         bodiesToPropagate = [spacecraft.name for spacecraft in self.spacecrafts]
