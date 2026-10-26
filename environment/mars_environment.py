@@ -41,20 +41,20 @@ class marsEnvironment ( environmentClass ):
     def select_propagation_level( self, harmonicsDegree: int= 10  ):
         # NOTE: This defines the cartesian state with default Moon mu if default
         # harmonics are used. 
-        self.make_environment_bodies( bodies = ["Mars"] )
+        self.make_environment_bodies( bodies = ["Mars", "Earth"] )
         self.make_spacecraft_initial_states( )
 
         match self.level:
             case 1: 
-                self.make_environment_bodies( bodies = ["Mars", "Sun"] )
+                self.make_environment_bodies( bodies = ["Mars", "Sun", "Earth"] )
                 self.make_level_01_acceleration_settings( )
             case 2: 
                 self.make_environment_bodies( bodies = ["Mars", "Sun", "Jupiter",
-                                                        "Phobos", "Deimos"] )
+                                                        "Phobos", "Deimos", "Earth"] )
                 self.make_level_02_acceleration_settings( )
             case 3: 
                 self.make_environment_bodies( bodies = ["Mars", "Sun", "Jupiter",
-                                                        "Phobos", "Deimos"] )
+                                                        "Phobos", "Deimos", "Earth"] )
                 self.make_level_03_acceleration_settings( harmonicsDegree= harmonicsDegree)
 
     def make_level_01_acceleration_settings ( self ):

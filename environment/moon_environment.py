@@ -42,7 +42,7 @@ class moonEnvironment ( environmentClass ):
     def select_propagation_level( self, harmonicsDegree: int= 10 ):
         # NOTE: This defines the cartesian state with default Moon mu if default
         # harmonics are used. 
-        self.make_environment_bodies( bodies = ["Moon"] )
+        self.make_environment_bodies( bodies = ["Moon", "Earth"] )
         self.make_spacecraft_initial_states( )
     
         match self.level:

@@ -283,7 +283,9 @@ class environmentClass ():
             dependentVariables: list= [],
             harmonicsDegree: int= 10,
             arcTimeLength: float= 0.0,
-            skipArcCheck: bool= False ):
+            skipArcCheck: bool= False,
+            keepEnvironment: bool= False 
+        ):
 
         # Checks multi-arc propagation.
         if arcTimeLength != 0.0:
@@ -365,7 +367,10 @@ class environmentClass ():
             single_arc_settings= self.propagatorSettings,
             transfer_state_to_next_arc= True
         )
-    
+
+        if keepEnvironment: 
+            self.arcSettings.processing_settings.set_integrated_result = True
+
     # Dynamics propagator. 
     def propagate( self ):
     
@@ -377,5 +382,5 @@ class environmentClass ():
 
         # Extract state history and dependent variables
         arcResults = dynamicsSimulator.propagation_results.single_arc_results # type: ignore
-        
+
         return arcResults

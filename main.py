@@ -7,6 +7,7 @@ from bodies.roci_ab import *
 from bodies.ground_stations import *
 from visualization.plotting import *
 from environment.moon_environment import moonEnvironment
+from estimation.estimation import estimator
 
 ### External library imports.
 import numpy as np
@@ -29,15 +30,17 @@ if __name__ == "__main__":
     
 
     # Propagation start and end dates. 
+    #
     # Given as [Year, Month, Day]
     simStartDate    = [2001, 1, 1, 0, 0, 0]
     simEndDate      = [2001, 1, 1, 8, 0, 0]
 
     # Propagation time step size. 
-    propTimeStep = 40.0
+    propTimeStep = 30.0     # [s]
 
     # Arc Length. 
     arcLength = 2 * 60**2 # 2hrs
+    arcLength0 = 0.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
@@ -46,21 +49,22 @@ if __name__ == "__main__":
         )
 
     # Choose list of spacecraft for simulation. 
-    spacecrafts = [ rociA ]
+    spacecrafts = [ rociA, rociB ]
 
     # Choose list of ground stations for simulation.
     groundStations = [ grazStation ]
 
 
-    environmentDefaultHarmonics = moonEnvironment(
+    environmentDefault = moonEnvironment(
         level= 3,
         simStartEpoch= simStartEpoch,   # type: ignore
         simEndEpoch= simEndEpoch,       # type: ignore
         timeStep= propTimeStep,         # type: ignore
         spacecrafts= spacecrafts,
+        groundStations= groundStations,
         customHarmonicsBool= False
     )
-    moonLP150Enviro = moonEnvironment(
+    environmentLP150Q = moonEnvironment(
         level= 3,
         simStartEpoch= simStartEpoch,   # type: ignore
         simEndEpoch= simEndEpoch,       # type: ignore
@@ -77,25 +81,26 @@ if __name__ == "__main__":
         )
     ]
 
-    environmentDefaultHarmonics.make_propagation_settings( 
+    environmentDefault.make_propagation_settings( 
         harmonicsDegree= 20,
-        arcTimeLength= arcLength,
+        arcTimeLength= arcLength0,
         skipArcCheck= True,
-        dependentVariables= dependentVariables )
-    moonLP150Enviro.make_propagation_settings( harmonicsDegree= 20 )
+        dependentVariables= dependentVariables,
+        keepEnvironment= True )
     
-    defaultArcResults = environmentDefaultHarmonics.propagate()
-    #lp150qArcResults = moonLP150Enviro.propagate()
+    defaultArcResults = environmentDefault.propagate()
+    #lp150qArcResults = environmentLP150Q.propagate()
 
-    for i in range(4):
-        arcResultsArr = result2array(defaultArcResults[i].state_history)
-        arcDependentsArr = result2array(defaultArcResults[i].dependent_variable_history)
+    # Creates estimator. 
+    estimatorReference = estimator(
+        referenceEnvironment= environmentDefault,
+        estimationEnvironment= environmentLP150Q
+    )
 
-        plt.plot(arcDependentsArr[:,0], arcDependentsArr[:,1])
+    #estimatorReference.make_estimator_observations()
 
-    plt.show()
-    # TODO: Still need to test dependent variable history functioning. 
-    # print( result2array(defaultArcResults[0].dependent_variable_history) )
+    #print(estimatorReference.referenceResults)
+
 
     if propagateReality:= False:
         # Propagation start and end dates. 
