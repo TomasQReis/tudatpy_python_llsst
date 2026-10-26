@@ -94,7 +94,7 @@ def check_arc_timespan_limit( arcLength: float, timeSpan: float ):
     if arcLength < MINSPAN or arcLength > MAXSPAN:
         raise RuntimeError(
             f"Arclength out of bounds:\n"
-            f"Arc: {timeSpan} -- Min/Max: {MINSPAN}/{MAXSPAN}"
+            f"Arc: {arcLength} -- Min/Max: {MINSPAN}/{MAXSPAN}"
         )
     elif arcLength > timeSpan:
         raise RuntimeError(
@@ -196,7 +196,6 @@ class environmentClass ():
         groundStations: list[groundStation]= [],
         customHarmonicsBool: bool= False,
         customHarmonicsFile: str= "",
-        numberOfArcs: int= 1,
         ):
 
         self.level = level
@@ -207,7 +206,6 @@ class environmentClass ():
         self.simStartEpoch = simStartEpoch
         self.simEndEpoch = simEndEpoch
         self.timeStep = timeStep
-        self.numberOfArcs = numberOfArcs
 
         self.frameOriginBody = ""
         self.systemOfBodies: SystemOfBodies
@@ -284,8 +282,21 @@ class environmentClass ():
             self, 
             dependentVariables: list= [],
             harmonicsDegree: int= 10,
-            arcTimeLength: float= 0.0 ):
+            arcTimeLength: float= 0.0,
+            skipArcCheck: bool= False ):
 
+        # Checks multi-arc propagation.
+        if arcTimeLength != 0.0:
+            if not skipArcCheck:
+                # Checks arc length limits. 
+                check_arc_timespan_limit(
+                    arcLength= arcTimeLength,
+                    timeSpan= float(self.simEndEpoch)
+                )
+            # Number of arcs.
+            arcNumber = int( float(self.simEndEpoch - self.simStartEpoch) // arcTimeLength ) 
+        else: 
+            arcNumber = 1
 
         # Selects propagation level. 
         self.select_propagation_level( harmonicsDegree= harmonicsDegree )
@@ -308,28 +319,53 @@ class environmentClass ():
             central_bodies=                 centralBodies
         )
 
-        # Create termination settings.
-        terminationSettings = propagation_setup.propagator.time_termination(
-            self.simEndEpoch
-        )
-
         # Numerical integrator settings.
         integratorSettings = propagation_setup.integrator.runge_kutta_fixed_step(
             time_step= self.timeStep,
             coefficient_set= propagation_setup.integrator.CoefficientSets.rkf_78
         )
 
-        # Create propagation settings. 
-        self.propagatorSettings = propagation_setup.propagator.translational(
-            central_bodies= centralBodies,
-            acceleration_models= acccelerationModels,
-            bodies_to_integrate= bodiesToPropagate,
-            initial_states= self.spacecraftInitialStates,
-            initial_time= self.simStartEpoch,
-            termination_settings= terminationSettings,
-            integrator_settings= integratorSettings,
-            output_variables= dependentVariables,
+        # Empty list for individual arc settings. 
+        self.propagatorSettings = [] 
+        
+        # Initial states. 
+        
+        self.make_spacecraft_initial_states( )
+
+        ### NOTE: These all change per arc of integration. For loop. 
+        for arc in range(arcNumber):
+            # Arc termination time. 
+            if arc < arcNumber-1: 
+                arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
+            else: 
+                # Avoids propagating beyond final epoch. 
+                arcFinalTime = self.simEndEpoch
+
+            # Create termination settings.
+            terminationSettings = propagation_setup.propagator.time_termination(
+                arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+            )
+
+            # Create propagation settings. 
+            # NOTE: Multi-arc is set up to use integration results to find initial
+            # State of each subsequent arc. TODO: Needs verification. 
+            self.propagatorSettings.append( propagation_setup.propagator.translational(
+                central_bodies= centralBodies,
+                acceleration_models= acccelerationModels,
+                bodies_to_integrate= bodiesToPropagate,
+                initial_states= self.spacecraftInitialStates,
+                initial_time= self.simStartEpoch + arc * arcTimeLength,
+                termination_settings= terminationSettings,
+                integrator_settings= integratorSettings,
+                output_variables= dependentVariables,
+                ) 
+            )
+
+        self.arcSettings = propagation_setup.propagator.multi_arc(
+            single_arc_settings= self.propagatorSettings,
+            transfer_state_to_next_arc= True
         )
+    
 
     # Dynamics propagator. 
     def propagate( self ):
@@ -337,11 +373,11 @@ class environmentClass ():
         # Create dynamics simulator.
         dynamicsSimulator = simulator.create_dynamics_simulator(
             bodies= self.systemOfBodies,
-            propagator_settings= self.propagatorSettings
+            propagator_settings= self.arcSettings
         )
 
         # Extract state history and dependent variables
-        stateHistory = dynamicsSimulator.propagation_results.state_history # type: ignore
-        dependentVarsHistory = dynamicsSimulator.propagation_results.dependent_variable_history # type: ignore
+        arcResults = dynamicsSimulator.propagation_results.single_arc_results # type: ignore
+        # dependentVarsHistory = dynamicsSimulator.propagation_results.dependent_variable_history 
 
-        return stateHistory, dependentVarsHistory
+        return arcResults

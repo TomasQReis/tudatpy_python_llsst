@@ -30,11 +30,14 @@ if __name__ == "__main__":
 
     # Propagation start and end dates. 
     # Given as [Year, Month, Day]
-    simStartDate    = [2000, 1, 1, 0, 0, 0]
-    simEndDate      = [2000, 1, 1, 12, 0, 0]
+    simStartDate    = [2001, 1, 1, 0, 0, 0]
+    simEndDate      = [2001, 1, 1, 8, 0, 0]
 
     # Propagation time step size. 
     propTimeStep = 40.0
+
+    # Arc Length. 
+    arcLength = 2 * 60**2 # 2hrs
 
     # Load SPICE kernels and return J2000 formatted epochs. 
     simStartEpoch, simEndEpoch = load_spice( 
@@ -67,14 +70,20 @@ if __name__ == "__main__":
         customHarmonicsFile= LP150Q
     )
 
-    environmentDefaultHarmonics.make_propagation_settings( harmonicsDegree= 20 )
+    environmentDefaultHarmonics.make_propagation_settings( 
+        harmonicsDegree= 20,
+        arcTimeLength= arcLength,
+        skipArcCheck= True )
     moonLP150Enviro.make_propagation_settings( harmonicsDegree= 20 )
     
-    stateHistoryDefault, _ = environmentDefaultHarmonics.propagate()
-    stateHistoryLP150, _ = moonLP150Enviro.propagate()
+    defaultArcResults = environmentDefaultHarmonics.propagate()
+    #lp150qArcResults = moonLP150Enviro.propagate()
 
-    stateArrayDefault = result2array(stateHistoryDefault)
-    stateArrayLP150 = result2array(stateHistoryLP150)
+    print( result2array(defaultArcResults[1].state_history) )
+
+
+    # TODO: Still need to test dependent variable history functioning. 
+    # print( result2array(defaultArcResults[0].dependent_variable_history) )
 
     if propagateReality:= False:
         # Propagation start and end dates. 

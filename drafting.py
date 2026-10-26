@@ -20,3 +20,13 @@ if reformatLPQ150 := False:
     df = df.dropna(axis=1, how="all")
 
     df.to_csv(dir + "lp150q_formatted.csv", index=False)
+
+# Attempts for arc length.
+finalEpoch = 115.0
+arcLength = 30.0
+
+print(finalEpoch // arcLength)
+for i in range(int (finalEpoch // arcLength) ):
+    print(i) 
+
+
