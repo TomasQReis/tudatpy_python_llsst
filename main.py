@@ -70,18 +70,30 @@ if __name__ == "__main__":
         customHarmonicsFile= LP150Q
     )
 
+    dependentVariables = [
+        dynamics.propagation_setup.dependent_variable.altitude(
+            body= "rociA",
+            central_body= "Moon"
+        )
+    ]
+
     environmentDefaultHarmonics.make_propagation_settings( 
         harmonicsDegree= 20,
         arcTimeLength= arcLength,
-        skipArcCheck= True )
+        skipArcCheck= True,
+        dependentVariables= dependentVariables )
     moonLP150Enviro.make_propagation_settings( harmonicsDegree= 20 )
     
     defaultArcResults = environmentDefaultHarmonics.propagate()
     #lp150qArcResults = moonLP150Enviro.propagate()
 
-    print( result2array(defaultArcResults[1].state_history) )
+    for i in range(4):
+        arcResultsArr = result2array(defaultArcResults[i].state_history)
+        arcDependentsArr = result2array(defaultArcResults[i].dependent_variable_history)
 
+        plt.plot(arcDependentsArr[:,0], arcDependentsArr[:,1])
 
+    plt.show()
     # TODO: Still need to test dependent variable history functioning. 
     # print( result2array(defaultArcResults[0].dependent_variable_history) )
 

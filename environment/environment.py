@@ -366,7 +366,6 @@ class environmentClass ():
             transfer_state_to_next_arc= True
         )
     
-
     # Dynamics propagator. 
     def propagate( self ):
     
@@ -378,6 +377,5 @@ class environmentClass ():
 
         # Extract state history and dependent variables
         arcResults = dynamicsSimulator.propagation_results.single_arc_results # type: ignore
-        # dependentVarsHistory = dynamicsSimulator.propagation_results.dependent_variable_history 
-
+        
         return arcResults
