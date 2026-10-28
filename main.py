@@ -33,13 +33,13 @@ if __name__ == "__main__":
     #
     # Given as [Year, Month, Day]
     simStartDate    = [2001, 1, 1, 0, 0, 0]
-    simEndDate      = [2001, 1, 1, 8, 0, 0]
+    simEndDate      = [2001, 1, 3, 0, 0, 0]
 
     # Propagation time step size. 
-    propTimeStep = 30.0     # [s]
+    propTimeStep = 120.0     # [s]
 
     # Arc Length. 
-    arcLength = 2 * 60**2 # 2hrs
+    arcLength = 6 * 60**2 # 24hrs
     arcLength0 = 0.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
@@ -70,6 +70,7 @@ if __name__ == "__main__":
         simEndEpoch= simEndEpoch,       # type: ignore
         timeStep= propTimeStep,         # type: ignore
         spacecrafts= spacecrafts,
+        groundStations= groundStations,
         customHarmonicsBool= True,
         customHarmonicsFile= LP150Q
     )
@@ -81,7 +82,7 @@ if __name__ == "__main__":
         )
     ]
 
-    environmentDefault.make_propagation_settings( 
+    """ environmentDefault.make_propagation_settings( 
         harmonicsDegree= 20,
         arcTimeLength= arcLength0,
         skipArcCheck= True,
@@ -89,18 +90,26 @@ if __name__ == "__main__":
         keepEnvironment= True )
     
     defaultArcResults = environmentDefault.propagate()
-    #lp150qArcResults = environmentLP150Q.propagate()
+    lp150qArcResults = environmentLP150Q.propagate() """
 
     # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
-        estimationEnvironment= environmentLP150Q
+        estimationEnvironment= environmentLP150Q,
+
+        estimationArcLength= arcLength0,
+
+        referenceHarmonicsDegree= 10,
+        estimationHarmonicsDegree= 10
     )
 
-    #estimatorReference.make_estimator_observations()
+    estimatorReference.make_observations()
+    estimatorReference.make_estimation( maximumIterations= 10 )
+
 
     #print(estimatorReference.referenceResults)
 
+    # result2array(defaultArcResults[1].state_history)
 
     if propagateReality:= False:
         # Propagation start and end dates. 
@@ -164,13 +173,12 @@ if __name__ == "__main__":
 
     if simulateObservations:= False:
         # Create observation times. 
-        observStartDate    = [2026, 7, 31]
-        observEndDate      = [2026, 8, 1]
+        observStartDate    = simStartDate
+        observEndDate      = simEndDate
 
         # Load SPICE kernels and return J2000 formatted epochs. 
-        observationStartEpoch, observationEndEpoch = convert_time( 
-            startEpoch= observStartDate, endEpoch= observEndDate 
-            )
+        observationStartEpoch = simStartEpoch + 12 * 60**2
+        observationEndEpoch = simEndEpoch - 12 * 60**2
 
         # Create set of observation times. 
         observationsStep = 30.0
@@ -179,7 +187,7 @@ if __name__ == "__main__":
                                     stop= observationEndEpoch)
 
         # Define noise amplitude for observations. 
-        noiseAmplitude = 0.5
+        noiseAmplitude = 0.0
 
         # Define transmitters and receivers for one way range observations.
         # Order of elements matters. Receivers[0] corresponds to transmitters[0].
@@ -198,7 +206,7 @@ if __name__ == "__main__":
         # Create observation model simulator.
         observationModelSimulator, observationModelSettings = observation_model_simulator_owr(
             owrLinkDefinitions= owrObservationLinkDefinitions,
-            bodies= simulationBodies,
+            bodies= environmentDefault.systemOfBodies,
         )
 
         # Dictionary of observation types and their respective link definitions. 
@@ -211,7 +219,7 @@ if __name__ == "__main__":
             observationTimes= observationTimes.tolist(),
             linkEndsPerObservatble= linkEndsPerObservable,
             owrObservationSimulator= observationModelSimulator,
-            bodies= simulationBodies,
+            bodies= environmentDefault.systemOfBodies,
             noiseAmplitude= noiseAmplitude
         )
 
@@ -221,7 +229,7 @@ if __name__ == "__main__":
             observationTimes= observationTimes.tolist(),
             linkEndsPerObservatble= linkEndsPerObservable,
             owrObservationSimulator= observationModelSimulator,
-            bodies= simulationBodies,
+            bodies= environmentDefault.systemOfBodies,
             noiseAmplitude= 0.0
         )
 

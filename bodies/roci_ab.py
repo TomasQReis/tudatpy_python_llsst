@@ -53,8 +53,6 @@ rociA = spacecraft(
     keplerianElems= rociADict["keplerianElems"]
 )
 
-rociBDict = deepcopy(rociADict)
-
 rociB = spacecraft(
     name= "rociB",
     mass= 100.0,

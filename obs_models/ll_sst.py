@@ -155,8 +155,6 @@ def simulate_observations_owr(
                 link_end_type= links.LinkEndType.transmitter ).body_name
             
             # If transmitter is Earth, sets reference link to receiver. 
-            # NOTE: Hopefully temporary. Need to understand what's causing  light-time
-            # corrections to source epochs outside of the propagation range. 
             if transmitterBody == "Earth": referenceLink = LinkEndType.receiver
             else: referenceLink = LinkEndType.transmitter
 

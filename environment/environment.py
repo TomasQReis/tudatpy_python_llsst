@@ -210,6 +210,7 @@ class environmentClass ():
         self.frameOriginBody = ""
         self.systemOfBodies: SystemOfBodies
         self.accelerationSettings: dict
+        self.arcInitialEpochs = []
 
     # SystemOfBodies creator. 
     def make_environment_bodies( self, bodies: list[str] ):
@@ -331,45 +332,89 @@ class environmentClass ():
         self.propagatorSettings = [] 
         
         # Initial states. 
-        
         self.make_spacecraft_initial_states( )
 
-        ### NOTE: These all change per arc of integration. For loop. 
-        for arc in range(arcNumber):
-            # Arc termination time. 
-            if arc < arcNumber-1: 
-                arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
-            else: 
-                # Avoids propagating beyond final epoch. 
-                arcFinalTime = self.simEndEpoch
-
+        ### If single arc create standard translational settings. 
+        if arcNumber == 1:
             # Create termination settings.
             terminationSettings = propagation_setup.propagator.time_termination(
-                arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+                self.simEndEpoch  # sim end epoch. 
             )
 
             # Create propagation settings. 
             # NOTE: Multi-arc is set up to use integration results to find initial
             # State of each subsequent arc. TODO: Needs verification. 
-            self.propagatorSettings.append( propagation_setup.propagator.translational(
+            singleArcPropagatorSetting = propagation_setup.propagator.translational(
                 central_bodies= centralBodies,
                 acceleration_models= acccelerationModels,
                 bodies_to_integrate= bodiesToPropagate,
                 initial_states= self.spacecraftInitialStates,
-                initial_time= self.simStartEpoch + arc * arcTimeLength,
+                initial_time= self.simStartEpoch,
                 termination_settings= terminationSettings,
                 integrator_settings= integratorSettings,
                 output_variables= dependentVariables,
+            ) 
+            
+            # Updates ephemeris if triggered. 
+            if keepEnvironment: 
+                    singleArcPropagatorSetting.processing_settings.set_integrated_result = True
+
+            # Saves to common "arcPropagationSettings" object.
+            self.arcPropagationSettings = singleArcPropagatorSetting
+
+            # Saves arc initial epoch. 
+            self.arcInitialEpochs.append(self.simStartEpoch)
+
+        else:
+            ### Settings per arc. 
+            for arc in range(arcNumber):
+                # Arc termination time. 
+                if arc < arcNumber-1: 
+                    arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
+                else: 
+                    # Avoids propagating beyond final epoch. 
+                    arcFinalTime = self.simEndEpoch
+
+                # Create termination settings.
+                terminationSettings = propagation_setup.propagator.time_termination(
+                    arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+                )
+
+                # Arc initial time. 
+                arcInitialEpoch = self.simStartEpoch + arc * arcTimeLength
+                self.arcInitialEpochs.append( arcInitialEpoch )
+
+                # Create propagation settings. 
+                # NOTE: Multi-arc is set up to use integration results to find initial
+                # State of each subsequent arc. 
+                singleArcPropagatorSetting = propagation_setup.propagator.translational(
+                    central_bodies= centralBodies,
+                    acceleration_models= acccelerationModels,
+                    bodies_to_integrate= bodiesToPropagate,
+                    initial_states= self.spacecraftInitialStates,
+                    initial_time= arcInitialEpoch,
+                    termination_settings= terminationSettings,
+                    integrator_settings= integratorSettings,
+                    output_variables= dependentVariables,
                 ) 
+                
+                # Updates ephemeris if triggered. 
+                # NOTE: This gets overwritten by overall arc settings.
+                # Not too sure what to do with this. 
+                if keepEnvironment: 
+                        singleArcPropagatorSetting.processing_settings.set_integrated_result = True
+
+                self.propagatorSettings.append( singleArcPropagatorSetting )
+
+            self.arcPropagationSettings = propagation_setup.propagator.multi_arc(
+                single_arc_settings= self.propagatorSettings,
+                transfer_state_to_next_arc= True
             )
 
-        self.arcSettings = propagation_setup.propagator.multi_arc(
-            single_arc_settings= self.propagatorSettings,
-            transfer_state_to_next_arc= True
-        )
-
-        if keepEnvironment: 
-            self.arcSettings.processing_settings.set_integrated_result = True
+            # NOTE: This doesn't want to work. Fix if needed.
+            # For now, observations are sourced from a single-arc propagation. 
+            """ if keepEnvironment:
+                self.arcPropagationSettings.processing_settings.set_integrated_result = True """
 
     # Dynamics propagator. 
     def propagate( self ):
@@ -377,10 +422,10 @@ class environmentClass ():
         # Create dynamics simulator.
         dynamicsSimulator = simulator.create_dynamics_simulator(
             bodies= self.systemOfBodies,
-            propagator_settings= self.arcSettings
+            propagator_settings= self.arcPropagationSettings
         )
 
         # Extract state history and dependent variables
-        arcResults = dynamicsSimulator.propagation_results.single_arc_results # type: ignore
+        propagationResults = dynamicsSimulator.propagation_results # type: ignore
 
-        return arcResults
+        return propagationResults
