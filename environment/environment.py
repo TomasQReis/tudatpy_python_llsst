@@ -191,21 +191,30 @@ class environmentClass ():
         simStartEpoch: time_representation.Time,
         simEndEpoch: time_representation.Time,
         timeStep: time_representation.Time,
+
         spacecrafts: list[spacecraft],
-        level: int= 1,
         groundStations: list[groundStation]= [],
+
+        level: int= 1,
+
         customHarmonicsBool: bool= False,
         customHarmonicsFile: str= "",
+        harmonicsMaxDegree: int= 10
         ):
 
-        self.level = level
-        self.spacecrafts = spacecrafts
-        self.groundStations = groundStations
-        self.customHarmonicsBool = customHarmonicsBool
-        self.customHarmonicsFile = customHarmonicsFile
         self.simStartEpoch = simStartEpoch
         self.simEndEpoch = simEndEpoch
         self.timeStep = timeStep
+
+        self.level = level
+
+        self.spacecrafts = spacecrafts
+        self.groundStations = groundStations
+
+        self.customHarmonicsBool = customHarmonicsBool
+        self.customHarmonicsFile = customHarmonicsFile
+        self.harmonicsMaxDegree  = harmonicsMaxDegree
+        
 
         self.frameOriginBody = ""
         self.systemOfBodies: SystemOfBodies
@@ -276,15 +285,16 @@ class environmentClass ():
         self.spacecraftInitialStates = np.concatenate( spacecraftInitialStates )
 
     # Empty propagation level selector. 
-    def select_propagation_level( self, harmonicsDegree: int= 10 ): return None
+    def select_propagation_level( self ): return None
 
     # Propagation settings creator. 
     def make_propagation_settings( 
             self, 
             dependentVariables: list= [],
-            harmonicsDegree: int= 10,
+
             arcTimeLength: float= 0.0,
             skipArcCheck: bool= False,
+
             keepEnvironment: bool= False 
         ):
 
@@ -302,7 +312,7 @@ class environmentClass ():
             arcNumber = 1
 
         # Selects propagation level. 
-        self.select_propagation_level( harmonicsDegree= harmonicsDegree )
+        self.select_propagation_level( )
     
         # Bodies to propagate. 
         bodiesToPropagate = [spacecraft.name for spacecraft in self.spacecrafts]
@@ -429,3 +439,38 @@ class environmentClass ():
         propagationResults = dynamicsSimulator.propagation_results # type: ignore
 
         return propagationResults
+
+    def get_harmonic_coefficients ( self ):
+        """Outputs harmonic coefficients."""
+
+        # Gets from environment. 
+        gravityField = self.systemOfBodies.get( self.frameOriginBody ).gravity_field_model
+
+        # Checks if field is defined as spherical harmonics. 
+        if not isinstance( gravityField, environment.SphericalHarmonicsGravityField):
+            raise TypeError(
+                f"Gravity field of central body not given as spherical harmonics"
+            )
+
+        # Isolates cosines and sines.
+        cosCoefficients = gravityField.cosine_coefficients[
+            :self.harmonicsMaxDegree+1 , :self.harmonicsMaxDegree+1
+        ]
+        sinCoefficients = gravityField.sine_coefficients[
+            :self.harmonicsMaxDegree+1 , :self.harmonicsMaxDegree+1
+        ]
+        # Extracts gravitational parameter and reference radius. 
+        gravityParameter = self.systemOfBodies.get( self.frameOriginBody ).gravitational_parameter
+        referenceRadius  = gravityField.reference_radius
+
+        ### Flattening and removal of =0 and unused degrees/orders
+        # Removes cosine degree <2 and =0 coefficients. 
+        cosCoefficients = np.array(cosCoefficients[1:,0:].flatten()[
+            cosCoefficients[1:,0:].flatten() != 0
+            ])
+        # Removes sine degree <2, order <1 and =0 coefficients. 
+        sinCoefficients = np.array(sinCoefficients[1:,1:].flatten()[
+            sinCoefficients[1:,1:].flatten() != 0
+            ])
+
+        return cosCoefficients, sinCoefficients, gravityParameter, referenceRadius

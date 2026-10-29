@@ -7,7 +7,7 @@ from bodies.roci_ab import *
 from bodies.ground_stations import *
 from visualization.plotting import *
 from environment.moon_environment import moonEnvironment
-from estimation.estimation import estimator
+from estimation.estimation import estimator, shModelClass
 
 ### External library imports.
 import numpy as np
@@ -62,7 +62,8 @@ if __name__ == "__main__":
         timeStep= propTimeStep,         # type: ignore
         spacecrafts= spacecrafts,
         groundStations= groundStations,
-        customHarmonicsBool= False
+        customHarmonicsBool= False,
+        harmonicsMaxDegree= 100
     )
     environmentLP150Q = moonEnvironment(
         level= 3,
@@ -72,8 +73,13 @@ if __name__ == "__main__":
         spacecrafts= spacecrafts,
         groundStations= groundStations,
         customHarmonicsBool= True,
-        customHarmonicsFile= LP150Q
+        customHarmonicsFile= LP150Q,
+        harmonicsMaxDegree= 10
     )
+
+    environmentDefault.make_propagation_settings()
+    referenceCosCoeffs, referenceSineCoefficients, _, _ = \
+        environmentDefault.get_harmonic_coefficients()
 
     dependentVariables = [
         dynamics.propagation_setup.dependent_variable.altitude(
@@ -92,20 +98,32 @@ if __name__ == "__main__":
     defaultArcResults = environmentDefault.propagate()
     lp150qArcResults = environmentLP150Q.propagate() """
 
-    # Creates estimator. 
+    """ # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
         estimationEnvironment= environmentLP150Q,
 
         estimationArcLength= arcLength0,
 
-        referenceHarmonicsDegree= 10,
-        estimationHarmonicsDegree= 10
+        referenceHarmonicsDegree= 5,
+        estimationHarmonicsDegree= 5
     )
 
     estimatorReference.make_observations()
     estimatorReference.make_estimation( maximumIterations= 10 )
+    _, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
+     """
 
+    referenceHarmonics = shModelClass( inputHarmonics= environmentDefault )
+    degrees, kaulaReference = referenceHarmonics.kaula_power_rule ( 
+        kaulaCoefficient= 2.5*10**(-4) )
+    _, rmsReference = referenceHarmonics.rms_per_degree()
+
+    plt.plot(degrees, kaulaReference, "--")
+    plt.scatter(degrees, rmsReference, marker= "+")
+    plt.yscale("log")
+    plt.grid()
+    plt.show()
 
     #print(estimatorReference.referenceResults)
 

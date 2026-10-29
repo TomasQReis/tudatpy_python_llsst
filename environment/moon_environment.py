@@ -17,11 +17,15 @@ class moonEnvironment ( environmentClass ):
             simStartEpoch: time_representation.Time,
             simEndEpoch: time_representation.Time,
             timeStep: time_representation.Time,
+
             spacecrafts: list[spacecraft],
-            level: int= 1,
             groundStations: list[groundStation]= [],
+
+            level: int= 1,
+
             customHarmonicsBool: bool= False,
-            customHarmonicsFile: str= ""
+            customHarmonicsFile: str= "",
+            harmonicsMaxDegree: int= 10
             ):
         
         # Calls inherited initalization. 
@@ -34,7 +38,8 @@ class moonEnvironment ( environmentClass ):
             level= level,
             groundStations= groundStations,
             customHarmonicsBool= customHarmonicsBool,
-            customHarmonicsFile= customHarmonicsFile
+            customHarmonicsFile= customHarmonicsFile,
+            harmonicsMaxDegree= harmonicsMaxDegree 
             )
         # Sets frame origin body as moon.
         self.frameOriginBody = "Moon"
@@ -58,7 +63,7 @@ class moonEnvironment ( environmentClass ):
                     bodies= ["Moon", "Earth", "Sun", "Jupiter"]
                 )
                 self.make_level_03_acceleration_settings( 
-                    harmonicsDegree= harmonicsDegree
+                    harmonicsDegree= self.harmonicsMaxDegree
                 )
 
     def make_level_01_acceleration_settings ( self ):

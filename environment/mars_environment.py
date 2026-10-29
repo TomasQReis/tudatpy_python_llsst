@@ -15,11 +15,16 @@ class marsEnvironment ( environmentClass ):
             simStartEpoch: time_representation.Time,
             simEndEpoch: time_representation.Time,
             timeStep: time_representation.Time,
+
             spacecrafts: list[spacecraft],
-            level: int= 1,
             groundStations: list[groundStation]= [],
+
+            level: int= 1,
+
             customHarmonicsBool: bool= False,
             customHarmonicsFile: str= "", 
+            harmonicsMaxDegree: int= 10,
+            
             numberOfArcs: int= 1):
         
         # Calls inherited initalization. 
@@ -33,12 +38,12 @@ class marsEnvironment ( environmentClass ):
             groundStations= groundStations,
             customHarmonicsBool= customHarmonicsBool,
             customHarmonicsFile= customHarmonicsFile,
-            numberOfArcs= numberOfArcs
+            harmonicsMaxDegree= harmonicsMaxDegree
             )
         # Sets frame origin body as moon.
         self.frameOriginBody = "Mars"
 
-    def select_propagation_level( self, harmonicsDegree: int= 10  ):
+    def select_propagation_level( self  ):
         # NOTE: This defines the cartesian state with default Moon mu if default
         # harmonics are used. 
         self.make_environment_bodies( bodies = ["Mars", "Earth"] )
@@ -55,7 +60,7 @@ class marsEnvironment ( environmentClass ):
             case 3: 
                 self.make_environment_bodies( bodies = ["Mars", "Sun", "Jupiter",
                                                         "Phobos", "Deimos", "Earth"] )
-                self.make_level_03_acceleration_settings( harmonicsDegree= harmonicsDegree)
+                self.make_level_03_acceleration_settings( harmonicsDegree= self.harmonicsMaxDegree)
 
     def make_level_01_acceleration_settings ( self ):
         # Acceleration settings dict. 

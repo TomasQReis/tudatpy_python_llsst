@@ -21,4 +21,7 @@ if reformatLPQ150 := False:
 
     df.to_csv(dir + "lp150q_formatted.csv", index=False)
 
-
+harmonicsDegree = np.array([1,2,3,4])
+sumOfCosCoeffsSqrd = np.sum( harmonicsDegree**2 )
+print(harmonicsDegree**2)
+print(sumOfCosCoeffsSqrd)
