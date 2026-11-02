@@ -7,7 +7,7 @@ from bodies.roci_ab import *
 from bodies.ground_stations import *
 from visualization.plotting import *
 from environment.moon_environment import moonEnvironment
-from estimation.estimation import estimator, shModelClass
+from estimation.estimation import estimator, shModelClass, kaula_power_rule
 
 ### External library imports.
 import numpy as np
@@ -55,6 +55,9 @@ if __name__ == "__main__":
     groundStations = [ grazStation ]
 
 
+    # Reference degree. 
+    referenceDegree = 40
+
     environmentDefault = moonEnvironment(
         level= 3,
         simStartEpoch= simStartEpoch,   # type: ignore
@@ -63,7 +66,7 @@ if __name__ == "__main__":
         spacecrafts= spacecrafts,
         groundStations= groundStations,
         customHarmonicsBool= False,
-        harmonicsMaxDegree= 100
+        harmonicsMaxDegree= referenceDegree
     )
     environmentLP150Q = moonEnvironment(
         level= 3,
@@ -74,19 +77,18 @@ if __name__ == "__main__":
         groundStations= groundStations,
         customHarmonicsBool= True,
         customHarmonicsFile= LP150Q,
-        harmonicsMaxDegree= 10
+        harmonicsMaxDegree= referenceDegree
     )
 
-    environmentDefault.make_propagation_settings()
-    referenceCosCoeffs, referenceSineCoefficients, _, _ = \
-        environmentDefault.get_harmonic_coefficients()
+    """ environmentDefault.make_propagation_settings()
+    
 
     dependentVariables = [
         dynamics.propagation_setup.dependent_variable.altitude(
             body= "rociA",
             central_body= "Moon"
         )
-    ]
+    ] """
 
     """ environmentDefault.make_propagation_settings( 
         harmonicsDegree= 20,
@@ -98,30 +100,48 @@ if __name__ == "__main__":
     defaultArcResults = environmentDefault.propagate()
     lp150qArcResults = environmentLP150Q.propagate() """
 
-    """ # Creates estimator. 
+    # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
         estimationEnvironment= environmentLP150Q,
 
         estimationArcLength= arcLength0,
 
-        referenceHarmonicsDegree= 5,
-        estimationHarmonicsDegree= 5
+        referenceHarmonicsDegree= referenceDegree,
+        estimationHarmonicsDegree= referenceDegree
     )
 
     estimatorReference.make_observations()
-    estimatorReference.make_estimation( maximumIterations= 10 )
+    estimatorReference.make_estimation( maximumIterations= 20 )
     _, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
-     """
+    # Harmonic coefficients and constants for estimation environment. 
+    _, _, estimationGravParameter, estimationRefRadius = \
+            estimatorReference.estimationEnvironment.get_harmonic_coefficients()
 
+    # Creates SH models. 
+    estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
     referenceHarmonics = shModelClass( inputHarmonics= environmentDefault )
-    degrees, kaulaReference = referenceHarmonics.kaula_power_rule ( 
-        kaulaCoefficient= 2.5*10**(-4) )
-    _, rmsReference = referenceHarmonics.rms_per_degree()
 
-    plt.plot(degrees, kaulaReference, "--")
-    plt.scatter(degrees, rmsReference, marker= "+")
+    # Subtracts estimation from reference SH model.
+    deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
+
+    # RMS of difference. 
+    _, rmsDelta = deltaHarmonics.rms_per_degree(  )
+
+    degrees, kaulaReference = kaula_power_rule ( 
+        maxDegree= referenceDegree,  
+        kaulaCoefficient= 2.5*10**(-4) )
+    _, rmsEstimated = estimatedHarmonics.rms_per_degree()   
+
+    plt.plot(degrees, kaulaReference, label= "Kaula Rule $K=2.5e-4$")
+    plt.scatter(degrees, rmsEstimated, color="r", marker= "+", label= "Estimation RMS")
+    plt.plot(degrees, rmsDelta, "r--", label= "Estimation Error")
+
     plt.yscale("log")
+    plt.ylabel("RMS")
+    plt.xlabel("Harmonics Degree")
+    plt.legend()
+    
     plt.grid()
     plt.show()
 

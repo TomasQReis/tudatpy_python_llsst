@@ -440,6 +440,7 @@ class environmentClass ():
 
         return propagationResults
 
+    # Getter for harmonic coefficients and parameters. 
     def get_harmonic_coefficients ( self ):
         """Outputs harmonic coefficients."""
 
@@ -474,3 +475,5 @@ class environmentClass ():
             ])
 
         return cosCoefficients, sinCoefficients, gravityParameter, referenceRadius
+
+    

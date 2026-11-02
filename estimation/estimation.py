@@ -28,12 +28,14 @@ class estimator ():
         estimationHarmonicsDegree: int= 5
     ) -> None:
 
+        
         self.referenceEnvironment   = referenceEnvironment
         self.estimationEnvironment  = estimationEnvironment
 
         self.referenceArcLength     = referenceArcLength
         self.estimationArcLength    = estimationArcLength
 
+        # NOTE: reference environment harmonics degree is currently unused. 
         self.referenceHarmonicsDegree = referenceHarmonicsDegree
         self.estimationHarmonicsDegree = estimationHarmonicsDegree
 
@@ -215,20 +217,21 @@ class estimator ():
 class shModelClass (): 
     def __init__(
         self,
-        inputHarmonics: environmentClass | estimator,
+        inputHarmonics: environmentClass | estimator | None= None,
         harmonicsDegree: int= 2,
 
         cosCoeffs = [],
         sinCoeffs = [],
+
         gravityParameter: float= 0,
         referenceRadius: float= 0,
-         ) -> None:
+        ) -> None:
 
         self.inputHarmonics = inputHarmonics
 
         if isinstance ( inputHarmonics, environmentClass ): self.make_harmonics_from_environment()
         elif isinstance ( inputHarmonics, estimator ): self.make_harmonics_from_estimate()
-        elif ( cosCoeffs and sinCoeffs and gravityParameter and referenceRadius ):
+        elif ( cosCoeffs.any() and sinCoeffs.any() and gravityParameter and referenceRadius ):
             self.cosCoeffs = np.array( cosCoeffs )
             self.sinCoeffs = np.array( sinCoeffs )
             self.gravityParameter = gravityParameter
@@ -274,32 +277,67 @@ class shModelClass ():
 
         self.harmonicsDegree = self.inputHarmonics.estimationHarmonicsDegree
 
-    def __sub__( self, other: shModelClass ) -> shModelClass:
-        """Outputs difference between two shModelClass harmonics coefficients."""
+    def get_coefficient_index ( self, degree: int ):
+        # Coefficient max indices. 
+        cosIdx = int( ( (degree - 1) * (degree + 4) ) / 2 )
+        sinIdx = int( ( degree**2 + degree - 2) / 2 )
 
-        # Subtracts coefficients. 
-        resultCosCoeffs = self.cosCoeffs - other.cosCoeffs
-        resultSinCoeffs = self.sinCoeffs - other.sinCoeffs
+        return cosIdx, sinIdx
+
+    def __sub__( self, other: shModelClass ) -> shModelClass:
+        """Outputs difference between two shModelClass harmonics coefficients.
+        Args: ---
+        - other (shModelClass): SH model being subtracted from self model. 
+        Returns: --- 
+        - resultSHModel (shModelClass): "self" minus "other" SH model class."""
+        
+        # Checks which shModel has higher max degree. 
+        if self.harmonicsDegree <= other.harmonicsDegree:
+            # Maximum idices for larger model (Other)
+            cosIdx, sinIdx = self.get_coefficient_index ( self.harmonicsDegree )
+
+            # Subtracts coefficients. 
+            resultCosCoeffs = self.cosCoeffs - other.cosCoeffs[:cosIdx]
+            resultSinCoeffs = self.sinCoeffs - other.sinCoeffs[:sinIdx]
+
+            # Output harmonics degree.
+            resultDegree = self.harmonicsDegree
+        else:
+            # Maximum idices for larger model (Self)
+            cosIdx, sinIdx = self.get_coefficient_index ( other.harmonicsDegree )
+
+            # Subtracts coefficients. 
+            resultCosCoeffs = self.cosCoeffs[:cosIdx] - other.cosCoeffs
+            resultSinCoeffs = self.sinCoeffs[:sinIdx] - other.sinCoeffs     
+
+            # Output harmonics degree.
+            resultDegree = other.harmonicsDegree   
 
         # Creates SH object from results. 
-        resultsSHModel = shModelClass(
+        resultSHModel = shModelClass(
             inputHarmonics= None, # type: ignore
             cosCoeffs= resultCosCoeffs,
             sinCoeffs= resultSinCoeffs,
             gravityParameter= self.gravityParameter,
             referenceRadius= self.referenceRadius,
-            harmonicsDegree= self.harmonicsDegree
+            harmonicsDegree= resultDegree
         )
 
-        return resultsSHModel
+        return resultSHModel
 
     def rms_per_degree( self ):
-        """Calculates the rms of the harmonics coefficients. """
+        """Calculates the rms (And additionallity the 1-sigma value) of the self 
+        harmonics coefficients. 
+        Args: ---
+        - Self.
+        Returns: ---
+        - degrees (NDArray): Array of degrees used in rms calculation.
+        - rmsPerDegrees (NDArray): RMS value per degree. """
 
-        # Degrees (X-axis)
+        # Degrees.
         degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree)
-        # Empty rms list (Y-axis)
-        rmsPerDegrees = []
+        # Empty rms list.
+        self.rmsPerDegrees = []
 
         # Previous indices. 
         prevCosIdx = 0
@@ -307,37 +345,36 @@ class shModelClass ():
 
         for degree in range( self.harmonicsDegree + 1 )[2:]:
             # Coefficient max indices. 
-            cosIdx = int( ( (degree-1) * (degree+4) ) / 2 )
-            sinIdx = int( ( degree**2 + degree - 2) / 2 )
+            cosIdx, sinIdx = self.get_coefficient_index( degree )
 
             # RMS of degree.
             sumOfCosCoeffsSqrd = np.sum( self.cosCoeffs[prevCosIdx:cosIdx]**2 )
             sumOfSinCoeffsSqrd = np.sum( self.sinCoeffs[prevSinIdx:sinIdx]**2 )
 
-            rms = np.sqrt( sumOfCosCoeffsSqrd + sumOfSinCoeffsSqrd ) / ( 2*degree + 1 )
+            # Calculates rms for degree. 
+            rms = np.sqrt ( ( sumOfCosCoeffsSqrd + sumOfSinCoeffsSqrd ) / ( 2*degree + 1 ) )
 
             # Appends to list. 
-            rmsPerDegrees.append( rms )
+            self.rmsPerDegrees.append( rms )
 
             # Resets previous indices. 
             prevCosIdx = cosIdx
             prevSinIdx = sinIdx
 
-        rmsPerDegrees = np.array( rmsPerDegrees )
+        self.rmsPerDegrees = np.array( self.rmsPerDegrees )
 
-        return degrees, rmsPerDegrees
+        return degrees, self.rmsPerDegrees
 
-    def kaula_power_rule (
-        self,
-        kaulaCoefficient: float= 10**-5
-    ):
-        """Calculates the rms per degree according to the Kaula power rule."""
-        
-        # Degrees (X-axis)
-        degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree+1 )
 
-        # Kaula rule rms. (Y-axis)
-        rmsPerKaula = [ kaulaCoefficient/degree**2 for degree in range(
-            self.harmonicsDegree + 1 )[2:] ]
+def kaula_power_rule ( maxDegree: int,
+                       kaulaCoefficient: float= 10**-5 ):
+    """Calculates the rms per degree according to the Kaula power rule."""
+    
+    # Degrees (X-axis)
+    degrees = np.arange( 2, step= 1, stop= maxDegree+1 )
 
-        return degrees, rmsPerKaula
+    # Kaula rule rms. (Y-axis)
+    rmsPerKaula = [ kaulaCoefficient/degree**2 for degree in range(
+        maxDegree + 1 )[2:] ]
+
+    return degrees, rmsPerKaula
