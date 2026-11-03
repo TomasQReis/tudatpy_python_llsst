@@ -244,8 +244,23 @@ class environmentClass ():
             
         # Add spacecraft to body settings. 
         for spacecraft in self.spacecrafts:
+            # Empty settings. 
             bodySettings.add_empty_settings( spacecraft.name )
+            # Spacecraft Mass. 
             bodySettings.get( spacecraft.name ).constant_mass = spacecraft.mass
+            # Empty ephemeris for spacecraft. 
+            spacecraftEphemerisDict = dict()
+            # Empty multi-arc ephemeris settings. 
+            spacceraftEphemeris = environment_setup.ephemeris.multi_arc_ephemeris(
+                spacecraftEphemerisDict,
+                frame_origin= frameOrigin,
+                frame_orientation= frameOrientation
+            )
+            # Enable multi-arc ephemeris. 
+            # spacceraftEphemeris.make_multi_arc_ephemeris = True
+            # Ephemeris settings. 
+            bodySettings.get( spacecraft.name ).ephemeris_settings = \
+                spacceraftEphemeris
     
         # If ground stations list is not empty adds settings to environment. 
         if self.groundStations:

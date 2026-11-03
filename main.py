@@ -39,7 +39,7 @@ if __name__ == "__main__":
     propTimeStep = 120.0     # [s]
 
     # Arc Length. 
-    arcLength = 6 * 60**2 # 24hrs
+    arcLength = 12 * 60**2 # 24hrs
     arcLength0 = 0.0
 
     # Load SPICE kernels and return J2000 formatted epochs. 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
 
     # Reference degree. 
-    referenceDegree = 40
+    referenceDegree = 5
 
     environmentDefault = moonEnvironment(
         level= 3,
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         spacecrafts= spacecrafts,
         groundStations= groundStations,
         customHarmonicsBool= False,
-        harmonicsMaxDegree= referenceDegree
+        harmonicsMaxDegree= referenceDegree,
     )
     environmentLP150Q = moonEnvironment(
         level= 3,
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         harmonicsMaxDegree= referenceDegree
     )
 
-    """ environmentDefault.make_propagation_settings()
+    environmentDefault.make_propagation_settings()
     
 
     dependentVariables = [
@@ -88,23 +88,22 @@ if __name__ == "__main__":
             body= "rociA",
             central_body= "Moon"
         )
-    ] """
+    ]
 
-    """ environmentDefault.make_propagation_settings( 
-        harmonicsDegree= 20,
+    environmentDefault.make_propagation_settings( 
         arcTimeLength= arcLength0,
         skipArcCheck= True,
         dependentVariables= dependentVariables,
         keepEnvironment= True )
     
     defaultArcResults = environmentDefault.propagate()
-    lp150qArcResults = environmentLP150Q.propagate() """
 
-    # Creates estimator. 
+    """ # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
         estimationEnvironment= environmentLP150Q,
 
+        referenceArcLength= arcLength0,
         estimationArcLength= arcLength0,
 
         referenceHarmonicsDegree= referenceDegree,
@@ -133,6 +132,8 @@ if __name__ == "__main__":
         kaulaCoefficient= 2.5*10**(-4) )
     _, rmsEstimated = estimatedHarmonics.rms_per_degree()   
 
+
+    ### Temporary plotting tools. 
     plt.plot(degrees, kaulaReference, label= "Kaula Rule $K=2.5e-4$")
     plt.scatter(degrees, rmsEstimated, color="r", marker= "+", label= "Estimation RMS")
     plt.plot(degrees, rmsDelta, "r--", label= "Estimation Error")
@@ -143,7 +144,7 @@ if __name__ == "__main__":
     plt.legend()
     
     plt.grid()
-    plt.show()
+    plt.show() """
 
     #print(estimatorReference.referenceResults)
 

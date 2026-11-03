@@ -44,7 +44,7 @@ class moonEnvironment ( environmentClass ):
         # Sets frame origin body as moon.
         self.frameOriginBody = "Moon"
 
-    def select_propagation_level( self, harmonicsDegree: int= 10 ):
+    def select_propagation_level( self ):
         # NOTE: This defines the cartesian state with default Moon mu if default
         # harmonics are used. 
         self.make_environment_bodies( bodies = ["Moon", "Earth"] )
