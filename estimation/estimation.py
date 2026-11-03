@@ -189,9 +189,9 @@ class estimator ():
         if self.estimationArcLength == 0.0:
             numArcs = 1
         else:
-            numArcs = float( self.estimationEnvironment.simEndEpoch - 
+            numArcs = int ( float( self.estimationEnvironment.simEndEpoch - 
                 self.estimationEnvironment.simStartEpoch ) // float( 
-                self.estimationArcLength ) 
+                self.estimationArcLength ) )
 
         # Index of last estimated state element.
         initialStateIdx = 6 * (len(self.estimationEnvironment.spacecrafts) * 

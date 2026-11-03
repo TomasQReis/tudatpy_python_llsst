@@ -80,7 +80,7 @@ if __name__ == "__main__":
         harmonicsMaxDegree= referenceDegree
     )
 
-    environmentDefault.make_propagation_settings()
+    """ environmentDefault.make_propagation_settings()
     
 
     dependentVariables = [
@@ -96,15 +96,15 @@ if __name__ == "__main__":
         dependentVariables= dependentVariables,
         keepEnvironment= True )
     
-    defaultArcResults = environmentDefault.propagate()
+    defaultArcResults = environmentDefault.propagate() """
 
-    """ # Creates estimator. 
+    # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
         estimationEnvironment= environmentLP150Q,
 
-        referenceArcLength= arcLength0,
-        estimationArcLength= arcLength0,
+        referenceArcLength= arcLength,
+        estimationArcLength= arcLength,
 
         referenceHarmonicsDegree= referenceDegree,
         estimationHarmonicsDegree= referenceDegree
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     plt.legend()
     
     plt.grid()
-    plt.show() """
+    plt.show()
 
     #print(estimatorReference.referenceResults)
 

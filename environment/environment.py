@@ -248,19 +248,19 @@ class environmentClass ():
             bodySettings.add_empty_settings( spacecraft.name )
             # Spacecraft Mass. 
             bodySettings.get( spacecraft.name ).constant_mass = spacecraft.mass
-            # Empty ephemeris for spacecraft. 
-            spacecraftEphemerisDict = dict()
-            # Empty multi-arc ephemeris settings. 
-            spacceraftEphemeris = environment_setup.ephemeris.multi_arc_ephemeris(
-                spacecraftEphemerisDict,
-                frame_origin= frameOrigin,
-                frame_orientation= frameOrientation
-            )
-            # Enable multi-arc ephemeris. 
-            # spacceraftEphemeris.make_multi_arc_ephemeris = True
-            # Ephemeris settings. 
-            bodySettings.get( spacecraft.name ).ephemeris_settings = \
-                spacceraftEphemeris
+            # If multi-arc propagation...
+            if self.arcNumber > 1:
+                # Empty ephemeris for spacecraft. 
+                spacecraftEphemerisDict = dict()
+                # Empty multi-arc ephemeris settings. 
+                spacceraftEphemeris = environment_setup.ephemeris.multi_arc_ephemeris(
+                    spacecraftEphemerisDict,
+                    frame_origin= frameOrigin,
+                    frame_orientation= frameOrientation
+                )
+                # Add ephemeris settings. 
+                bodySettings.get( spacecraft.name ).ephemeris_settings = \
+                    spacceraftEphemeris
     
         # If ground stations list is not empty adds settings to environment. 
         if self.groundStations:
@@ -322,9 +322,9 @@ class environmentClass ():
                     timeSpan= float(self.simEndEpoch)
                 )
             # Number of arcs.
-            arcNumber = int( float(self.simEndEpoch - self.simStartEpoch) // arcTimeLength ) 
+            self.arcNumber = int( float(self.simEndEpoch - self.simStartEpoch) // arcTimeLength ) 
         else: 
-            arcNumber = 1
+            self.arcNumber = 1
 
         # Selects propagation level. 
         self.select_propagation_level( )
@@ -360,7 +360,7 @@ class environmentClass ():
         self.make_spacecraft_initial_states( )
 
         ### If single arc create standard translational settings. 
-        if arcNumber == 1:
+        if self.arcNumber == 1:
             # Create termination settings.
             terminationSettings = propagation_setup.propagator.time_termination(
                 self.simEndEpoch  # sim end epoch. 
@@ -392,9 +392,9 @@ class environmentClass ():
 
         else:
             ### Settings per arc. 
-            for arc in range(arcNumber):
+            for arc in range(self.arcNumber):
                 # Arc termination time. 
-                if arc < arcNumber-1: 
+                if arc < self.arcNumber-1: 
                     arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
                 else: 
                     # Avoids propagating beyond final epoch. 
