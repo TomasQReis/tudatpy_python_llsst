@@ -422,12 +422,6 @@ class environmentClass ():
                     integrator_settings= integratorSettings,
                     output_variables= dependentVariables,
                 ) 
-                
-                # Updates ephemeris if triggered. 
-                # NOTE: This gets overwritten by overall arc settings.
-                # Not too sure what to do with this. 
-                if keepEnvironment: 
-                        singleArcPropagatorSetting.processing_settings.set_integrated_result = True
 
                 self.propagatorSettings.append( singleArcPropagatorSetting )
 
@@ -438,8 +432,8 @@ class environmentClass ():
 
             # NOTE: This doesn't want to work. Fix if needed.
             # For now, observations are sourced from a single-arc propagation. 
-            """ if keepEnvironment:
-                self.arcPropagationSettings.processing_settings.set_integrated_result = True """
+            if keepEnvironment:
+                self.arcPropagationSettings.processing_settings.set_integrated_result = True
 
     # Dynamics propagator. 
     def propagate( self ):

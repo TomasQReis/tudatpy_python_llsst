@@ -80,7 +80,7 @@ if __name__ == "__main__":
         harmonicsMaxDegree= referenceDegree
     )
 
-    """ environmentDefault.make_propagation_settings()
+    environmentDefault.make_propagation_settings()
     
 
     dependentVariables = [
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         dependentVariables= dependentVariables,
         keepEnvironment= True )
     
-    defaultArcResults = environmentDefault.propagate() """
+    defaultArcResults = environmentDefault.propagate()
 
     # Creates estimator. 
     estimatorReference = estimator(
@@ -110,12 +110,38 @@ if __name__ == "__main__":
         estimationHarmonicsDegree= referenceDegree
     )
 
+    # Make observations from reference environment. 
     estimatorReference.make_observations()
+
+    # Extracts reference propagation results. 
+    referencePropagationArcResults = estimatorReference.referencePropagationResults.single_arc_results
+
+    lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
+    for i in range( len( referencePropagationArcResults ) ):
+        arcStateArray = result2array( referencePropagationArcResults[i].state_history )
+
+        epochs = arcStateArray[:,0]
+        xCoordinates = arcStateArray[:,1]
+
+        # Plot arc xcoordinate values. 
+        plt.plot( epochs, xCoordinates, color= lineColors[i % len(lineColors)],
+                  label= f"Arc:{i+1}" )
+
+    # Single arc results should match. 
+    singleArcResultsArray = result2array( defaultArcResults.state_history )
+    plt.plot( singleArcResultsArray[:,0], singleArcResultsArray[:,1], linestyle= "--",
+              color= lineColors[-1] )
+    plt.show()
+
+
+    """ # Estimate initial states and harmonic coefficients. 
     estimatorReference.make_estimation( maximumIterations= 20 )
     _, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
     # Harmonic coefficients and constants for estimation environment. 
     _, _, estimationGravParameter, estimationRefRadius = \
             estimatorReference.estimationEnvironment.get_harmonic_coefficients()
+
+    
 
     # Creates SH models. 
     estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
@@ -144,7 +170,7 @@ if __name__ == "__main__":
     plt.legend()
     
     plt.grid()
-    plt.show()
+    plt.show() """
 
     #print(estimatorReference.referenceResults)
 
