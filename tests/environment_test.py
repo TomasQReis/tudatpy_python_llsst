@@ -1,14 +1,20 @@
 import unittest
 
+import numpy as np
+
 ### Tudat Imports 
 from tudatpy.interface import spice
 from tudatpy.util import result2array
 
 ### Custom Imports
-from bodies.roci_ab import rociA
-from environment.environment import GGRX1200L, MAXSPAN, MINSPAN, convert_to_j2000, \
-    check_timespan_limit, check_arc_timespan_limit
+from bodies.roci_ab import rociA, rociB
+from bodies.ground_stations import grazStation
+
+from environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, GGRX1200A\
+    ,convert_to_j2000, check_timespan_limit, check_arc_timespan_limit, load_spice
 from environment.moon_environment import moonEnvironment
+
+from estimation.estimation import estimator
 
 class environmentTests ( unittest.TestCase ):
     # Load kernels
@@ -29,7 +35,8 @@ class environmentTests ( unittest.TestCase ):
             timeStep= 10.0,                 # type: ignore
             spacecrafts= spacecrafts,
             customHarmonicsBool= True,
-            customHarmonicsFile= GGRX1200L
+            customHarmonicsFile= GGRX1200L,
+            harmonicsMaxDegree= 40
         )
     
         environmentDefaultHarmonics = moonEnvironment(
@@ -38,17 +45,18 @@ class environmentTests ( unittest.TestCase ):
             simEndEpoch= simEndEpoch,       # type: ignore
             timeStep= 10.0,                 # type: ignore
             spacecrafts= spacecrafts,
-            customHarmonicsBool= False
+            customHarmonicsBool= False,
+            harmonicsMaxDegree= 40
         )
 
-        environmentLoadedHarmonics.make_propagation_settings( harmonicsDegree= 40 )
-        environmentDefaultHarmonics.make_propagation_settings( harmonicsDegree= 40 )
+        environmentLoadedHarmonics.make_propagation_settings( )
+        environmentDefaultHarmonics.make_propagation_settings( )
 
-        stateHistoryLoaded, _ = environmentLoadedHarmonics.propagate()
-        stateHistoryDefault, _ = environmentDefaultHarmonics.propagate()
+        stateHistoryLoaded = environmentLoadedHarmonics.propagate()
+        stateHistoryDefault = environmentDefaultHarmonics.propagate()
     
-        stateArrayLoaded = result2array(stateHistoryLoaded)
-        stateArrayDefault = result2array(stateHistoryDefault)
+        stateArrayLoaded = result2array(stateHistoryLoaded.state_history)
+        stateArrayDefault = result2array(stateHistoryDefault.state_history)
     
         self.assertEqual( stateArrayLoaded.all(), stateArrayDefault.all() )
 
@@ -83,3 +91,98 @@ class environmentTests ( unittest.TestCase ):
             check_arc_timespan_limit( MINSPAN - 1.0, MAXSPAN )
         # Checks if acceptable condition passes. 
         self.assertTrue( check_arc_timespan_limit ( MINSPAN + 1.0, MAXSPAN ) )
+
+
+class propagationTests ( unittest.TestCase ):
+    # Load kernels
+    spice.load_standard_kernels()
+
+    def test_multi_vs_single_arc_propagation ( self ):
+        # Given as [Year, Month, Day]
+        simStartDate    = [2001, 1, 1, 0, 0, 0]
+        simEndDate      = [2001, 1, 3, 0, 0, 0]
+    
+        # Propagation time step size. 
+        propTimeStep = 120.0     # [s]
+    
+        # Arc Length. 
+        arcLength = 12 * 60**2 # 24hrs
+        # Single Arc. 
+        arcLength0 = 0.0
+    
+        # Load SPICE kernels and return J2000 formatted epochs. 
+        simStartEpoch, simEndEpoch = load_spice( 
+            simStartDate= simStartDate, simEndDate= simEndDate,
+            skipTimespanCheck= True
+            )
+    
+        # Choose list of spacecraft for simulation. 
+        spacecrafts = [ rociA, rociB ]
+    
+        # Choose list of ground stations for simulation.
+        groundStations = [ grazStation ]
+    
+    
+        # Reference degree. 
+        referenceDegree = 5
+    
+        environmentSingleArc = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+            spacecrafts= spacecrafts,
+            groundStations= groundStations,
+            customHarmonicsBool= False,
+            harmonicsMaxDegree= referenceDegree,
+        )
+        environmentMultiArc = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+            spacecrafts= spacecrafts,
+            groundStations= groundStations,
+            customHarmonicsBool= False,
+            customHarmonicsFile= LP150Q,
+            harmonicsMaxDegree= referenceDegree
+        )
+    
+        environmentSingleArc.make_propagation_settings()
+        environmentMultiArc.make_propagation_settings()
+
+    
+        environmentSingleArc.make_propagation_settings( 
+            arcTimeLength= arcLength0,
+            skipArcCheck= True )
+        environmentMultiArc.make_propagation_settings(
+            arcTimeLength= arcLength,
+            skipArcCheck= True
+        )
+        # Propagates single and multi-arc environments. 
+        singleArcResults = environmentSingleArc.propagate()
+        multiArcResults = environmentMultiArc.propagate()
+    
+        # Extracts reference propagation results. 
+        multiArcResults = multiArcResults.single_arc_results
+
+        multiArcXCoordinates = np.array( [] )
+
+        lastArc = len(multiArcResults) - 1
+        for i in range( len( multiArcResults ) ):
+            arcStateArray = result2array( multiArcResults[i].state_history )
+            # Extracts X-coordinates from single arc. 
+            xCoordinates = arcStateArray[:,1]
+            # Concatenates individual arc results.
+            if i == lastArc:
+                multiArcXCoordinates = np.concat( (multiArcXCoordinates, xCoordinates) )
+            else: 
+                multiArcXCoordinates = np.concat( (multiArcXCoordinates, xCoordinates[:-1]) )
+    
+        # Single arc results should match. 
+        singleArcResultsArray = result2array( singleArcResults.state_history )
+        # Extracts X-coordinates. 
+        singleArcXCoordinates = singleArcResultsArray[:,1]
+
+        # Should be equal. 
+        self.assertEqual ( singleArcXCoordinates.all(), multiArcXCoordinates.all() )

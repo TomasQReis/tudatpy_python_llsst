@@ -81,7 +81,6 @@ if __name__ == "__main__":
     )
 
     environmentDefault.make_propagation_settings()
-    
 
     dependentVariables = [
         dynamics.propagation_setup.dependent_variable.altitude(
