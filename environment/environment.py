@@ -11,6 +11,7 @@ from tudatpy.util import result2array
 
 ### External imports.
 import numpy as np
+from numpy.typing import NDArray
 
 ### Self-made imports.
 from bodies.bodies import spacecraft, groundStation
@@ -187,6 +188,8 @@ def return_sh_coefficients(
 
 
 class environmentClass ():
+    frameOriginBody = ""
+
     def __init__(
         self, 
         simStartEpoch: time_representation.Time,
@@ -200,7 +203,10 @@ class environmentClass ():
 
         customHarmonicsBool: bool= False,
         customHarmonicsFile: str= "",
-        harmonicsMaxDegree: int= 10
+        harmonicsMaxDegree: int= 10,
+
+        importInitialStates: bool= False,
+        initialStatesArray: NDArray= np.array( [] )
         ):
 
         self.simStartEpoch = simStartEpoch
@@ -215,9 +221,10 @@ class environmentClass ():
         self.customHarmonicsBool = customHarmonicsBool
         self.customHarmonicsFile = customHarmonicsFile
         self.harmonicsMaxDegree  = harmonicsMaxDegree
-        
 
-        self.frameOriginBody = ""
+        self.importInitialStates = importInitialStates
+        self.initialStatesArray  = initialStatesArray
+        
         self.systemOfBodies: SystemOfBodies
         self.accelerationSettings: dict
         self.arcInitialEpochs = []
@@ -283,6 +290,9 @@ class environmentClass ():
 
     # Spacecraft Initial states creator. 
     def make_spacecraft_initial_states( self ):
+        """Creates cartesian states for spacecrafts in environment at the initial
+        epoch. Note, this fully relies on the keplerian elements these were defined
+        with. DOES NOT PROPAGATE."""
     
         spacecraftInitialStates = []
 
@@ -358,7 +368,10 @@ class environmentClass ():
         self.propagatorSettings = [] 
         
         # Initial states. 
-        self.make_spacecraft_initial_states( )
+        if not self.importInitialStates:
+            self.make_spacecraft_initial_states( )
+        else:
+            self.spacecraftInitialStates = self.initialStatesArray
 
         ### If single arc create standard translational settings. 
         if self.arcNumber == 1:
@@ -392,47 +405,86 @@ class environmentClass ():
             self.arcInitialEpochs.append(self.simStartEpoch)
 
         else:
-            ### Settings per arc. 
-            for arc in range(self.arcNumber):
-                # Arc termination time. 
-                if arc < self.arcNumber-1: 
-                    arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
-                else: 
-                    # Avoids propagating beyond final epoch. 
-                    arcFinalTime = self.simEndEpoch
 
-                # Create termination settings.
-                terminationSettings = propagation_setup.propagator.time_termination(
-                    arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+            ### Checks whether importing initial states. 
+            # Differs in initial state assignment and transfer_state_to_next_arc.
+            if self.importInitialStates:
+                # Settings per arc. 
+                for arc in range(self.arcNumber):
+                    # Arc termination time. 
+                    if arc < self.arcNumber-1: 
+                        arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
+                    else: 
+                        # Avoids propagating beyond final epoch. 
+                        arcFinalTime = self.simEndEpoch
+
+                    # Create termination settings.
+                    terminationSettings = propagation_setup.propagator.time_termination(
+                        arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+                    )
+
+                    # Arc initial time. 
+                    arcInitialEpoch = self.simStartEpoch + arc * arcTimeLength
+                    self.arcInitialEpochs.append( arcInitialEpoch )
+
+                    # Create propagation settings. 
+                    # NOTE: Multi-arc is set up to use integration results to find initial
+                    # State of each subsequent arc. 
+                    singleArcPropagatorSetting = propagation_setup.propagator.translational(
+                        central_bodies= centralBodies,
+                        acceleration_models= acccelerationModels,
+                        bodies_to_integrate= bodiesToPropagate,
+                        initial_states= self.spacecraftInitialStates[arc, :],
+                        initial_time= arcInitialEpoch,
+                        termination_settings= terminationSettings,
+                        integrator_settings= integratorSettings,
+                        output_variables= dependentVariables,
+                    ) 
+
+                    self.propagatorSettings.append( singleArcPropagatorSetting )
+
+                self.arcPropagationSettings = propagation_setup.propagator.multi_arc(
+                    single_arc_settings= self.propagatorSettings,
+                    transfer_state_to_next_arc= False
                 )
+            else:
+                # Settings per arc. Now transfer state to next arc during propagation. 
+                for arc in range(self.arcNumber):
+                    # Arc termination time. 
+                    if arc < self.arcNumber-1: 
+                        arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
+                    else: 
+                        # Avoids propagating beyond final epoch. 
+                        arcFinalTime = self.simEndEpoch
 
-                # Arc initial time. 
-                arcInitialEpoch = self.simStartEpoch + arc * arcTimeLength
-                self.arcInitialEpochs.append( arcInitialEpoch )
+                    # Create termination settings.
+                    terminationSettings = propagation_setup.propagator.time_termination(
+                        arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+                    )
 
-                # Create propagation settings. 
-                # NOTE: Multi-arc is set up to use integration results to find initial
-                # State of each subsequent arc. 
-                singleArcPropagatorSetting = propagation_setup.propagator.translational(
-                    central_bodies= centralBodies,
-                    acceleration_models= acccelerationModels,
-                    bodies_to_integrate= bodiesToPropagate,
-                    initial_states= self.spacecraftInitialStates,
-                    initial_time= arcInitialEpoch,
-                    termination_settings= terminationSettings,
-                    integrator_settings= integratorSettings,
-                    output_variables= dependentVariables,
-                ) 
+                    # Arc initial time. 
+                    arcInitialEpoch = self.simStartEpoch + arc * arcTimeLength
+                    self.arcInitialEpochs.append( arcInitialEpoch )
 
-                self.propagatorSettings.append( singleArcPropagatorSetting )
+                    # Create propagation settings. 
+                    singleArcPropagatorSetting = propagation_setup.propagator.translational(
+                        central_bodies= centralBodies,
+                        acceleration_models= acccelerationModels,
+                        bodies_to_integrate= bodiesToPropagate,
+                        initial_states= self.spacecraftInitialStates,
+                        initial_time= arcInitialEpoch,
+                        termination_settings= terminationSettings,
+                        integrator_settings= integratorSettings,
+                        output_variables= dependentVariables,
+                    ) 
 
-            self.arcPropagationSettings = propagation_setup.propagator.multi_arc(
-                single_arc_settings= self.propagatorSettings,
-                transfer_state_to_next_arc= True
-            )
+                    self.propagatorSettings.append( singleArcPropagatorSetting )
 
-            # NOTE: This doesn't want to work. Fix if needed.
-            # For now, observations are sourced from a single-arc propagation. 
+                self.arcPropagationSettings = propagation_setup.propagator.multi_arc(
+                    single_arc_settings= self.propagatorSettings,
+                    transfer_state_to_next_arc= False
+                )
+ 
             if keepEnvironment:
                 self.arcPropagationSettings.processing_settings.set_integrated_result = True
 

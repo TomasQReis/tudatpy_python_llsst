@@ -12,37 +12,9 @@ from bodies.bodies import spacecraft, groundStation
 from environment.environment import environmentClass
 
 class moonEnvironment ( environmentClass ):
-    def __init__ ( 
-            self,
-            simStartEpoch: time_representation.Time,
-            simEndEpoch: time_representation.Time,
-            timeStep: time_representation.Time,
 
-            spacecrafts: list[spacecraft],
-            groundStations: list[groundStation]= [],
-
-            level: int= 1,
-
-            customHarmonicsBool: bool= False,
-            customHarmonicsFile: str= "",
-            harmonicsMaxDegree: int= 10
-            ):
-        
-        # Calls inherited initalization. 
-        environmentClass.__init__(
-            self, 
-            simStartEpoch= simStartEpoch, 
-            simEndEpoch= simEndEpoch, 
-            timeStep= timeStep,
-            spacecrafts= spacecrafts,
-            level= level,
-            groundStations= groundStations,
-            customHarmonicsBool= customHarmonicsBool,
-            customHarmonicsFile= customHarmonicsFile,
-            harmonicsMaxDegree= harmonicsMaxDegree 
-            )
-        # Sets frame origin body as moon.
-        self.frameOriginBody = "Moon"
+    # Sets frame origin body as moon.
+    frameOriginBody = "Moon"
 
     def select_propagation_level( self ):
         # NOTE: This defines the cartesian state with default Moon mu if default

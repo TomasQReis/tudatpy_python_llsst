@@ -58,6 +58,7 @@ if __name__ == "__main__":
     # Reference degree. 
     referenceDegree = 5
 
+    # Reality environment. 
     environmentDefault = moonEnvironment(
         level= 3,
         simStartEpoch= simStartEpoch,   # type: ignore
@@ -68,34 +69,39 @@ if __name__ == "__main__":
         customHarmonicsBool= False,
         harmonicsMaxDegree= referenceDegree,
     )
-    environmentLP150Q = moonEnvironment(
-        level= 3,
-        simStartEpoch= simStartEpoch,   # type: ignore
-        simEndEpoch= simEndEpoch,       # type: ignore
-        timeStep= propTimeStep,         # type: ignore
-        spacecrafts= spacecrafts,
-        groundStations= groundStations,
-        customHarmonicsBool= True,
-        customHarmonicsFile= LP150Q,
-        harmonicsMaxDegree= referenceDegree
-    )
-
-    environmentDefault.make_propagation_settings()
-
-    dependentVariables = [
-        dynamics.propagation_setup.dependent_variable.altitude(
-            body= "rociA",
-            central_body= "Moon"
-        )
-    ]
-
     environmentDefault.make_propagation_settings( 
         arcTimeLength= arcLength,
         skipArcCheck= True,
-        dependentVariables= dependentVariables,
-        keepEnvironment= True )
+        dependentVariables= [],
+        keepEnvironment= True 
+    )
+    environmentDefault.propagate()
+
+    # Estimation Environment. 
+    environmentLP150Q = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
     
-    defaultArcResults = environmentDefault.propagate()
+            spacecrafts= spacecrafts,
+            groundStations= groundStations,
+    
+            customHarmonicsBool= True,
+            customHarmonicsFile= LP150Q,
+            harmonicsMaxDegree= referenceDegree,
+    
+            importInitialStates= True,
+            initialStatesArray= environmentDefault.get_initial_states()
+    )
+    environmentLP150Q.make_propagation_settings(
+        arcTimeLength= arcLength,
+        skipArcCheck= True,
+        dependentVariables= [],
+        keepEnvironment= False
+    )
+    environmentLP150Q.propagate()
+
 
     """ # Creates estimator. 
     estimatorReference = estimator(
