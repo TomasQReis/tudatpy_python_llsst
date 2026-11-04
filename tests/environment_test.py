@@ -245,3 +245,78 @@ class propagationTests ( unittest.TestCase ):
                     # Compare with extracted initial states. 
                     self.assertEqual( initialStates[arcIdx,:].all(), arcStates[0,1:].all() )
                 
+    def test_import_initial_states( self ):
+        # Propagation start and end dates. 
+        #
+        # Given as [Year, Month, Day]
+        simStartDate    = [2001, 1, 1, 0, 0, 0]
+        simEndDate      = [2001, 1, 2, 0, 0, 0]
+    
+        # Propagation time step size. 
+        propTimeStep = 120.0     # [s]
+    
+        # Arc Length. 
+        arcLength = 12 * 60**2 # 12hrs
+    
+        # Load SPICE kernels and return J2000 formatted epochs. 
+        simStartEpoch, simEndEpoch = load_spice( 
+            simStartDate= simStartDate, simEndDate= simEndDate,
+            skipTimespanCheck= True
+            )
+    
+        # Choose list of spacecraft for simulation. 
+        spacecrafts = [ rociA, rociB ]
+    
+        # Choose list of ground stations for simulation.
+        groundStations = [ grazStation ]
+    
+    
+        # Reference degree. 
+        referenceDegree = 5
+    
+        # Reality environment. 
+        environmentDefault = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+            spacecrafts= spacecrafts,
+            groundStations= groundStations,
+            customHarmonicsBool= False,
+            harmonicsMaxDegree= referenceDegree,
+        )
+        environmentDefault.make_propagation_settings( 
+            arcTimeLength= arcLength,
+            skipArcCheck= True,
+            dependentVariables= [],
+            keepEnvironment= True 
+        )
+        environmentDefault.propagate()
+    
+        # Estimation Environment. 
+        environmentLP150Q = moonEnvironment(
+                level= 3,
+                simStartEpoch= simStartEpoch,   # type: ignore
+                simEndEpoch= simEndEpoch,       # type: ignore
+                timeStep= propTimeStep,         # type: ignore
+        
+                spacecrafts= spacecrafts,
+                groundStations= groundStations,
+        
+                customHarmonicsBool= True,
+                customHarmonicsFile= LP150Q,
+                harmonicsMaxDegree= referenceDegree,
+        
+                importInitialStates= True,
+                initialStatesArray= environmentDefault.get_initial_states()
+        )
+        environmentLP150Q.make_propagation_settings(
+            arcTimeLength= arcLength,
+            skipArcCheck= True,
+            dependentVariables= [],
+            keepEnvironment= False
+        )
+        environmentLP150Q.propagate()
+
+        self.assertEqual ( environmentDefault.get_initial_states().all(),
+                           environmentLP150Q.get_initial_states().all() )
