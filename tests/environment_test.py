@@ -186,3 +186,62 @@ class propagationTests ( unittest.TestCase ):
 
         # Should be equal. 
         self.assertEqual ( singleArcXCoordinates.all(), multiArcXCoordinates.all() )
+
+    def test_extract_initial_states ( self ):
+        # Given as [Year, Month, Day]
+                simStartDate    = [2001, 1, 1, 0, 0, 0]
+                simEndDate      = [2001, 1, 2, 0, 0, 0]
+            
+                # Propagation time step size. 
+                propTimeStep = 120.0     # [s]
+            
+                # Arc Length. 
+                arcLength = 12 * 60**2 # 24hrs
+            
+                # Load SPICE kernels and return J2000 formatted epochs. 
+                simStartEpoch, simEndEpoch = load_spice( 
+                    simStartDate= simStartDate, simEndDate= simEndDate,
+                    skipTimespanCheck= True
+                    )
+            
+                # Choose list of spacecraft for simulation. 
+                spacecrafts = [ rociA, rociB ]
+            
+                # Choose list of ground stations for simulation.
+                groundStations = [ grazStation ]
+            
+            
+                # Reference degree. 
+                referenceDegree = 5
+
+                environmentMultiArc = moonEnvironment(
+                    level= 3,
+                    simStartEpoch= simStartEpoch,   # type: ignore
+                    simEndEpoch= simEndEpoch,       # type: ignore
+                    timeStep= propTimeStep,         # type: ignore
+                    spacecrafts= spacecrafts,
+                    groundStations= groundStations,
+                    customHarmonicsBool= False,
+                    customHarmonicsFile= LP150Q,
+                    harmonicsMaxDegree= referenceDegree
+                )
+            
+
+                environmentMultiArc.make_propagation_settings()
+        
+                environmentMultiArc.make_propagation_settings(
+                    arcTimeLength= arcLength,
+                    skipArcCheck= True
+                )
+                # Propagates environment. 
+                multiArcResults = environmentMultiArc.propagate()
+
+                # Extracts states. 
+                initialStates = environmentMultiArc.get_initial_states()
+
+                for arcIdx in range( environmentMultiArc.arcNumber ):
+                    # Extract arc states. 
+                    arcStates = result2array( multiArcResults.single_arc_results[arcIdx].state_history )
+                    # Compare with extracted initial states. 
+                    self.assertEqual( initialStates[arcIdx,:].all(), arcStates[0,1:].all() )
+                

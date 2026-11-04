@@ -90,14 +90,14 @@ if __name__ == "__main__":
     ]
 
     environmentDefault.make_propagation_settings( 
-        arcTimeLength= arcLength0,
+        arcTimeLength= arcLength,
         skipArcCheck= True,
         dependentVariables= dependentVariables,
         keepEnvironment= True )
     
     defaultArcResults = environmentDefault.propagate()
 
-    # Creates estimator. 
+    """ # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
         estimationEnvironment= environmentLP150Q,
@@ -112,10 +112,21 @@ if __name__ == "__main__":
     # Make observations from reference environment. 
     estimatorReference.make_observations()
 
-    # Extracts reference propagation results. 
-    referencePropagationArcResults = estimatorReference.referencePropagationResults.single_arc_results
+    
+    # Estimate initial states and harmonic coefficients. 
+    estimatorReference.make_estimation( maximumIterations= 10 )
+    initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
+    # Harmonic coefficients and constants for estimation environment. 
+    _, _, estimationGravParameter, estimationRefRadius = \
+            estimatorReference.estimationEnvironment.get_harmonic_coefficients()
 
-    lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
+    print( initialStates )
+
+    # Extracts reference propagation results. 
+    referencePropagationArcResults = estimatorReference.referencePropagationResults.single_arc_results """
+
+    # Compare initial state estimates with propagation values. 
+    """ lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
     for i in range( len( referencePropagationArcResults ) ):
         arcStateArray = result2array( referencePropagationArcResults[i].state_history )
 
@@ -124,25 +135,12 @@ if __name__ == "__main__":
 
         # Plot arc xcoordinate values. 
         plt.plot( epochs, xCoordinates, color= lineColors[i % len(lineColors)],
-                  label= f"Arc:{i+1}" )
+                    label= f"Arc:{i+1}" )
 
-    # Single arc results should match. 
-    singleArcResultsArray = result2array( defaultArcResults.state_history )
-    plt.plot( singleArcResultsArray[:,0], singleArcResultsArray[:,1], linestyle= "--",
-              color= lineColors[-1] )
-    plt.show()
+    plt.show() """
 
-
-    """ # Estimate initial states and harmonic coefficients. 
-    estimatorReference.make_estimation( maximumIterations= 20 )
-    _, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
-    # Harmonic coefficients and constants for estimation environment. 
-    _, _, estimationGravParameter, estimationRefRadius = \
-            estimatorReference.estimationEnvironment.get_harmonic_coefficients()
-
-    
-
-    # Creates SH models. 
+    # SH Model comparison. 
+    """ # Creates SH models. 
     estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
     referenceHarmonics = shModelClass( inputHarmonics= environmentDefault )
 
@@ -166,7 +164,7 @@ if __name__ == "__main__":
     plt.yscale("log")
     plt.ylabel("RMS")
     plt.xlabel("Harmonics Degree")
-    plt.legend()
+    plt.legend() 
     
     plt.grid()
     plt.show() """

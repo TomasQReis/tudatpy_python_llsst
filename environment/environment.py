@@ -7,6 +7,7 @@ from tudatpy.dynamics import environment
 from tudatpy.dynamics import environment_setup, propagation_setup, simulator
 from tudatpy.astro import time_representation, element_conversion
 from tudatpy.dynamics.environment import SystemOfBodies 
+from tudatpy.util import result2array
 
 ### External imports.
 import numpy as np
@@ -445,9 +446,9 @@ class environmentClass ():
         )
 
         # Extract state history and dependent variables
-        propagationResults = dynamicsSimulator.propagation_results # type: ignore
+        self.propagationResults = dynamicsSimulator.propagation_results # type: ignore
 
-        return propagationResults
+        return self.propagationResults
 
     # Getter for harmonic coefficients and parameters. 
     def get_harmonic_coefficients ( self ):
@@ -485,4 +486,28 @@ class environmentClass ():
 
         return cosCoefficients, sinCoefficients, gravityParameter, referenceRadius
 
-    
+    # Getter for initial states of each arc. 
+    def get_initial_states ( self ):
+        # Number of columns in state vector. 
+        numColumns = len( self.spacecrafts ) * 6
+
+        # Empty array of initial states. 
+        initialStates = np.empty( ( 0,numColumns ) )
+
+        # Check whether single or multi-arc 
+        if self.arcNumber > 1:
+            # Extract single arc results.
+            multiArcResults = self.propagationResults.single_arc_results
+
+            # Extract initial state per arc state_history. 
+            for arcIdx in range( self.arcNumber ):
+                # Extract arc states and convert to array.  
+                arcStates = result2array( multiArcResults[ arcIdx ].state_history )
+
+                # Concatenate initial state. 
+                initialStates = np.vstack( ( initialStates, arcStates[0,1:] ) )
+        else:
+            # Initial state given from single arc. 
+            initialStates = result2array ( self.propagationResults.state_history )[0,1:]
+
+        return initialStates 
