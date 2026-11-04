@@ -204,9 +204,6 @@ class environmentClass ():
         customHarmonicsBool: bool= False,
         customHarmonicsFile: str= "",
         harmonicsMaxDegree: int= 10,
-
-        importInitialStates: bool= False,
-        initialStatesArray: NDArray= np.array( [] )
         ):
 
         self.simStartEpoch = simStartEpoch
@@ -221,9 +218,6 @@ class environmentClass ():
         self.customHarmonicsBool = customHarmonicsBool
         self.customHarmonicsFile = customHarmonicsFile
         self.harmonicsMaxDegree  = harmonicsMaxDegree
-
-        self.importInitialStates = importInitialStates
-        self.initialStatesArray  = initialStatesArray
         
         self.systemOfBodies: SystemOfBodies
         self.accelerationSettings: dict
@@ -321,7 +315,10 @@ class environmentClass ():
             arcTimeLength: float= 0.0,
             skipArcCheck: bool= False,
 
-            keepEnvironment: bool= False 
+            keepEnvironment: bool= False,
+
+            importInitialStates: bool= False,
+            initialStatesArray: NDArray= np.array( [] ) 
         ):
 
         # Checks multi-arc propagation.
@@ -368,10 +365,10 @@ class environmentClass ():
         self.propagatorSettings = [] 
         
         # Initial states. 
-        if not self.importInitialStates:
+        if not importInitialStates:
             self.make_spacecraft_initial_states( )
         else:
-            self.spacecraftInitialStates = self.initialStatesArray
+            self.spacecraftInitialStates = initialStatesArray
 
         ### If single arc create standard translational settings. 
         if self.arcNumber == 1:
@@ -408,7 +405,7 @@ class environmentClass ():
 
             ### Checks whether importing initial states. 
             # Differs in initial state assignment and transfer_state_to_next_arc.
-            if self.importInitialStates:
+            if importInitialStates:
                 # Settings per arc. 
                 for arc in range(self.arcNumber):
                     # Arc termination time. 

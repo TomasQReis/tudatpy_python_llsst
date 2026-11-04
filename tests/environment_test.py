@@ -306,15 +306,15 @@ class propagationTests ( unittest.TestCase ):
                 customHarmonicsBool= True,
                 customHarmonicsFile= LP150Q,
                 harmonicsMaxDegree= referenceDegree,
-        
-                importInitialStates= True,
-                initialStatesArray= environmentDefault.get_initial_states()
         )
         environmentLP150Q.make_propagation_settings(
             arcTimeLength= arcLength,
             skipArcCheck= True,
             dependentVariables= [],
-            keepEnvironment= False
+            keepEnvironment= False,
+
+            importInitialStates= True,
+            initialStatesArray= environmentDefault.get_initial_states()
         )
         environmentLP150Q.propagate()
 

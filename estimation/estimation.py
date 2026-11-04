@@ -112,10 +112,14 @@ class estimator ():
     def make_estimation ( 
             self,
             maximumIterations: int= 10 ):
+
+        ### Estimation environment initialization. 
+        
         
         ### Estimation environment settings. 
         self.estimationEnvironment.make_propagation_settings(
             arcTimeLength= self.estimationArcLength,
+
             skipArcCheck= True      # TODO: Remove when done testing. 
         )
 
