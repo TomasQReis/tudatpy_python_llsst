@@ -144,7 +144,6 @@ class propagationTests ( unittest.TestCase ):
             spacecrafts= spacecrafts,
             groundStations= groundStations,
             customHarmonicsBool= False,
-            customHarmonicsFile= LP150Q,
             harmonicsMaxDegree= referenceDegree
         )
     
@@ -184,8 +183,9 @@ class propagationTests ( unittest.TestCase ):
         # Extracts X-coordinates. 
         singleArcXCoordinates = singleArcResultsArray[:,1]
 
-        # Should be equal. 
-        self.assertEqual ( singleArcXCoordinates.all(), multiArcXCoordinates.all() )
+        # Should be equal (or as close as it gets). 
+        np.testing.assert_allclose( singleArcXCoordinates, multiArcXCoordinates,
+                                    rtol= 1e-14 )
 
     def test_extract_initial_states ( self ):
         # Given as [Year, Month, Day]
@@ -243,7 +243,8 @@ class propagationTests ( unittest.TestCase ):
                     # Extract arc states. 
                     arcStates = result2array( multiArcResults.single_arc_results[arcIdx].state_history )
                     # Compare with extracted initial states. 
-                    self.assertEqual( initialStates[arcIdx,:].all(), arcStates[0,1:].all() )
+                    np.testing.assert_allclose( initialStates[arcIdx,:], arcStates[0,1:],
+                                                rtol= 1e-14 )
                 
     def test_import_initial_states( self ):
         # Propagation start and end dates. 
@@ -320,3 +321,5 @@ class propagationTests ( unittest.TestCase ):
 
         self.assertEqual ( environmentDefault.get_initial_states().all(),
                            environmentLP150Q.get_initial_states().all() )
+        np.testing.assert_allclose( environmentDefault.get_initial_states(), 
+            environmentLP150Q.get_initial_states(), rtol= 1e-14 )

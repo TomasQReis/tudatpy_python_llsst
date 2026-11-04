@@ -33,10 +33,10 @@ if __name__ == "__main__":
     #
     # Given as [Year, Month, Day]
     simStartDate    = [2001, 1, 1, 0, 0, 0]
-    simEndDate      = [2001, 1, 3, 0, 0, 0]
+    simEndDate      = [2001, 1, 5, 0, 0, 0]
 
     # Propagation time step size. 
-    propTimeStep = 120.0     # [s]
+    propTimeStep = 240.0     # [s]
 
     # Arc Length. 
     arcLength = 12 * 60**2 # 24hrs
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     ### TEST PROPAGATION PROCESS ### 
     """ environmentDefault.make_propagation_settings( 
-        arcTimeLength= arcLength,
+        arcTimeLength= arcLength0,
         skipArcCheck= True,
         dependentVariables= [],
         keepEnvironment= True 
@@ -102,8 +102,7 @@ if __name__ == "__main__":
 
         importInitialStates= True,
         initialStatesArray= environmentDefault.get_initial_states()
-    )
-    environmentLP150Q.propagate() """
+    ) """
 
     ### TEST ESTIMATION PROCESS ###
     # Creates estimator. 
@@ -133,10 +132,8 @@ if __name__ == "__main__":
     _, _, estimationGravParameter, estimationRefRadius = \
             estimatorReference.estimationEnvironment.get_harmonic_coefficients()
 
-    initialStates = np.reshape( initialStates, (4,12) )
 
-    print( initialStates - estimatorReference.referenceEnvironment.get_initial_states() )
-
+    ### TEST PLOTTING TOOLS ### 
     # Compare initial state estimates with propagation values. 
     """ lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
     for i in range( len( referencePropagationArcResults ) ):

@@ -52,14 +52,15 @@ class estimator ():
         # Save propagation results. 
         self.referencePropagationResults = self.referenceEnvironment.propagate()
 
-    def make_observations ( self ):
+    def make_observations ( 
+        self,
+        observationEpochMargin: float= 1*60**2      # 1hr 
+        ):
         ### Propagate reference. 
         self.propagate_reality()
 
         ### Simulate observations. 
         # Observation epoch. 
-        # TODO: Generalize epoch margin for light-time. 
-        observationEpochMargin = 12 * 60**2
         observationEpochStart = self.referenceEnvironment.simStartEpoch + observationEpochMargin
         observationEpochEnd = self.referenceEnvironment.simEndEpoch - observationEpochMargin
 
@@ -137,7 +138,7 @@ class estimator ():
         estimationParameters = dynamics.parameters_setup.initial_states(
             propagator_settings= self.estimationEnvironment.arcPropagationSettings,
             bodies= self.estimationEnvironment.systemOfBodies,
-            arc_initial_times= self.estimationEnvironment.arcInitialEpochs
+            #arc_initial_times= self.estimationEnvironment.arcInitialEpochs
         )
 
         # Harmonic coefficients. 
@@ -207,8 +208,8 @@ class estimator ():
                 self.estimationArcLength ) )
 
         # Index of last estimated state element.
-        initialStateIdx = 6 * (len(self.estimationEnvironment.spacecrafts) * 
-                               numArcs)
+        initialStateIdx = 6 * ( len(self.estimationEnvironment.spacecrafts) * 
+                               numArcs )
 
         # Index for last cosine and sine coefficients. 
         cosineCoeffIdx = initialStateIdx + int ( 
@@ -224,7 +225,15 @@ class estimator ():
         estimatedCosineCoeffs = np.array(finalParameters[initialStateIdx:cosineCoeffIdx])
         estimatedSineCoefffs = np.array(finalParameters[cosineCoeffIdx:sineCoeffIdx])
 
-        return initialStates, estimatedCosineCoeffs, estimatedSineCoefffs
+        # Re-formats initial states into a per-arc format.
+        # (Each arc is a row of the array)
+        nSC = len( self.referenceEnvironment.spacecrafts )
+        nArcs = self.estimationEnvironment.arcNumber
+        initialStateInRows = np.reshape( initialStates, (nSC * nArcs, 6) )
+        initialStatePerArc = np.hstack( [initialStateInRows[i*nArcs:(i+1)*nArcs] for i in range(nSC)] )
+
+
+        return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
 
 
 class shModelClass (): 
