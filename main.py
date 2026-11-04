@@ -64,19 +64,13 @@ if __name__ == "__main__":
         simStartEpoch= simStartEpoch,   # type: ignore
         simEndEpoch= simEndEpoch,       # type: ignore
         timeStep= propTimeStep,         # type: ignore
+
         spacecrafts= spacecrafts,
         groundStations= groundStations,
+
         customHarmonicsBool= False,
         harmonicsMaxDegree= referenceDegree,
     )
-    environmentDefault.make_propagation_settings( 
-        arcTimeLength= arcLength,
-        skipArcCheck= True,
-        dependentVariables= [],
-        keepEnvironment= True 
-    )
-    environmentDefault.propagate()
-
     # Estimation Environment. 
     environmentLP150Q = moonEnvironment(
             level= 3,
@@ -90,9 +84,16 @@ if __name__ == "__main__":
             customHarmonicsBool= True,
             customHarmonicsFile= LP150Q,
             harmonicsMaxDegree= referenceDegree,
-    
-
     )
+
+    ### TEST PROPAGATION PROCESS ### 
+    """ environmentDefault.make_propagation_settings( 
+        arcTimeLength= arcLength,
+        skipArcCheck= True,
+        dependentVariables= [],
+        keepEnvironment= True 
+    )
+    environmentDefault.propagate()
     environmentLP150Q.make_propagation_settings(
         arcTimeLength= arcLength,
         skipArcCheck= True,
@@ -102,10 +103,10 @@ if __name__ == "__main__":
         importInitialStates= True,
         initialStatesArray= environmentDefault.get_initial_states()
     )
-    environmentLP150Q.propagate()
+    environmentLP150Q.propagate() """
 
-
-    """ # Creates estimator. 
+    ### TEST ESTIMATION PROCESS ###
+    # Creates estimator. 
     estimatorReference = estimator(
         referenceEnvironment= environmentDefault,
         estimationEnvironment= environmentLP150Q,
@@ -120,18 +121,21 @@ if __name__ == "__main__":
     # Make observations from reference environment. 
     estimatorReference.make_observations()
 
+    # Initial state offset for each spacecraft. 
+    initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
     
     # Estimate initial states and harmonic coefficients. 
-    estimatorReference.make_estimation( maximumIterations= 10 )
+    estimatorReference.make_estimation( 
+        maximumIterations= 10,
+        initialStateOffset= initialStateOffset )
     initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
     # Harmonic coefficients and constants for estimation environment. 
     _, _, estimationGravParameter, estimationRefRadius = \
             estimatorReference.estimationEnvironment.get_harmonic_coefficients()
 
-    print( initialStates )
+    initialStates = np.reshape( initialStates, (4,12) )
 
-    # Extracts reference propagation results. 
-    referencePropagationArcResults = estimatorReference.referencePropagationResults.single_arc_results """
+    print( initialStates - estimatorReference.referenceEnvironment.get_initial_states() )
 
     # Compare initial state estimates with propagation values. 
     """ lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']

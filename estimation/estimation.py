@@ -13,6 +13,7 @@ from obs_models.ll_sst import link_creation_one_way, observation_model_simulator
 
 ### External imports.
 import numpy as np
+from numpy.typing import NDArray
 
 
 class estimator ():
@@ -111,14 +112,22 @@ class estimator ():
 
     def make_estimation ( 
             self,
-            maximumIterations: int= 10 ):
+            maximumIterations: int= 10,
+            initialStateOffset: NDArray= np.empty([])
+    ):
+        # Match initial state offset to number of spacecraft. 
+        initialStateOffset = np.tile( initialStateOffset, 
+                                      len( self.referenceEnvironment.spacecrafts ) )
+        
+        # Offset reality initial states for initial guess values. 
+        initialStatesArray = self.referenceEnvironment.get_initial_states() + initialStateOffset
 
-        ### Estimation environment initialization. 
-        
-        
         ### Estimation environment settings. 
         self.estimationEnvironment.make_propagation_settings(
             arcTimeLength= self.estimationArcLength,
+
+            importInitialStates= True,
+            initialStatesArray= initialStatesArray,
 
             skipArcCheck= True      # TODO: Remove when done testing. 
         )
@@ -127,8 +136,8 @@ class estimator ():
         # Initial state.
         estimationParameters = dynamics.parameters_setup.initial_states(
             propagator_settings= self.estimationEnvironment.arcPropagationSettings,
-            arc_initial_times= self.estimationEnvironment.arcInitialEpochs,
-            bodies= self.estimationEnvironment.systemOfBodies
+            bodies= self.estimationEnvironment.systemOfBodies,
+            arc_initial_times= self.estimationEnvironment.arcInitialEpochs
         )
 
         # Harmonic coefficients. 
