@@ -192,7 +192,8 @@ class estimator ():
         )
 
         estimatorSettings.define_estimation_settings(
-            print_output_to_terminal= printEstimationOutput
+            print_output_to_terminal= printEstimationOutput,
+            condition_number_warning_each_iteration= printEstimationOutput
         )
 
         ### Perform estimation.
@@ -260,7 +261,7 @@ class shModelClass ():
 
         if isinstance ( inputHarmonics, environmentClass ): self.make_harmonics_from_environment()
         elif isinstance ( inputHarmonics, estimator ): self.make_harmonics_from_estimate()
-        elif ( cosCoeffs.any() and sinCoeffs.any() and gravityParameter and referenceRadius ):
+        elif ( np.isfinite(cosCoeffs).all() and np.isfinite(sinCoeffs).all() and gravityParameter and referenceRadius ):
             # NOTE: This option is extremely sensitive to well-formatted inputs. 
             self.cosCoeffs = np.array( cosCoeffs )
             self.sinCoeffs = np.array( sinCoeffs )
