@@ -40,7 +40,10 @@ class estimator ():
         self.referenceHarmonicsDegree = referenceHarmonicsDegree
         self.estimationHarmonicsDegree = estimationHarmonicsDegree
 
-    def propagate_reality ( self ):
+    def propagate_reality ( 
+        self,
+        initialStateOffset: NDArray 
+        ):
 
         ### Propagate reality 
         self.referenceEnvironment.make_propagation_settings(
@@ -52,12 +55,27 @@ class estimator ():
         # Save propagation results. 
         self.referencePropagationResults = self.referenceEnvironment.propagate()
 
+        # Match initial state offset to number of spacecraft. 
+        initialStateOffset = np.tile( initialStateOffset, 
+                                        len( self.referenceEnvironment.spacecrafts ) )
+        
+        # Offset reality initial states for initial guess values. 
+        initialStatesArray = self.referenceEnvironment.get_initial_states() + initialStateOffset
+
+        ### Estimation environment settings. 
+        self.estimationEnvironment.make_propagation_settings(
+            arcTimeLength= self.estimationArcLength,
+
+            importInitialStates= True,
+            initialStatesArray= initialStatesArray,
+
+            skipArcCheck= True      # TODO: Remove when done testing. 
+        )
+
     def make_observations ( 
         self,
-        observationEpochMargin: float= 1*60**2      # 1hr 
+        observationEpochMargin: float     
         ):
-        ### Propagate reference. 
-        self.propagate_reality()
 
         ### Simulate observations. 
         # Observation epoch. 
@@ -114,31 +132,24 @@ class estimator ():
     def make_estimation ( 
             self,
             maximumIterations: int= 10,
-            initialStateOffset: NDArray= np.empty([])
+            initialStateOffset: NDArray= np.array([0,0,0,0,0,0]),
+            observationEpochMargin: float= 1*60**2,
+            printEstimationOutput: bool= True,
     ):
-        # Match initial state offset to number of spacecraft. 
-        initialStateOffset = np.tile( initialStateOffset, 
-                                      len( self.referenceEnvironment.spacecrafts ) )
-        
-        # Offset reality initial states for initial guess values. 
-        initialStatesArray = self.referenceEnvironment.get_initial_states() + initialStateOffset
-
-        ### Estimation environment settings. 
-        self.estimationEnvironment.make_propagation_settings(
-            arcTimeLength= self.estimationArcLength,
-
-            importInitialStates= True,
-            initialStatesArray= initialStatesArray,
-
-            skipArcCheck= True      # TODO: Remove when done testing. 
+        ### Propagate reference. 
+        self.propagate_reality(
+            initialStateOffset= initialStateOffset, 
+        )
+        ### Make observations.
+        self.make_observations(
+            observationEpochMargin= observationEpochMargin
         )
 
         ### Estimation parameters.
         # Initial state.
         estimationParameters = dynamics.parameters_setup.initial_states(
             propagator_settings= self.estimationEnvironment.arcPropagationSettings,
-            bodies= self.estimationEnvironment.systemOfBodies,
-            #arc_initial_times= self.estimationEnvironment.arcInitialEpochs
+            bodies= self.estimationEnvironment.systemOfBodies
         )
 
         # Harmonic coefficients. 
@@ -157,15 +168,11 @@ class estimator ():
             minimum_order= 1 
         ) )
 
-        print("Check1")
-
         ### Create parameter set. 
         parameterSet = dynamics.parameters_setup.create_parameter_set(
             parameter_settings= estimationParameters,
             bodies= self.estimationEnvironment.systemOfBodies
         )
-
-        print("Check2")
 
         ### Create estimator.
         estimator = estimation.estimation_analysis.Estimator(
@@ -176,8 +183,6 @@ class estimator ():
             integrate_on_creation= False
         )
 
-        print("Check3")
-
         # Estimator settings.
         estimatorSettings = estimation.estimation_analysis.EstimationInput(
             observations_and_times= self.simulatedObservations,
@@ -186,7 +191,9 @@ class estimator ():
             )
         )
 
-        print("Check4")
+        estimatorSettings.define_estimation_settings(
+            print_output_to_terminal= printEstimationOutput
+        )
 
         ### Perform estimation.
         self.estimationOutput = estimator.perform_estimation(

@@ -136,8 +136,7 @@ def load_spice(simStartDate: list,
     if skipTimespanCheck or check_timespan_limit(
             simStartEpoch= simStartEpoch,
             simEndEpoch= simEndEpoch
-        ):  print("Timespan Within Limits")
-
+        ): pass
 
     return simStartEpoch, simEndEpoch
 
@@ -185,7 +184,6 @@ def return_sh_coefficients(
     referenceRadius = gravityFieldModel.reference_radius
     
     return cosineCoefficients, sineCoefficients, referenceRadius, gravitationalParameter
-
 
 class environmentClass ():
     frameOriginBody = ""

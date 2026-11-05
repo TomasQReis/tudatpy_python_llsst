@@ -148,26 +148,27 @@ if __name__ == "__main__":
 
         ### Environment and estimation parameters. 
         # Reference degree. 
-        referenceDegree = 10
+        referenceDegree = 7
         # Arc length.
         # Given as [Year, Month, Day]
         simStartDate    = [2001, 1, 1, 0, 0, 0]
-        simEndDate      = [2001, 1, 3, 0, 0, 0]
+        simEndDate      = [2001, 1, 21, 0, 0, 0]
+        daysOfPropagation = simEndDate[2] - simStartDate[2]
         # Load SPICE kernels and return J2000 formatted epochs.
         simStartEpoch, simEndEpoch = load_spice( 
             simStartDate= simStartDate, simEndDate= simEndDate,
             skipTimespanCheck= True
             )
         # Propagation time step size. 
-        propTimeStep = 240.0     # [s]
+        propTimeStep = 360.0     # [s]
         # Arc Length. 
-        arcLength = 4 * 60**2 # 24hrs
+        arcLength = 12 * 60**2 
 
         ### Initialize spacecraft and ground station.
         groundStations = [ grazStation ]
 
         ### For loop
-        for i in range(5):
+        for i in range(3):
 
             ### Altered parameter.
             # Parameter itself. 
@@ -218,20 +219,14 @@ if __name__ == "__main__":
                 estimationHarmonicsDegree= referenceDegree
             )
 
-            # Make observations from reference environment. 
-            estimatorReference.make_observations()
-    
             # Initial state offset for each spacecraft. 
             initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
-            
-            # Estimate initial states and harmonic coefficients. 
-            estimatorReference.make_estimation( 
-                maximumIterations= 10,
-                initialStateOffset= initialStateOffset )
 
             # If first iteration creates a residual between LP150 and GGRX1200
             if i == 0:
-                # Saves reference harmonics. 
+                # Creates an initial set of environment properties. 
+                estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
+                # SH class for reference harmonics. 
                 referenceHarmonics = shModelClass( inputHarmonics= environmentDefault )
                 # SH class from LP150 environment. 
                 lp150qHarmonics = shModelClass( inputHarmonics= environmentLP150Q )
@@ -241,6 +236,13 @@ if __name__ == "__main__":
                 # Plots.
                 plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
                             label="Base Residual")
+
+            # Estimate initial states and harmonic coefficients. 
+            estimatorReference.make_estimation( 
+                maximumIterations= 10,
+                initialStateOffset= initialStateOffset,
+                observationEpochMargin= 1*60**2,
+                printEstimationOutput= False )
 
             # Save estimate values. 
             estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
@@ -262,6 +264,8 @@ if __name__ == "__main__":
         plt.ylabel("RMS")
         plt.xlabel("Harmonics Degree")
         plt.legend()
+
+        plt.title(f"Residuals for {daysOfPropagation} day/s propagation. Arc length:{arcLength/60**2} hrs")
 
         plt.show()
 
