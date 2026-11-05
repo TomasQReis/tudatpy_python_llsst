@@ -1,6 +1,5 @@
 ###
-# This file contains all data pertaining to deifning the test vehicles
-# used in low-fidelity simulated observations and parameter estimation.
+# This file contains all data defining the spacecraft Roci A and B.
 # Basically just for me to get to know the program bit by bit and play around.
 # "Donnager class"
 ### 
@@ -11,28 +10,27 @@ from auxiliary.math_functions import *
 
 ### External library imports.
 import numpy as np
-from copy import deepcopy
 
 ### Roci A and B dictionaries. 
 # Contain vehicle characteristics and initial keplerian states. 
 rociADict = {
     "name": "rociA",
-    "mass": 100,        # kg
+    "mass": 313,        # kg
     # Ordered as [semiMajorAxis, eccentricity, inclination, argOfPeriapsis,
     # longOfAscending, trueAnom]
     "keplerianElems": [     
-        1.7474e6,        # [m]. For reference lunar radius = 1737.4 km 
+        1737.4e3 + 200e3,        # [m]. For reference lunar radius = 1737.4 km 
         0.001,
         np.deg2rad(89),
-        np.deg2rad(5),
-        np.deg2rad(10),
+        np.deg2rad(0),
+        np.deg2rad(0),
         np.deg2rad(0)
     ]
 }
 
 rociBDict = {
     "name": "rociB",
-    "mass": 100,        # kg
+    "mass": 313,        # kg
     "keplerianElems": [     
         rociADict["keplerianElems"][0],        
         rociADict["keplerianElems"][1],
@@ -41,7 +39,7 @@ rociBDict = {
         rociADict["keplerianElems"][4],
         rociADict["keplerianElems"][5] + law_cosines_anomaly_spacing(
             orbitRadius= rociADict["keplerianElems"][0],
-            desiredSpacing= 1000    # Separation between rociA and rociB [m].
+            desiredSpacing= 150e3    # Separation between rociA and rociB [m].
         )
     ]
 }
@@ -49,13 +47,13 @@ rociBDict = {
 ### Spacecraft class objects. 
 rociA = spacecraft(
     name= "rociA",
-    mass= 100.0,
+    mass= rociADict["mass"],
     keplerianElems= rociADict["keplerianElems"]
 )
 
 rociB = spacecraft(
     name= "rociB",
-    mass= 100.0,
+    mass= rociBDict["mass"],
     keplerianElems= rociBDict["keplerianElems"]
 )
 

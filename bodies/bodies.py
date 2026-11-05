@@ -114,6 +114,18 @@ class spacecraft (body):
 
         print(f"{self.name} initial state: {self.cartesianStates[0,:]}")
 
+    # Setter for new set of keplerian elements. 
+    def set_keplerian_elements( self, keplerianElementsArr: NDArray ) -> None:
+        """Sets the initial keplerian elements from argument.
+        Args:
+        - keplerianElementsArr (NDArray): Numpy array of keplerian elements. \
+        Should be ordered as [semi-major axis, eccentricity, inclination, \
+        argument of periapsis, longitude of ascending node, true anomaly]. All \
+        units in meters and radians respectively. 
+        """
+        self.keplerianElems = keplerianElementsArr
+
+
 ### Ground station class. 
 class groundStation (body):
     def __init__(

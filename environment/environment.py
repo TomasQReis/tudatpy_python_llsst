@@ -27,9 +27,9 @@ GGRX1200L           = gravityModelsDir + "gggrx_1200l_formatted.csv"
 LP150Q              = gravityModelsDir + "lp150q_formatted.csv"
 
 ### Overall limits for arc and simulation timespans. 
-# Uses seconds between 1st Jan 2000 and 1st Jan 2005 as approximation for 5 year limit.
-MAXSPAN             = 157766400.0
-# 1 day as minimum timespan.
+# 5 years.
+MAXSPAN             = 5*365*24*60**2
+# 1 day.
 MINSPAN             = 24*60**2      
 
 def convert_to_j2000(date: list):

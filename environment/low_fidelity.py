@@ -8,7 +8,6 @@
 
 ### Self-made imports.
 from bodies.bodies import spacecraft, groundStation
-from bodies.gggrx1200 import gggrx_coefficients
 
 ### External library imports.
 import numpy as np

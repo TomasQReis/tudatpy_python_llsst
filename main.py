@@ -132,6 +132,11 @@ if __name__ == "__main__":
     _, _, estimationGravParameter, estimationRefRadius = \
             estimatorReference.estimationEnvironment.get_harmonic_coefficients()
 
+    ### For loop for testing chaging orbital parameters vs estimate. 
+    # Initialize spacecraft. 
+
+    #
+
 
     ### TEST PLOTTING TOOLS ### 
     # Compare initial state estimates with propagation values. 
