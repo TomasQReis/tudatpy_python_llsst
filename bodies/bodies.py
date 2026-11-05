@@ -125,7 +125,6 @@ class spacecraft (body):
         """
         self.keplerianElems = keplerianElementsArr
 
-
 ### Ground station class. 
 class groundStation (body):
     def __init__(

@@ -1,12 +1,17 @@
 ### Imports for self-made functions
 from environment.low_fidelity import *
 from environment.environment import *
+from environment.moon_environment import moonEnvironment, MOONRADIUS
+
 from obs_models.ll_sst import *
+
 from bodies.bodies import *
 from bodies.roci_ab import *
+from bodies.grail_spacecraft import grailList
 from bodies.ground_stations import *
+
 from visualization.plotting import *
-from environment.moon_environment import moonEnvironment
+
 from estimation.estimation import estimator, shModelClass, kaula_power_rule
 
 ### External library imports.
@@ -56,23 +61,25 @@ if __name__ == "__main__":
 
 
     # Reference degree. 
-    referenceDegree = 5
+    referenceDegree = 200
 
-    # Reality environment. 
-    environmentDefault = moonEnvironment(
-        level= 3,
-        simStartEpoch= simStartEpoch,   # type: ignore
-        simEndEpoch= simEndEpoch,       # type: ignore
-        timeStep= propTimeStep,         # type: ignore
+    ### TEST ENVIRONMENT CREATION ###
+    if testEnvironment := False:
+        # Reality environment. 
+        environmentDefault = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
 
-        spacecrafts= spacecrafts,
-        groundStations= groundStations,
+            spacecrafts= spacecrafts,
+            groundStations= groundStations,
 
-        customHarmonicsBool= False,
-        harmonicsMaxDegree= referenceDegree,
-    )
-    # Estimation Environment. 
-    environmentLP150Q = moonEnvironment(
+            customHarmonicsBool= False,
+            harmonicsMaxDegree= referenceDegree,
+        )
+        # Estimation Environment. 
+        environmentLP150Q = moonEnvironment(
             level= 3,
             simStartEpoch= simStartEpoch,   # type: ignore
             simEndEpoch= simEndEpoch,       # type: ignore
@@ -84,58 +91,179 @@ if __name__ == "__main__":
             customHarmonicsBool= True,
             customHarmonicsFile= LP150Q,
             harmonicsMaxDegree= referenceDegree,
-    )
+        )
 
     ### TEST PROPAGATION PROCESS ### 
-    """ environmentDefault.make_propagation_settings( 
-        arcTimeLength= arcLength0,
-        skipArcCheck= True,
-        dependentVariables= [],
-        keepEnvironment= True 
-    )
-    environmentDefault.propagate()
-    environmentLP150Q.make_propagation_settings(
-        arcTimeLength= arcLength,
-        skipArcCheck= True,
-        dependentVariables= [],
-        keepEnvironment= False,
+    if testPropagation := False:
+        environmentDefault.make_propagation_settings( 
+            arcTimeLength= arcLength0,
+            skipArcCheck= True,
+            dependentVariables= [],
+            keepEnvironment= True 
+        )
+        environmentDefault.propagate()
+        environmentLP150Q.make_propagation_settings(
+            arcTimeLength= arcLength,
+            skipArcCheck= True,
+            dependentVariables= [],
+            keepEnvironment= False,
 
-        importInitialStates= True,
-        initialStatesArray= environmentDefault.get_initial_states()
-    ) """
+            importInitialStates= True,
+            initialStatesArray= environmentDefault.get_initial_states()
+        )
 
     ### TEST ESTIMATION PROCESS ###
-    # Creates estimator. 
-    estimatorReference = estimator(
-        referenceEnvironment= environmentDefault,
-        estimationEnvironment= environmentLP150Q,
+    if testEstimation := False:
+        # Creates estimator. 
+        estimatorReference = estimator(
+            referenceEnvironment= environmentDefault,
+            estimationEnvironment= environmentLP150Q,
 
-        referenceArcLength= arcLength,
-        estimationArcLength= arcLength,
+            referenceArcLength= arcLength,
+            estimationArcLength= arcLength,
 
-        referenceHarmonicsDegree= referenceDegree,
-        estimationHarmonicsDegree= referenceDegree
-    )
+            referenceHarmonicsDegree= referenceDegree,
+            estimationHarmonicsDegree= referenceDegree
+        )
 
-    # Make observations from reference environment. 
-    estimatorReference.make_observations()
+        # Make observations from reference environment. 
+        estimatorReference.make_observations()
 
-    # Initial state offset for each spacecraft. 
-    initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+        # Initial state offset for each spacecraft. 
+        initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+        
+        # Estimate initial states and harmonic coefficients. 
+        estimatorReference.make_estimation( 
+            maximumIterations= 10,
+            initialStateOffset= initialStateOffset )
+        initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
+        # Harmonic coefficients and constants for estimation environment. 
+        _, _, estimationGravParameter, estimationRefRadius = \
+                estimatorReference.estimationEnvironment.get_harmonic_coefficients()
+
+    ##### For loop for testing chaging orbital parameters vs estimate. #####
+    if testOrbitalParameters := True:
+        lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
+        lineStyles = ["-", "--", "-.", ":"]
+
+        ### Environment and estimation parameters. 
+        # Reference degree. 
+        referenceDegree = 10
+        # Arc length.
+        # Given as [Year, Month, Day]
+        simStartDate    = [2001, 1, 1, 0, 0, 0]
+        simEndDate      = [2001, 1, 3, 0, 0, 0]
+        # Load SPICE kernels and return J2000 formatted epochs.
+        simStartEpoch, simEndEpoch = load_spice( 
+            simStartDate= simStartDate, simEndDate= simEndDate,
+            skipTimespanCheck= True
+            )
+        # Propagation time step size. 
+        propTimeStep = 240.0     # [s]
+        # Arc Length. 
+        arcLength = 4 * 60**2 # 24hrs
+
+        ### Initialize spacecraft and ground station.
+        groundStations = [ grazStation ]
+
+        ### For loop
+        for i in range(5):
+
+            ### Altered parameter.
+            # Parameter itself. 
+            altitude = 55e3 + 20e3*(i+1)
+            semiMajorAxis = MOONRADIUS + altitude
+            # Label for plots.
+            alteredParameterLabel = f"Altitude:{altitude/1e3:.1f} km"
+
+            ### Initialize environments. 
+            # Reality environment. 
+            environmentDefault = moonEnvironment(
+                level= 3,
+                simStartEpoch= simStartEpoch,   # type: ignore
+                simEndEpoch= simEndEpoch,       # type: ignore
+                timeStep= propTimeStep,         # type: ignore
     
-    # Estimate initial states and harmonic coefficients. 
-    estimatorReference.make_estimation( 
-        maximumIterations= 10,
-        initialStateOffset= initialStateOffset )
-    initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
-    # Harmonic coefficients and constants for estimation environment. 
-    _, _, estimationGravParameter, estimationRefRadius = \
-            estimatorReference.estimationEnvironment.get_harmonic_coefficients()
+                spacecrafts= grailList,
+                groundStations= groundStations,
+    
+                customHarmonicsBool= False,
+                harmonicsMaxDegree= referenceDegree,
+            )
+            # Estimation Environment. 
+            environmentLP150Q = moonEnvironment(
+                    level= 3,
+                    simStartEpoch= simStartEpoch,   # type: ignore
+                    simEndEpoch= simEndEpoch,       # type: ignore
+                    timeStep= propTimeStep,         # type: ignore
+            
+                    spacecrafts= grailList,
+                    groundStations= groundStations,
+            
+                    customHarmonicsBool= True,
+                    customHarmonicsFile= LP150Q,
+                    harmonicsMaxDegree= referenceDegree,
+            )
+            
+            ### Produce estimate. 
+            # Creates estimator. 
+            estimatorReference = estimator(
+                referenceEnvironment= environmentDefault,
+                estimationEnvironment= environmentLP150Q,
+    
+                referenceArcLength= arcLength,
+                estimationArcLength= arcLength,
+    
+                referenceHarmonicsDegree= referenceDegree,
+                estimationHarmonicsDegree= referenceDegree
+            )
 
-    ### For loop for testing chaging orbital parameters vs estimate. 
-    # Initialize spacecraft. 
+            # Make observations from reference environment. 
+            estimatorReference.make_observations()
+    
+            # Initial state offset for each spacecraft. 
+            initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+            
+            # Estimate initial states and harmonic coefficients. 
+            estimatorReference.make_estimation( 
+                maximumIterations= 10,
+                initialStateOffset= initialStateOffset )
 
-    #
+            # If first iteration creates a residual between LP150 and GGRX1200
+            if i == 0:
+                # Saves reference harmonics. 
+                referenceHarmonics = shModelClass( inputHarmonics= environmentDefault )
+                # SH class from LP150 environment. 
+                lp150qHarmonics = shModelClass( inputHarmonics= environmentLP150Q )
+                # Residual harmonics. 
+                deltaHarmonicsBase = referenceHarmonics.__sub__( other= lp150qHarmonics )
+                degrees, rmsDeltaHarmonicsBase = deltaHarmonicsBase.rms_per_degree()
+                # Plots.
+                plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
+                            label="Base Residual")
+
+            # Save estimate values. 
+            estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
+            # Compare with reference harmonics. 
+            deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
+            _, rmsDeltaHarmonics = deltaHarmonics.rms_per_degree()
+
+            # Plot current estimate. 
+            plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[i % len(lineStyles)],
+                     color= lineColors[i % len(lineColors)], label= alteredParameterLabel )
+
+            # Change spacecraft keplerian elements. 
+            grailList[0].keplerianElems[0] = semiMajorAxis
+            grailList[1].keplerianElems[0] = semiMajorAxis
+
+        plt.yscale( "log" )
+
+        plt.grid()
+        plt.ylabel("RMS")
+        plt.xlabel("Harmonics Degree")
+        plt.legend()
+
+        plt.show()
 
 
     ### TEST PLOTTING TOOLS ### 

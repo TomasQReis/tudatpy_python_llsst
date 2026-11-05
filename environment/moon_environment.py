@@ -1,4 +1,5 @@
 ### Functions relating to environments with the Moon as a central body. ###
+# Also contains useful constants pertaining to the Moon.
 
 ### Tudat imports.
 from tudatpy.dynamics import propagation_setup
@@ -10,6 +11,9 @@ import numpy as np
 ### Self-made imports.
 from bodies.bodies import spacecraft, groundStation
 from environment.environment import environmentClass
+
+# Useful constants. 
+MOONRADIUS = 1737.4e3        # [m]
 
 class moonEnvironment ( environmentClass ):
 

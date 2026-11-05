@@ -244,6 +244,7 @@ class environmentClass ():
                     maximum_order   = 420
                 )
             
+            
         # Add spacecraft to body settings. 
         for spacecraft in self.spacecrafts:
             # Empty settings. 
@@ -281,6 +282,16 @@ class environmentClass ():
 
         # Creates system of bodies. 
         self.systemOfBodies = environment_setup.create_system_of_bodies( bodySettings )
+
+        # If field is imported, check harmonics degree against argument. 
+        if self.customHarmonicsBool:
+            # Maximum index from a 1D custom cosine coefficients array. 
+            cosineMaxIndex = np.size(self.get_harmonic_coefficients()[0])
+            # Invert maximum cosine index equation to get max degree. 
+            roots = np.roots( [1, 3, -( 4+2*cosineMaxIndex )])
+            customHarmonicsDegree = roots[roots > 0][0]
+            if customHarmonicsDegree < self.harmonicsMaxDegree:
+                self.harmonicsMaxDegree = int(customHarmonicsDegree)
 
     # Spacecraft Initial states creator. 
     def make_spacecraft_initial_states( self ):

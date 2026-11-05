@@ -221,9 +221,9 @@ class estimator ():
             - 2 ) / 2 ) 
 
         # Isolates specific estimate results. 
-        initialStates = np.array(finalParameters[:initialStateIdx])
-        estimatedCosineCoeffs = np.array(finalParameters[initialStateIdx:cosineCoeffIdx])
-        estimatedSineCoefffs = np.array(finalParameters[cosineCoeffIdx:sineCoeffIdx])
+        initialStates = finalParameters[:initialStateIdx]
+        estimatedCosineCoeffs = finalParameters[initialStateIdx:cosineCoeffIdx]
+        estimatedSineCoefffs = finalParameters[cosineCoeffIdx:sineCoeffIdx]
 
         # Re-formats initial states into a per-arc format.
         # (Each arc is a row of the array)
@@ -254,6 +254,7 @@ class shModelClass ():
         if isinstance ( inputHarmonics, environmentClass ): self.make_harmonics_from_environment()
         elif isinstance ( inputHarmonics, estimator ): self.make_harmonics_from_estimate()
         elif ( cosCoeffs.any() and sinCoeffs.any() and gravityParameter and referenceRadius ):
+            # NOTE: This option is extremely sensitive to well-formatted inputs. 
             self.cosCoeffs = np.array( cosCoeffs )
             self.sinCoeffs = np.array( sinCoeffs )
             self.gravityParameter = gravityParameter
@@ -357,7 +358,7 @@ class shModelClass ():
         - rmsPerDegrees (NDArray): RMS value per degree. """
 
         # Degrees.
-        degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree)
+        degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree + 1)
         # Empty rms list.
         self.rmsPerDegrees = []
 
