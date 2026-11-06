@@ -12,7 +12,7 @@ from bodies.ground_stations import *
 
 from visualization.plotting import *
 
-from estimation.estimation import estimatorClass
+from estimation.estimation import estimatorClass, estimate_with_observation_noise
 
 from environment.harmonics import shModelClass, kaula_power_rule
 
@@ -63,12 +63,12 @@ if __name__ == "__main__":
 
 
     # Reference degree. 
-    referenceDegree = 200
+    referenceDegree = 10
 
     ### TEST ENVIRONMENT CREATION ###
-    if testEnvironment := False:
-        # Reality environment. 
-        environmentDefault = moonEnvironment(
+    if testEnvironment := True:
+        # Real environment. 
+        environmentReal = moonEnvironment(
             level= 3,
             simStartEpoch= simStartEpoch,   # type: ignore
             simEndEpoch= simEndEpoch,       # type: ignore
@@ -77,11 +77,12 @@ if __name__ == "__main__":
             spacecrafts= spacecrafts,
             groundStations= groundStations,
 
-            customHarmonicsBool= False,
+            customHarmonicsBool= True,
+            customHarmonicsFile= GGRX420L,
             harmonicsMaxDegree= referenceDegree,
         )
-        # Estimation Environment. 
-        environmentLP150Q = moonEnvironment(
+        # Reference Environment. 
+        environmentReference = moonEnvironment(
             level= 3,
             simStartEpoch= simStartEpoch,   # type: ignore
             simEndEpoch= simEndEpoch,       # type: ignore
@@ -115,11 +116,11 @@ if __name__ == "__main__":
         )
 
     ### TEST ESTIMATION PROCESS ###
-    if testEstimation := False:
+    if testEstimation := True:
         # Creates estimator. 
-        estimatorReference = estimator(
-            referenceEnvironment= environmentDefault,
-            estimationEnvironment= environmentLP150Q,
+        estimatorReference = estimatorClass(
+            realEnvironment= environmentReal,
+            referenceEnvironment= environmentReference,
 
             referenceArcLength= arcLength,
             estimationArcLength= arcLength,
@@ -135,16 +136,25 @@ if __name__ == "__main__":
         initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
         
         # Estimate initial states and harmonic coefficients. 
+        # Estimate initial states and harmonic coefficients.
+        estimatorReference.propagate_reality(
+            initialStateOffset= initialStateOffset,
+        )
+        estimatorReference.make_observations(
+            observationEpochMargin= 1*60**2,
+        ) 
         estimatorReference.make_estimation( 
             maximumIterations= 10,
-            initialStateOffset= initialStateOffset )
+            printEstimationOutput= False )
         initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
         # Harmonic coefficients and constants for estimation environment. 
         _, _, estimationGravParameter, estimationRefRadius = \
-                estimatorReference.estimationEnvironment.get_harmonic_coefficients()
+                estimatorReference.environmentReal.get_harmonic_coefficients()
+
+        
 
     ##### For loop for testing chaging orbital parameters vs estimate. #####
-    if testOrbitalParameters := True:
+    if testOrbitalParameters := False:
         lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
         lineStyles = ["-", "--", "-.", ":"]
 

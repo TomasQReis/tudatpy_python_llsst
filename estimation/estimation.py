@@ -19,26 +19,26 @@ from numpy.typing import NDArray
 class estimatorClass ():
     def __init__(
         self,
-        referenceEnvironment: environmentClass,
-        estimationEnvironment: environmentClass,
+        environmentReal: environmentClass,
+        environmentReference: environmentClass,
 
-        referenceArcLength: float= 0.0,      # TODO: Generalize
-        estimationArcLength: float= 0.0,
+        arcLengthReal: float= 0.0,      # TODO: Generalize
+        arcLengthReference: float= 0.0,
 
-        referenceHarmonicsDegree: int= 5,
-        estimationHarmonicsDegree: int= 5
+        harmonicsDegreeReal: int= 5,
+        harmonicsDegreeReference: int= 5
     ) -> None:
 
         
-        self.referenceEnvironment   = referenceEnvironment
-        self.estimationEnvironment  = estimationEnvironment
+        self.environmentReal   = environmentReal
+        self.environmentReference  = environmentReference
 
-        self.referenceArcLength     = referenceArcLength
-        self.estimationArcLength    = estimationArcLength
+        self.arcLengthReal     = arcLengthReal
+        self.arcLengthReference    = arcLengthReference
 
         # NOTE: reference environment harmonics degree is currently unused. 
-        self.referenceHarmonicsDegree = referenceHarmonicsDegree
-        self.estimationHarmonicsDegree = estimationHarmonicsDegree
+        self.harmonicsDegreeReal = harmonicsDegreeReal
+        self.harmonicsDegreeReference = harmonicsDegreeReference
 
     def propagate_reality ( 
         self,
@@ -46,25 +46,25 @@ class estimatorClass ():
         ):
 
         ### Propagate reality 
-        self.referenceEnvironment.make_propagation_settings(
-            arcTimeLength= self.referenceArcLength,
+        self.environmentReal.make_propagation_settings(
+            arcTimeLength= self.arcLengthReal,
             keepEnvironment= True, 
             skipArcCheck= True      # TODO: Remove after testing. 
         )
 
         # Save propagation results. 
-        self.referencePropagationResults = self.referenceEnvironment.propagate()
+        self.referencePropagationResults = self.environmentReal.propagate()
 
         # Match initial state offset to number of spacecraft. 
         initialStateOffset = np.tile( initialStateOffset, 
-                                        len( self.referenceEnvironment.spacecrafts ) )
+                                        len( self.environmentReal.spacecrafts ) )
         
         # Offset reality initial states for initial guess values. 
-        initialStatesArray = self.referenceEnvironment.get_initial_states() + initialStateOffset
+        initialStatesArray = self.environmentReal.get_initial_states() + initialStateOffset
 
         ### Estimation environment settings. 
-        self.estimationEnvironment.make_propagation_settings(
-            arcTimeLength= self.estimationArcLength,
+        self.environmentReference.make_propagation_settings(
+            arcTimeLength= self.arcLengthReference,
 
             importInitialStates= True,
             initialStatesArray= initialStatesArray,
@@ -77,19 +77,19 @@ class estimatorClass ():
         ):
         ### Simulate observations. 
         # Observation epoch. 
-        observationEpochStart = self.referenceEnvironment.simStartEpoch + observationEpochMargin
-        observationEpochEnd = self.referenceEnvironment.simEndEpoch - observationEpochMargin
+        observationEpochStart = self.environmentReal.simStartEpoch + observationEpochMargin
+        observationEpochEnd = self.environmentReal.simEndEpoch - observationEpochMargin
 
         observationEpochs = np.arange( observationEpochStart,                       # type: ignore
-                                      step= self.referenceEnvironment.timeStep ,    # type: ignore
+                                      step= self.environmentReal.timeStep ,    # type: ignore
                                       stop= observationEpochEnd )                   # type: ignore
 
         # Link definition. One way range. 
         # TODO: Make a modular way for selecting observation pairs. 
-        receivers = [self.referenceEnvironment.spacecrafts[0],
-                     self.referenceEnvironment.spacecrafts[1]]
-        transmitters = [self.referenceEnvironment.groundStations[0], 
-                        self.referenceEnvironment.spacecrafts[0]]
+        receivers = [self.environmentReal.spacecrafts[0],
+                     self.environmentReal.spacecrafts[1]]
+        transmitters = [self.environmentReal.groundStations[0], 
+                        self.environmentReal.spacecrafts[0]]
 
         # Create observation links.
         self.observationType, self.observationLinkDefintions = link_creation_one_way(
@@ -100,7 +100,7 @@ class estimatorClass ():
         # Create observation model simulator.
         self.observationSimulator, self.observationSettings = observation_model_simulator_owr(
             owrLinkDefinitions= self.observationLinkDefintions,
-            bodies= self.referenceEnvironment.systemOfBodies
+            bodies= self.environmentReal.systemOfBodies
         )
 
         # Dictionary of observation types and their respective link definitions. 
@@ -112,19 +112,19 @@ class estimatorClass ():
         noiseAmplitude = 0.0
 
         # Simulate observations.
-        self.simulatedObservations = simulate_observations_owr(
+        self.observationCollection = simulate_observations_owr(
             observationTimes= observationEpochs.tolist(),
             linkEndsPerObservatble= linkEndsPerObservable,
             owrObservationSimulator= self.observationSimulator,
-            bodies= self.referenceEnvironment.systemOfBodies,
+            bodies= self.environmentReal.systemOfBodies,
             noiseAmplitude= noiseAmplitude
         )
 
         ### Save observations. 
         # TODO: Generalize for all transmitters. 
         self.observations, self.observationTimes = extract_data_observations_owr(
-            observationCollection= self.simulatedObservations,
-            transmitter= self.referenceEnvironment.spacecrafts[0]
+            observationCollection= self.observationCollection,
+            transmitter= self.environmentReal.spacecrafts[0]
         )
 
     def make_estimation ( 
@@ -138,22 +138,22 @@ class estimatorClass ():
         ### Estimation parameters.
         # Initial state.
         estimationParameters = dynamics.parameters_setup.initial_states(
-            propagator_settings= self.estimationEnvironment.arcPropagationSettings,
-            bodies= self.estimationEnvironment.systemOfBodies
+            propagator_settings= self.environmentReference.arcPropagationSettings,
+            bodies= self.environmentReference.systemOfBodies
         )
 
         # Harmonic coefficients. 
         estimationParameters.append( dynamics.parameters_setup.spherical_harmonics_c_coefficients (
-            body= self.estimationEnvironment.frameOriginBody,
-            maximum_degree= self.estimationHarmonicsDegree,
-            maximum_order= self.estimationHarmonicsDegree,
+            body= self.environmentReference.frameOriginBody,
+            maximum_degree= self.harmonicsDegreeReference,
+            maximum_order= self.harmonicsDegreeReference,
             minimum_degree= 2,
             minimum_order= 0 
         ) )
         estimationParameters.append( dynamics.parameters_setup.spherical_harmonics_s_coefficients (
-            body= self.estimationEnvironment.frameOriginBody,
-            maximum_degree= self.estimationHarmonicsDegree,
-            maximum_order= self.estimationHarmonicsDegree,
+            body= self.environmentReference.frameOriginBody,
+            maximum_degree= self.harmonicsDegreeReference,
+            maximum_order= self.harmonicsDegreeReference,
             minimum_degree= 2,
             minimum_order= 1 
         ) )
@@ -161,21 +161,21 @@ class estimatorClass ():
         ### Create parameter set. 
         parameterSet = dynamics.parameters_setup.create_parameter_set(
             parameter_settings= estimationParameters,
-            bodies= self.estimationEnvironment.systemOfBodies
+            bodies= self.environmentReference.systemOfBodies
         )
 
         ### Create estimator.
         estimator = estimation.estimation_analysis.Estimator(
-            bodies= self.estimationEnvironment.systemOfBodies,
+            bodies= self.environmentReference.systemOfBodies,
             estimated_parameters= parameterSet,
             observation_settings= self.observationSettings,
-            propagator_settings= self.estimationEnvironment.arcPropagationSettings,
+            propagator_settings= self.environmentReference.arcPropagationSettings,
             integrate_on_creation= False
         )
 
         # Estimator settings.
         estimatorSettings = estimation.estimation_analysis.EstimationInput(
-            observations_and_times= self.simulatedObservations,
+            observations_and_times= self.observationCollection,
             convergence_checker= estimation.estimation_analysis.estimation_convergence_checker(
                 maximum_iterations= maximumIterations
             )
@@ -198,24 +198,24 @@ class estimatorClass ():
         finalParameters = self.estimationOutput.final_parameters
 
         # Number of arcs. 
-        if self.estimationArcLength == 0.0:
+        if self.arcLengthReference == 0.0:
             numArcs = 1
         else:
-            numArcs = int ( float( self.estimationEnvironment.simEndEpoch - 
-                self.estimationEnvironment.simStartEpoch ) // float( 
-                self.estimationArcLength ) )
+            numArcs = int ( float( self.environmentReference.simEndEpoch - 
+                self.environmentReference.simStartEpoch ) // float( 
+                self.arcLengthReference ) )
 
         # Index of last estimated state element.
-        initialStateIdx = 6 * ( len(self.estimationEnvironment.spacecrafts) * 
+        initialStateIdx = 6 * ( len(self.environmentReference.spacecrafts) * 
                                numArcs )
 
         # Index for last cosine and sine coefficients. 
         cosineCoeffIdx = initialStateIdx + int ( 
-            ( (self.estimationHarmonicsDegree - 1) * 
-              (self.estimationHarmonicsDegree + 4) 
+            ( (self.harmonicsDegreeReference - 1) * 
+              (self.harmonicsDegreeReference + 4) 
             ) / 2 ) 
         sineCoeffIdx = cosineCoeffIdx + int ( (
-            self.estimationHarmonicsDegree ** 2 + self.estimationHarmonicsDegree
+            self.harmonicsDegreeReference ** 2 + self.harmonicsDegreeReference
             - 2 ) / 2 ) 
 
         # Isolates specific estimate results. 
@@ -225,22 +225,30 @@ class estimatorClass ():
 
         # Re-formats initial states into a per-arc format.
         # (Each arc is a row of the array)
-        nSC = len( self.referenceEnvironment.spacecrafts )
-        nArcs = self.estimationEnvironment.arcNumber
+        nSC = len( self.environmentReal.spacecrafts )
+        nArcs = self.environmentReference.arcNumber
         initialStateInRows = np.reshape( initialStates, (nSC * nArcs, 6) )
         initialStatePerArc = np.hstack( [initialStateInRows[i*nArcs:(i+1)*nArcs] for i in range(nSC)] )
 
 
         return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
 
-def estimate_observation_noise(
+def estimate_with_observation_noise(
     estimator: estimatorClass, 
     initialStateOffset: NDArray= np.array( [0,0,0,0,0,0] ),
 
     dopplerNoiseSigmaList: NDArray = np.zeros(1),
-    sstRangeSigmaList: NDArray = np.zeros(1),
+    sstRangeSigmaList: NDArray = np.zeros(1)
+    ) -> NDArray:
+    """Performs a set of estimates that vary the observations noise. NOTE this
+    does not apply noise on acceleration values, only DSN doppler and sst range
+    observations. Returns two arrays with the stored noise combinations and 
+
+    Args:
+    - estimator (estimatorClass): Estimator with which the estimation will be \
+    performed. 
     
-):
+    """
     # Create index array for tested noise sigmas. 
     testValuesArr = np.empty( (
         len(dopplerNoiseSigmaList)*len(sstRangeSigmaList),2 
