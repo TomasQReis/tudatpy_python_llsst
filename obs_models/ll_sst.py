@@ -25,7 +25,7 @@ from tudatpy.estimation.observable_models_setup import light_time_corrections
 ###---------------------------------------------
 
 # One-way range link creation. 
-def link_creation_one_way(
+def one_way_range_link_definitions(
         transmitters: Sequence[body], 
         receivers: Sequence[body]
         ) :
@@ -81,7 +81,7 @@ def link_creation_one_way(
 
 # One-way range observation model simulator.
 # TODO: Implement noise and bias (Later version)
-def observation_model_simulator_owr(
+def one_way_range_observation_simulator(
         owrLinkDefinitions: list[estimation.observable_models_setup.links.LinkDefinition],
         bodies: SystemOfBodies):
     """
@@ -116,7 +116,7 @@ def observation_model_simulator_owr(
 
 
 # Create parameters for the simulated observations. 
-def simulate_observations_owr(
+def one_way_range_observations(
         observationTimes: list,
         linkEndsPerObservatble: Mapping[ObservableType, Sequence[LinkDefinition]],
         owrObservationSimulator: list[estimation.observable_models.observables_simulation.ObservationSimulator],
@@ -191,7 +191,7 @@ def simulate_observations_owr(
 
 
 # Extract specific values from observation simulations.  
-def extract_data_observations_owr(
+def one_way_range_get(
         observationCollection: estimation.observations.ObservationCollection,
         transmitter: body
 ):

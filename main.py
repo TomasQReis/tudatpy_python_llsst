@@ -119,18 +119,15 @@ if __name__ == "__main__":
     if testEstimation := True:
         # Creates estimator. 
         estimatorReference = estimatorClass(
-            realEnvironment= environmentReal,
-            referenceEnvironment= environmentReference,
+            environmentReal= environmentReal,
+            environmentReference= environmentReference,
 
-            referenceArcLength= arcLength,
-            estimationArcLength= arcLength,
+            arcLengthReal= arcLength,
+            arcLengthReference= arcLength,
 
-            referenceHarmonicsDegree= referenceDegree,
-            estimationHarmonicsDegree= referenceDegree
+            harmonicsDegreeReal= referenceDegree,
+            harmonicsDegreeReference= referenceDegree
         )
-
-        # Make observations from reference environment. 
-        estimatorReference.make_observations()
 
         # Initial state offset for each spacecraft. 
         initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
@@ -143,13 +140,14 @@ if __name__ == "__main__":
         estimatorReference.make_observations(
             observationEpochMargin= 1*60**2,
         ) 
-        estimatorReference.make_estimation( 
+
+        """ estimatorReference.make_estimation( 
             maximumIterations= 10,
             printEstimationOutput= False )
         initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
         # Harmonic coefficients and constants for estimation environment. 
         _, _, estimationGravParameter, estimationRefRadius = \
-                estimatorReference.environmentReal.get_harmonic_coefficients()
+                estimatorReference.environmentReal.get_harmonic_coefficients() """
 
         
 

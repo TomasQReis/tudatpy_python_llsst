@@ -4,12 +4,12 @@ from tudatpy import estimation
 
 ### Self-made imports. 
 from environment.environment import environmentClass 
-from bodies.roci_ab import rociA, rociB
+from bodies.bodies import body
 
 # TODO: Would be nice to have these in the estimator class or part of their own class. 
 # Just make them modular and easy to access...
-from obs_models.ll_sst import link_creation_one_way, observation_model_simulator_owr,\
-    simulate_observations_owr, extract_data_observations_owr
+from obs_models.ll_sst import one_way_range_link_definitions, one_way_range_observation_simulator,\
+    one_way_range_observations, one_way_range_get
 
 ### External imports.
 import numpy as np
@@ -92,13 +92,13 @@ class estimatorClass ():
                         self.environmentReal.spacecrafts[0]]
 
         # Create observation links.
-        self.observationType, self.observationLinkDefintions = link_creation_one_way(
+        self.observationType, self.observationLinkDefintions = one_way_range_link_definitions(
             transmitters= transmitters,
             receivers= receivers
         )
 
-        # Create observation model simulator.
-        self.observationSimulator, self.observationSettings = observation_model_simulator_owr(
+        # Create observation model simulator. 
+        self.observationSimulator, self.observationSettings = one_way_range_observation_simulator(
             owrLinkDefinitions= self.observationLinkDefintions,
             bodies= self.environmentReal.systemOfBodies
         )
@@ -112,7 +112,7 @@ class estimatorClass ():
         noiseAmplitude = 0.0
 
         # Simulate observations.
-        self.observationCollection = simulate_observations_owr(
+        self.observationCollection = one_way_range_observations(
             observationTimes= observationEpochs.tolist(),
             linkEndsPerObservatble= linkEndsPerObservable,
             owrObservationSimulator= self.observationSimulator,
@@ -120,12 +120,23 @@ class estimatorClass ():
             noiseAmplitude= noiseAmplitude
         )
 
-        ### Save observations. 
-        # TODO: Generalize for all transmitters. 
-        self.observations, self.observationTimes = extract_data_observations_owr(
+    def get_observations(
+            self,
+            transmitter: body,
+    ):
+        """Returns simulated observations for the requested transmitter.
+        Args:
+        - transmitter (body): Transmitter for desired observations.
+        Returns: 
+        - observations (NDArray): Array with observations.
+        - observationTimes (NDArray): Array with observation epochs. """
+
+        observations, observationTimes = one_way_range_get(
             observationCollection= self.observationCollection,
-            transmitter= self.environmentReal.spacecrafts[0]
+            transmitter= transmitter 
         )
+
+        return observations, observationTimes 
 
     def make_estimation ( 
             self,
@@ -136,7 +147,7 @@ class estimatorClass ():
     ):
 
         ### Estimation parameters.
-        # Initial state.
+        # Initial state. 
         estimationParameters = dynamics.parameters_setup.initial_states(
             propagator_settings= self.environmentReference.arcPropagationSettings,
             bodies= self.environmentReference.systemOfBodies
@@ -239,7 +250,7 @@ def estimate_with_observation_noise(
 
     dopplerNoiseSigmaList: NDArray = np.zeros(1),
     sstRangeSigmaList: NDArray = np.zeros(1)
-    ) -> NDArray:
+    ) -> None:
     """Performs a set of estimates that vary the observations noise. NOTE this
     does not apply noise on acceleration values, only DSN doppler and sst range
     observations. Returns two arrays with the stored noise combinations and 
@@ -269,8 +280,8 @@ def estimate_with_observation_noise(
             
             # Create observations using noise values. 
             estimator.make_observations(
-                dopplerNoiseSigma = dopplerNoiseSigma,
-                sstRangeSigma = sstRangeSigma
+                #dopplerNoiseSigma = dopplerNoiseSigma,
+                #sstRangeSigma = sstRangeSigma
             )
 
             # Estimate
