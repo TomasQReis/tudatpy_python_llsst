@@ -99,12 +99,6 @@ class estimatorClass ():
 
         observationsOneWayRange.make_link_definitions()
 
-        """ # Create observation links.
-        self.observationType, self.observationLinkDefintions = one_way_range_link_definitions(
-            transmitters= transmitters,
-            receivers= receivers
-        ) """
-
         # Create observation model simulator. 
         self.observationSimulator, self.observationSettings = one_way_range_observation_simulator(
             owrLinkDefinitions= observationsOneWayRange.linkDefinitions,

@@ -12,7 +12,7 @@ from tudatpy import estimation
 from tudatpy.estimation.observations_setup import random_noise
 from tudatpy.estimation.observations_setup.observations_simulation_settings import tabulated_simulation_settings
 
-from tudatpy.estimation.observable_models_setup.model_settings import ObservableType
+from tudatpy.estimation.observable_models_setup.model_settings import ObservableType, ObservationModelSettings
 from tudatpy.estimation.observable_models_setup.links import LinkEndType, LinkDefinition
 from tudatpy.estimation.observable_models_setup import links
 
@@ -75,3 +75,24 @@ class observationsClass ():
                 estimation.observable_models_setup.links.link_definition( linkEndIds ))
 
         self.linkDefinitions = linkDefinitions
+
+    # Defined for each different observation model. 
+    def make_observation_model_settings( self ) -> None: 
+        self.observationModelSettings : Sequence[ObservationModelSettings]
+
+    # Makes observation simulation settings. Needs observation model settings. 
+    def make_observation_simulation_settings(
+        self,
+        systemOfBodiesReal: SystemOfBodies
+    ):
+
+        # Empty light time corrections settings. 
+        # NOTE: As of now unused. 
+        lightTimeCorrectionSettings = []
+    
+        # Create observational simulator. 
+        owrObservationSimulator = estimation.observations_setup.observations_simulation_settings.create_observation_simulators(
+            observation_settings= self.observationModelSettings,
+            bodies= systemOfBodiesReal
+        )
+    
