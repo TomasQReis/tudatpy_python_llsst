@@ -37,4 +37,4 @@ for i in range(len(arr1)):
         rowIdx = i*len(arr2) + j
         combinations[rowIdx] = [arr1[i], arr2[j]]
 
-print( combinations )
+print(combinations)

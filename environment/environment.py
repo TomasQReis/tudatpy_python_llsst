@@ -107,7 +107,6 @@ def check_arc_timespan_limit( arcLength: float, timeSpan: float ):
     else:
         return True
 
-
 # Load spice kernels and convert time epochs to seconds since J2000. 
 def load_spice(simStartDate: list, 
                simEndDate: list, 

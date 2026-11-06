@@ -3,7 +3,7 @@ from environment.low_fidelity import *
 from environment.environment import *
 from environment.moon_environment import moonEnvironment, MOONRADIUS
 
-from obs_models.ll_sst import *
+from observations.ll_sst import *
 
 from bodies.bodies import *
 from bodies.roci_ab import *
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     #
     # Given as [Year, Month, Day]
     simStartDate    = [2001, 1, 1, 0, 0, 0]
-    simEndDate      = [2001, 1, 5, 0, 0, 0]
+    simEndDate      = [2001, 1, 4, 0, 0, 0]
 
     # Propagation time step size. 
     propTimeStep = 240.0     # [s]
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         )
 
     ### TEST ESTIMATION PROCESS ###
-    if testEstimation := True:
+    if testEstimation := False:
         # Creates estimator. 
         estimatorReference = estimatorClass(
             environmentReal= environmentReal,
@@ -141,18 +141,16 @@ if __name__ == "__main__":
             observationEpochMargin= 1*60**2,
         ) 
 
-        """ estimatorReference.make_estimation( 
-            maximumIterations= 10,
+        estimatorReference.make_estimation( 
+            maximumIterations= 5,
             printEstimationOutput= False )
         initialStates, estimatedCosCoeffs, estimatedSinCoeffs = estimatorReference.get_final_estimates()
         # Harmonic coefficients and constants for estimation environment. 
         _, _, estimationGravParameter, estimationRefRadius = \
-                estimatorReference.environmentReal.get_harmonic_coefficients() """
-
-        
+                estimatorReference.environmentReal.get_harmonic_coefficients()
 
     ##### For loop for testing chaging orbital parameters vs estimate. #####
-    if testOrbitalParameters := False:
+    if testOrbitalParameters := True:
         lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
         lineStyles = ["-", "--", "-.", ":"]
 
@@ -183,7 +181,7 @@ if __name__ == "__main__":
                 skipTimespanCheck= True
                 )
             # Add simulation time. 
-            simEndEpoch= simEndEpoch + 8 *24*60**2
+            simEndEpoch= simEndEpoch + 4 *24*60**2
             
             # Propagation time step size. 
             propTimeStep = 360.0     # [s]
@@ -230,14 +228,14 @@ if __name__ == "__main__":
             ### Produce estimate. 
             # Creates estimator. 
             estimatorReference = estimatorClass(
-                referenceEnvironment= environmentReality,
-                estimationEnvironment= environmentReference,
+                environmentReal= environmentReality,
+                environmentReference= environmentReference,
     
-                referenceArcLength= arcLength,
-                estimationArcLength= arcLength,
+                arcLengthReal= arcLength,
+                arcLengthReference= arcLength,
     
-                referenceHarmonicsDegree= referenceDegree,
-                estimationHarmonicsDegree= referenceDegree
+                harmonicsDegreeReal= referenceDegree,
+                harmonicsDegreeReference= referenceDegree
             )
 
             # Initial state offset for each spacecraft. 

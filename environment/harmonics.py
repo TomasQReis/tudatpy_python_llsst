@@ -65,13 +65,13 @@ class shModelClass ():
         ### TODO: Remove if you end up adding gravitational parameter and
         # or reference radius to estimation outputs. 
         # Extracts estimation environment. 
-        estimationEnvironment = self.inputHarmonics.estimationEnvironment
+        estimationEnvironment = self.inputHarmonics.environmentReference
 
         # Extracts gravity parameter and reference radius. 
         _, _, self.gravityParameter, self.referenceRadius = \
             estimationEnvironment.get_harmonic_coefficients()
 
-        self.harmonicsDegree = self.inputHarmonics.estimationHarmonicsDegree
+        self.harmonicsDegree = self.inputHarmonics.harmonicsDegreeReference
 
     def get_coefficient_index ( self, degree: int ):
         # Coefficient max indices. 

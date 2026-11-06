@@ -2,13 +2,14 @@
 from tudatpy import dynamics
 from tudatpy import estimation
 
-### Self-made imports. 
+### Local imports. 
 from environment.environment import environmentClass 
 from bodies.bodies import body
+from observations.one_way_range import oneWayObservationsClass
 
 # TODO: Would be nice to have these in the estimator class or part of their own class. 
 # Just make them modular and easy to access...
-from obs_models.ll_sst import one_way_range_link_definitions, one_way_range_observation_simulator,\
+from observations.ll_sst import one_way_range_link_definitions, one_way_range_observation_simulator,\
     one_way_range_observations, one_way_range_get
 
 ### External imports.
@@ -91,21 +92,28 @@ class estimatorClass ():
         transmitters = [self.environmentReal.groundStations[0], 
                         self.environmentReal.spacecrafts[0]]
 
-        # Create observation links.
-        self.observationType, self.observationLinkDefintions = one_way_range_link_definitions(
+        observationsOneWayRange = oneWayObservationsClass(
             transmitters= transmitters,
             receivers= receivers
         )
 
+        observationsOneWayRange.make_link_definitions()
+
+        """ # Create observation links.
+        self.observationType, self.observationLinkDefintions = one_way_range_link_definitions(
+            transmitters= transmitters,
+            receivers= receivers
+        ) """
+
         # Create observation model simulator. 
         self.observationSimulator, self.observationSettings = one_way_range_observation_simulator(
-            owrLinkDefinitions= self.observationLinkDefintions,
+            owrLinkDefinitions= observationsOneWayRange.linkDefinitions,
             bodies= self.environmentReal.systemOfBodies
         )
 
         # Dictionary of observation types and their respective link definitions. 
         linkEndsPerObservable = {
-            self.observationType: self.observationLinkDefintions
+            observationsOneWayRange.observationType: observationsOneWayRange.linkDefinitions
         }
 
         # TODO: Generalize noise input for observations. 

@@ -115,6 +115,8 @@ def one_way_range_observation_simulator(
     return owrObservationSimulator, owrObservationSettings
 
 
+
+
 # Create parameters for the simulated observations. 
 def one_way_range_observations(
         observationTimes: list,
@@ -166,6 +168,8 @@ def one_way_range_observations(
                 reference_link_end_type= referenceLink
             ) )
 
+    
+
     ### -----------------------------------------------------------------------
     ### NOTE: Additional simulated observation settings should be added here
     ### after the nominal settings are created.
@@ -180,6 +184,7 @@ def one_way_range_observations(
     
     ### -----------------------------------------------------------------------
 
+    # TODO: Separate function for simulating observations. 
     # Simulates observations. 
     owrSimulatedObservations = estimation.observations_setup.observations_wrapper.simulate_observations(
         simulation_settings= owrSimulatedObservationSettings ,
@@ -188,6 +193,8 @@ def one_way_range_observations(
     )
 
     return owrSimulatedObservations
+
+
 
 
 # Extract specific values from observation simulations.  
