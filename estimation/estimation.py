@@ -16,7 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-class estimator ():
+class estimatorClass ():
     def __init__(
         self,
         referenceEnvironment: environmentClass,
@@ -42,7 +42,7 @@ class estimator ():
 
     def propagate_reality ( 
         self,
-        initialStateOffset: NDArray 
+        initialStateOffset: NDArray= np.array([0,0,0,0,0,0]),
         ):
 
         ### Propagate reality 
@@ -71,12 +71,10 @@ class estimator ():
 
             skipArcCheck= True      # TODO: Remove when done testing. 
         )
-
     def make_observations ( 
         self,
-        observationEpochMargin: float     
+        observationEpochMargin: float= 1*60**2,
         ):
-
         ### Simulate observations. 
         # Observation epoch. 
         observationEpochStart = self.referenceEnvironment.simStartEpoch + observationEpochMargin
@@ -132,18 +130,10 @@ class estimator ():
     def make_estimation ( 
             self,
             maximumIterations: int= 10,
-            initialStateOffset: NDArray= np.array([0,0,0,0,0,0]),
-            observationEpochMargin: float= 1*60**2,
+            
+            
             printEstimationOutput: bool= True,
     ):
-        ### Propagate reference. 
-        self.propagate_reality(
-            initialStateOffset= initialStateOffset, 
-        )
-        ### Make observations.
-        self.make_observations(
-            observationEpochMargin= observationEpochMargin
-        )
 
         ### Estimation parameters.
         # Initial state.
@@ -243,169 +233,45 @@ class estimator ():
 
         return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
 
+def estimate_observation_noise(
+    estimator: estimatorClass, 
+    initialStateOffset: NDArray= np.array( [0,0,0,0,0,0] ),
 
-class shModelClass (): 
-    def __init__(
-        self,
-        inputHarmonics: environmentClass | estimator | None= None,
-        harmonicsDegree: int= 2,
-
-        cosCoeffs = [],
-        sinCoeffs = [],
-
-        gravityParameter: float= 0,
-        referenceRadius: float= 0,
-        ) -> None:
-
-        self.inputHarmonics = inputHarmonics
-
-        if isinstance ( inputHarmonics, environmentClass ): self.make_harmonics_from_environment()
-        elif isinstance ( inputHarmonics, estimator ): self.make_harmonics_from_estimate()
-        elif ( np.isfinite(cosCoeffs).all() and np.isfinite(sinCoeffs).all() and gravityParameter and referenceRadius ):
-            # NOTE: This option is extremely sensitive to well-formatted inputs. 
-            self.cosCoeffs = np.array( cosCoeffs )
-            self.sinCoeffs = np.array( sinCoeffs )
-            self.gravityParameter = gravityParameter
-            self.referenceRadius = referenceRadius
-            self.harmonicsDegree = harmonicsDegree
-        else: raise RuntimeError(
-            f"Input Harmonics of wrong type: {type(inputHarmonics)}"
-        )
-
-    def make_harmonics_from_environment( self ):
-        """Takes spherical harmonic coefficient data from environment."""
-
-        if not isinstance( self.inputHarmonics, environmentClass):
-            raise TypeError(
-                f"Input not environmentClass: {type(self.inputHarmonics)}"
-            )
-
-        self.cosCoeffs, self.sinCoeffs, self.gravityParameter, self.referenceRadius\
-            = self.inputHarmonics.get_harmonic_coefficients()
-
-        self.harmonicsDegree = self.inputHarmonics.harmonicsMaxDegree
-        
-    def make_harmonics_from_estimate( self ):
-        """Takes spherical harmonic coefficient data from estimator. Note, 
-        assumes estimation has already been completed for this estimator."""
-
-        if not isinstance( self.inputHarmonics, estimator):
-            raise TypeError(
-                f"Input not environmentClass: {type(self.inputHarmonics)}"
-            )
-
-        # Extracts coefficients from estimation results. 
-        _, self.cosCoeffs, self.sinCoeffs = self.inputHarmonics.get_final_estimates()
-
-        ### TODO: Remove if you end up adding gravitational parameter and
-        # or reference radius to estimation outputs. 
-        # Extracts estimation environment. 
-        estimationEnvironment = self.inputHarmonics.estimationEnvironment
-
-        # Extracts gravity parameter and reference radius. 
-        _, _, self.gravityParameter, self.referenceRadius = \
-            estimationEnvironment.get_harmonic_coefficients()
-
-        self.harmonicsDegree = self.inputHarmonics.estimationHarmonicsDegree
-
-    def get_coefficient_index ( self, degree: int ):
-        # Coefficient max indices. 
-        cosIdx = int( ( (degree - 1) * (degree + 4) ) / 2 )
-        sinIdx = int( ( degree**2 + degree - 2) / 2 )
-
-        return cosIdx, sinIdx
-
-    def __sub__( self, other: shModelClass ) -> shModelClass:
-        """Outputs difference between two shModelClass harmonics coefficients.
-        Args: ---
-        - other (shModelClass): SH model being subtracted from self model. 
-        Returns: --- 
-        - resultSHModel (shModelClass): "self" minus "other" SH model class."""
-        
-        # Checks which shModel has higher max degree. 
-        if self.harmonicsDegree <= other.harmonicsDegree:
-            # Maximum idices for larger model (Other)
-            cosIdx, sinIdx = self.get_coefficient_index ( self.harmonicsDegree )
-
-            # Subtracts coefficients. 
-            resultCosCoeffs = self.cosCoeffs - other.cosCoeffs[:cosIdx]
-            resultSinCoeffs = self.sinCoeffs - other.sinCoeffs[:sinIdx]
-
-            # Output harmonics degree.
-            resultDegree = self.harmonicsDegree
-        else:
-            # Maximum idices for larger model (Self)
-            cosIdx, sinIdx = self.get_coefficient_index ( other.harmonicsDegree )
-
-            # Subtracts coefficients. 
-            resultCosCoeffs = self.cosCoeffs[:cosIdx] - other.cosCoeffs
-            resultSinCoeffs = self.sinCoeffs[:sinIdx] - other.sinCoeffs     
-
-            # Output harmonics degree.
-            resultDegree = other.harmonicsDegree   
-
-        # Creates SH object from results. 
-        resultSHModel = shModelClass(
-            inputHarmonics= None, # type: ignore
-            cosCoeffs= resultCosCoeffs,
-            sinCoeffs= resultSinCoeffs,
-            gravityParameter= self.gravityParameter,
-            referenceRadius= self.referenceRadius,
-            harmonicsDegree= resultDegree
-        )
-
-        return resultSHModel
-
-    def rms_per_degree( self ):
-        """Calculates the rms (And additionallity the 1-sigma value) of the self 
-        harmonics coefficients. 
-        Args: ---
-        - Self.
-        Returns: ---
-        - degrees (NDArray): Array of degrees used in rms calculation.
-        - rmsPerDegrees (NDArray): RMS value per degree. """
-
-        # Degrees.
-        degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree + 1)
-        # Empty rms list.
-        self.rmsPerDegrees = []
-
-        # Previous indices. 
-        prevCosIdx = 0
-        prevSinIdx = 0
-
-        for degree in range( self.harmonicsDegree + 1 )[2:]:
-            # Coefficient max indices. 
-            cosIdx, sinIdx = self.get_coefficient_index( degree )
-
-            # RMS of degree.
-            sumOfCosCoeffsSqrd = np.sum( self.cosCoeffs[prevCosIdx:cosIdx]**2 )
-            sumOfSinCoeffsSqrd = np.sum( self.sinCoeffs[prevSinIdx:sinIdx]**2 )
-
-            # Calculates rms for degree. 
-            rms = np.sqrt ( ( sumOfCosCoeffsSqrd + sumOfSinCoeffsSqrd ) / ( 2*degree + 1 ) )
-
-            # Appends to list. 
-            self.rmsPerDegrees.append( rms )
-
-            # Resets previous indices. 
-            prevCosIdx = cosIdx
-            prevSinIdx = sinIdx
-
-        self.rmsPerDegrees = np.array( self.rmsPerDegrees )
-
-        return degrees, self.rmsPerDegrees
-
-
-def kaula_power_rule ( maxDegree: int,
-                       kaulaCoefficient: float= 10**-5 ):
-    """Calculates the rms per degree according to the Kaula power rule."""
+    dopplerNoiseSigmaList: NDArray = np.zeros(1),
+    sstRangeSigmaList: NDArray = np.zeros(1),
     
-    # Degrees (X-axis)
-    degrees = np.arange( 2, step= 1, stop= maxDegree+1 )
+):
+    # Create index array for tested noise sigmas. 
+    testValuesArr = np.empty( (
+        len(dopplerNoiseSigmaList)*len(sstRangeSigmaList),2 
+        ) )
+    
+    # Propagate reality once.
+    estimator.propagate_reality(
+        initialStateOffset= initialStateOffset
+    )
 
-    # Kaula rule rms. (Y-axis)
-    rmsPerKaula = [ kaulaCoefficient/degree**2 for degree in range(
-        maxDegree + 1 )[2:] ]
+    ### Nested for loops
+    # NOTE: this likely the part that would benefit from multithreading. 
+    for dopplerIdx, dopplerNoiseSigma in enumerate(dopplerNoiseSigmaList):
+        for sstIdx, sstRangeSigma in enumerate(sstRangeSigmaList):
+            # Save tested values. 
+            testValuesArr[dopplerIdx *len(sstRangeSigmaList) + sstIdx] = \
+                np.array( [dopplerNoiseSigma, sstRangeSigma] )
+            
+            # Create observations using noise values. 
+            estimator.make_observations(
+                dopplerNoiseSigma = dopplerNoiseSigma,
+                sstRangeSigma = sstRangeSigma
+            )
 
-    return degrees, rmsPerKaula
+            # Estimate
+            estimator.make_estimation(
+                maximumIterations= 10,
+                printEstimationOutput= False
+            )
+
+            # Save to array
+
+    # Output array
+

@@ -1,4 +1,4 @@
-### Imports for self-made functions
+### Local imports. 
 from environment.low_fidelity import *
 from environment.environment import *
 from environment.moon_environment import moonEnvironment, MOONRADIUS
@@ -12,7 +12,9 @@ from bodies.ground_stations import *
 
 from visualization.plotting import *
 
-from estimation.estimation import estimator, shModelClass, kaula_power_rule
+from estimation.estimation import estimatorClass
+
+from environment.harmonics import shModelClass, kaula_power_rule
 
 ### External library imports.
 import numpy as np
@@ -173,7 +175,7 @@ if __name__ == "__main__":
                 skipTimespanCheck= True
                 )
             # Add simulation time. 
-            simEndEpoch= simEndEpoch + 32 *24*60**2
+            simEndEpoch= simEndEpoch + 8 *24*60**2
             
             # Propagation time step size. 
             propTimeStep = 360.0     # [s]
@@ -189,7 +191,7 @@ if __name__ == "__main__":
 
             ### Initialize environments. 
             # Reality environment. 
-            environmentDefault = moonEnvironment(
+            environmentReality = moonEnvironment(
                 level= 3,
                 simStartEpoch= simStartEpoch,   # type: ignore
                 simEndEpoch= simEndEpoch,       # type: ignore
@@ -198,11 +200,12 @@ if __name__ == "__main__":
                 spacecrafts= grailList,
                 groundStations= groundStations,
     
-                customHarmonicsBool= False,
+                customHarmonicsBool= True,
+                customHarmonicsFile= GGRX420L,
                 harmonicsMaxDegree= referenceDegree,
             )
             # Estimation Environment. 
-            environmentLP150Q = moonEnvironment(
+            environmentReference = moonEnvironment(
                     level= 3,
                     simStartEpoch= simStartEpoch,   # type: ignore
                     simEndEpoch= simEndEpoch,       # type: ignore
@@ -218,9 +221,9 @@ if __name__ == "__main__":
             
             ### Produce estimate. 
             # Creates estimator. 
-            estimatorReference = estimator(
-                referenceEnvironment= environmentDefault,
-                estimationEnvironment= environmentLP150Q,
+            estimatorReference = estimatorClass(
+                referenceEnvironment= environmentReality,
+                estimationEnvironment= environmentReference,
     
                 referenceArcLength= arcLength,
                 estimationArcLength= arcLength,
@@ -237,9 +240,9 @@ if __name__ == "__main__":
                 # Creates an initial set of environment properties. 
                 estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
                 # SH class for reference harmonics. 
-                referenceHarmonics = shModelClass( inputHarmonics= environmentDefault )
+                referenceHarmonics = shModelClass( inputHarmonics= environmentReality )
                 # SH class from LP150 environment. 
-                zeroHarmonics = shModelClass( inputHarmonics= environmentLP150Q )
+                zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
                 # Residual harmonics. 
                 deltaHarmonicsBase = referenceHarmonics.__sub__( other= zeroHarmonics )
                 degrees, rmsDeltaHarmonicsBase = deltaHarmonicsBase.rms_per_degree()
@@ -247,11 +250,15 @@ if __name__ == "__main__":
                 plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
                             label="Base Residual")
 
-            # Estimate initial states and harmonic coefficients. 
+            # Estimate initial states and harmonic coefficients.
+            estimatorReference.propagate_reality(
+                initialStateOffset= initialStateOffset,
+            )
+            estimatorReference.make_observations(
+                observationEpochMargin= 1*60**2,
+            ) 
             estimatorReference.make_estimation( 
                 maximumIterations= 10,
-                initialStateOffset= initialStateOffset,
-                observationEpochMargin= 1*60**2,
                 printEstimationOutput= False )
 
             # Save estimate values. 

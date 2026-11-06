@@ -24,6 +24,7 @@ atmoModelsDir       = "data/models/atmosphere/"
 # Gravity 
 GGRX1200A           = gravityModelsDir + "gggrx_1200a_formatted.csv"
 GGRX1200L           = gravityModelsDir + "gggrx_1200l_formatted.csv"
+GGRX420L            = gravityModelsDir + "gggrx_420a_formatted.csv"
 LP150Q              = gravityModelsDir + "lp150q_formatted.csv"
 
 ### Overall limits for arc and simulation timespans. 
