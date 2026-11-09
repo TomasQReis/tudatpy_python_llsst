@@ -72,6 +72,7 @@ class estimatorClass ():
 
             skipArcCheck= True      # TODO: Remove when done testing. 
         )
+
     def make_observations ( 
         self,
         observationEpochMargin: float= 1*60**2,
@@ -94,10 +95,17 @@ class estimatorClass ():
 
         observationsOneWayRange = oneWayObservationsClass(
             transmitters= transmitters,
-            receivers= receivers
+            receivers= receivers,
+            times= observationEpochs
         )
 
         observationsOneWayRange.make_link_definitions()
+
+        observationsOneWayRange.make_observation_model_settings()
+
+        observationsOneWayRange.make_observation_simulation_settings(
+            systemOfBodiesReal= self.environmentReal.systemOfBodies
+        )
 
         # Create observation model simulator. 
         self.observationSimulator, self.observationSettings = one_way_range_observation_simulator(
@@ -117,7 +125,7 @@ class estimatorClass ():
         self.observationCollection = one_way_range_observations(
             observationTimes= observationEpochs.tolist(),
             linkEndsPerObservatble= linkEndsPerObservable,
-            owrObservationSimulator= self.observationSimulator,
+            owrObservationSimulator= observationsOneWayRange.observationSimulator,
             bodies= self.environmentReal.systemOfBodies,
             noiseAmplitude= noiseAmplitude
         )

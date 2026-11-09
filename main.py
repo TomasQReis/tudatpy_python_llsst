@@ -159,17 +159,20 @@ if __name__ == "__main__":
         referenceDegree = 10
         estimationDegree = referenceDegree
         # Simulation Days
-        simDays = [ 4, 8, 16, 32]
+        simLengthDays = np.array( [4] ) * (24*60**2)
         # Simulation arcLengths
-        arcLengths = np.array( [24] ) 
+        arcLengths = np.array( [24] ) * (60**2) 
+        # Altitudes
+        altitudes = np.array( [50, 100, 200, 400, 800, 1600] ) *1e3  # km
         
         ### Initialize spacecraft and ground station.
         groundStations = [ grazStation ]
 
+        changingParameter = arcLengths 
         ### For loop
-        for i in range( len(arcLengths) ):
+        for i in range( len(changingParameter) ):
 
-            print(f"Estimation {i+1} out of {len(arcLengths)}")
+            print(f"Estimation {i+1} out of {len(changingParameter)}")
 
             ### Altered parameter.
             # Given as [Year, Month, Day]
@@ -181,19 +184,19 @@ if __name__ == "__main__":
                 skipTimespanCheck= True
                 )
             # Add simulation time. 
-            simEndEpoch= simEndEpoch + 4 *24*60**2
+            simEndEpoch= simEndEpoch + simLengthDays[i]
             
             # Propagation time step size. 
             propTimeStep = 360.0     # [s]
             # Arc Length. 
-            arcLength = arcLengths[i] * 60**2
+            arcLength = arcLengths[i]
 
             # Altitude. 
-            altitude = 55e3
+            altitude = altitudes[i]
             semiMajorAxis = MOONRADIUS + altitude
 
             # Label for plots.
-            alteredParameterLabel = f"ArcLength:{arcLengths[i]} hrs"
+            alteredParameterLabel = f"Altitude:{altitudes[i]/1e3} km"
 
             ### Initialize environments. 
             # Reality environment. 
@@ -288,7 +291,7 @@ if __name__ == "__main__":
         plt.xlabel("Harmonics Degree")
         plt.legend()
 
-        plt.title(f"Residuals for 32 day simulation.")
+        plt.title(f"Residuals for 16 day propagation. 24hr arcs.")
 
         plt.show()
 
