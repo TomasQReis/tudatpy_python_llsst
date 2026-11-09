@@ -167,12 +167,11 @@ if __name__ == "__main__":
         # Altitudes
         altitudes = np.array( [50, 100, 200, 400, 800, 1600] ) * (1e3)  # km
         # Longitude of ascending node.
-        longitudes = np.array( [0, 0, 0, 0] ) # degrees
-        
-        ### Initialize spacecraft and ground station.
-        groundStations = [ grazStation ]
+        longitudes = np.array( [ 0 ] ) # degrees
 
-        changingParameter = longitudes 
+        rangeNoiseSigmas = [0, 1e-6, 1e-4, 1e-2, 1]
+
+        changingParameter = rangeNoiseSigmas 
         ### For loop
         for i in range( len(changingParameter) ):
 
@@ -201,7 +200,7 @@ if __name__ == "__main__":
             semiMajorAxis = MOONRADIUS + altitude
 
             # Longitude of ascending node. 
-            longitude = np.deg2rad( longitudes[i] )
+            longitude = np.deg2rad( longitudes[0] )
 
             ## Change spacecraft initial keplerian elements. 
             # Semi-major axis.
@@ -212,8 +211,8 @@ if __name__ == "__main__":
             grailList[1].keplerianElems[4] = longitude
 
             # Label for plots.
-            alteredParameterLabel = f"Longtidue of Asc. Node:{longitudes[i]} º"
-            plotTitle = f"Residuals vs Longitude of Ascending Node. Duration:{simLengthDays[0]/(24*60**2)} days"
+            alteredParameterLabel = f"Range $\sigma$:{rangeNoiseSigmas[i]} m" # type: ignore
+            plotTitle = f"Residuals vs Range noise. Duration:{simLengthDays[0]/(24*60**2)} days"
 
             ### Initialize environments. 
             # Reality environment. 
@@ -241,7 +240,7 @@ if __name__ == "__main__":
                 groundStations= groundStations,
         
                 customHarmonicsBool= True,
-                customHarmonicsFile= LP150Q,
+                customHarmonicsFile= GGRX420L,
                 harmonicsMaxDegree= estimationDegree,
             )
             
@@ -274,7 +273,7 @@ if __name__ == "__main__":
                 degrees, rmsDeltaHarmonicsBase = deltaHarmonicsBase.rms_per_degree()
                 # Plots.
                 plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
-                            label="Base Residual")
+                            label="Clean Estimation Residual")
 
             # Estimate initial states and harmonic coefficients.
             estimatorReference.propagate_reality(
@@ -282,7 +281,10 @@ if __name__ == "__main__":
             )
             estimatorReference.make_observations(
                 observationEpochMargin= 1*60**2,
+
+                rangeNoiseSigmas= [rangeNoiseSigmas[i]] * 4,
             ) 
+
             estimatorReference.make_estimation( 
                 maximumIterations= 10,
                 printEstimationOutput= False )

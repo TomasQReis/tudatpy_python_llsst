@@ -1,6 +1,8 @@
 ### Tudat imports. 
 from tudatpy import dynamics
 from tudatpy import estimation
+from tudatpy.estimation.observable_models_setup.model_settings import \
+    one_way_range_type, two_way_instantaneous_doppler_type
 
 ### Local imports. 
 from environment.environment import environmentClass 
@@ -78,6 +80,9 @@ class estimatorClass ():
     def make_observations ( 
         self,
         observationEpochMargin: float= 1*60**2,
+
+        rangeNoiseSigmas: list[ float ]= [],
+        dopplerNoiseSigmas: list[ float ]= []
         ):
         ### Simulate observations. 
         # Observation epoch. 
@@ -123,6 +128,23 @@ class estimatorClass ():
 
         self.observations.make_observation_simulation_settings()
 
+        # Adds noise to range observations.  
+        if any( rangeNoiseSigmas ):
+            print("Range Noise Added")
+            self.observations.set_observation_simulator_settings_noise(
+                observableTypes= [ one_way_range_type ] * len( rangeNoiseSigmas ),
+                noiseAmplitudes= rangeNoiseSigmas 
+            ) 
+        # Adds noise to doppler observations. 
+        if any( dopplerNoiseSigmas ):
+            print("Doppler Noise Added")
+            self.observations.set_observation_simulator_settings_noise(
+                observableTypes= [ two_way_instantaneous_doppler_type ] * len( dopplerNoiseSigmas ),
+                noiseAmplitudes= dopplerNoiseSigmas
+            )
+        if not any( rangeNoiseSigmas ) and not any( dopplerNoiseSigmas ):
+            print("Clean Observations")
+            
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()
 
@@ -276,7 +298,7 @@ def estimate_with_observation_noise(
     )
 
     ### Nested for loops
-    # NOTE: this likely the part that would benefit from multithreading. 
+    # NOTE: this is likely the part that would benefit from multithreading. 
     for dopplerIdx, dopplerNoiseSigma in enumerate(dopplerNoiseSigmaList):
         for sstIdx, sstRangeSigma in enumerate(sstRangeSigmaList):
             # Save tested values. 

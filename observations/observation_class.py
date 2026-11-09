@@ -11,7 +11,8 @@ from environment.environment import environmentClass
 
 ### Tudat imports. 
 from tudatpy import estimation
-from tudatpy.estimation.observations_setup import random_noise, observations_wrapper
+from tudatpy.estimation.observations_setup import \
+    random_noise, observations_wrapper
 from tudatpy.estimation.observations_setup.observations_simulation_settings import \
     tabulated_simulation_settings, create_observation_simulators
 
@@ -21,6 +22,7 @@ from tudatpy.estimation.observable_models_setup import links
 
 from tudatpy.dynamics.environment import SystemOfBodies
 from tudatpy.estimation.observable_models_setup import light_time_corrections
+
 
 
 # Merges a list of observation classes.  
@@ -235,5 +237,18 @@ class observationsClass ():
         self,
         observableTypes: Sequence[ ObservableType ],
         noiseAmplitudes: Sequence[ float ],
-    ): pass
-  
+    ):
+        
+        # Iterates throuhg observable types and adds matching gaussian noise. 
+        for noiseIndex, observableType in enumerate( observableTypes ):
+            # TODO: Warning if no observations of the specified type are detected.
+
+            random_noise.add_gaussian_noise_to_observable_for_link_ends(
+                observation_simulation_settings_list= self.observationSimulatorSettings,
+                noise_amplitude= noiseAmplitudes[noiseIndex],
+                observable_type= observableType,
+                link_definition= self.linkDefinitions[noiseIndex]
+            )
+
+        
+
