@@ -7,12 +7,14 @@ from numpy.typing import NDArray
 
 ### Local imports.
 from bodies.bodies import spacecraft, groundStation, body
+from environment.environment import environmentClass
 
 ### Tudat imports. 
 from tudatpy import estimation
-from tudatpy.estimation.observations_setup import random_noise
+from tudatpy.estimation.observations_setup import random_noise, observations_wrapper
 from tudatpy.estimation.observations_setup.observations_simulation_settings import \
     tabulated_simulation_settings, create_observation_simulators
+
 from tudatpy.estimation.observable_models_setup.model_settings import ObservableType, ObservationModelSettings
 from tudatpy.estimation.observable_models_setup.links import LinkEndType, LinkDefinition
 from tudatpy.estimation.observable_models_setup import links
@@ -31,7 +33,9 @@ class observationsClass ():
         self,
         transmitters: Sequence[body],
         receivers: Sequence[body],
-        times: Sequence[float]) -> None:
+        times: Sequence[float],
+        
+        environmentReal: environmentClass) -> None:
 
         if len( transmitters ) != len( receivers ):
             raise ValueError(
@@ -42,6 +46,8 @@ class observationsClass ():
         self.transmitters = transmitters
         self.receivers = receivers 
         self.times = times
+
+        self.systemOfBodiesReal = environmentReal.systemOfBodies
 
     def make_link_definitions( self ) -> None:
 
@@ -97,7 +103,6 @@ class observationsClass ():
     # Makes observation simulation settings. Needs observation model settings. 
     def make_observation_simulation_settings(
         self,
-        systemOfBodiesReal: SystemOfBodies
     ):
 
         # Empty light time corrections settings. 
@@ -107,7 +112,7 @@ class observationsClass ():
         # Create observational simulator. 
         self.observationSimulator = create_observation_simulators(
             observation_settings= self.observationModelSettings,
-            bodies= systemOfBodiesReal
+            bodies= self.systemOfBodiesReal
         )
 
         # Adds tabulated observation simulator settings for each link.
@@ -119,7 +124,7 @@ class observationsClass ():
                 )
             )
 
-        # NOTE: This snippet is commented out as it may not be needed.
+        # NOTE: The following snippet is commented out as it may not be needed.
         # Previously it solved an issue with the ground-stations causing
         # light-time correction errors that crashed the estimation. 
         # Left here "just in case". 
@@ -140,6 +145,19 @@ class observationsClass ():
                     # Depending on ground station link end chooses receiver or transmitter. 
                     reference_link_end_type= referenceLink
         ) ) """
+
+    def simulate_observation( self ):
+        """Simulates observations provided simulator and its settings have been
+        previously created."""
+
+        self.simulatedObservations = observations_wrapper.simulate_observations(
+            simulation_settings= self.observationSimulatorSettings,
+            observation_simulators= self.observationSimulator,
+            bodies= self.systemOfBodiesReal
+        )
+
+        return self.simulatedObservations
+        
 
     # Adds observation noise to existing simulator settings. 
     def set_observation_simulator_settings_noise(

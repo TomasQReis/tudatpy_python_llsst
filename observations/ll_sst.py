@@ -196,7 +196,6 @@ def one_way_range_observations(
 
 
 
-
 # Extract specific values from observation simulations.  
 def one_way_range_get(
         observationCollection: estimation.observations.ObservationCollection,

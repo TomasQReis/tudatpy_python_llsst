@@ -93,42 +93,24 @@ class estimatorClass ():
         transmitters = [self.environmentReal.groundStations[0], 
                         self.environmentReal.spacecrafts[0]]
 
+        ### Observations creation.
+        # One-way range observations. 
         observationsOneWayRange = oneWayObservationsClass(
             transmitters= transmitters,
             receivers= receivers,
-            times= observationEpochs
+            times= observationEpochs,
+            environmentReal= self.environmentReal
         )
-
         observationsOneWayRange.make_link_definitions()
-
         observationsOneWayRange.make_observation_model_settings()
 
-        observationsOneWayRange.make_observation_simulation_settings(
-            systemOfBodiesReal= self.environmentReal.systemOfBodies
-        )
+        # Converts to overall observations class.
+        self.observations = observationsOneWayRange
 
-        # Create observation model simulator. 
-        self.observationSimulator, self.observationSettings = one_way_range_observation_simulator(
-            owrLinkDefinitions= observationsOneWayRange.linkDefinitions,
-            bodies= self.environmentReal.systemOfBodies
-        )
+        self.observations.make_observation_simulation_settings()
 
-        # Dictionary of observation types and their respective link definitions. 
-        linkEndsPerObservable = {
-            observationsOneWayRange.observationType: observationsOneWayRange.linkDefinitions
-        }
-
-        # TODO: Generalize noise input for observations. 
-        noiseAmplitude = 0.0
-
-        # Simulate observations.
-        self.observationCollection = one_way_range_observations(
-            observationTimes= observationEpochs.tolist(),
-            linkEndsPerObservatble= linkEndsPerObservable,
-            owrObservationSimulator= observationsOneWayRange.observationSimulator,
-            bodies= self.environmentReal.systemOfBodies,
-            noiseAmplitude= noiseAmplitude
-        )
+        # Simulates observations. 
+        self.observationCollection = self.observations.simulate_observation()
 
     def get_observations(
             self,
@@ -189,7 +171,7 @@ class estimatorClass ():
         estimator = estimation.estimation_analysis.Estimator(
             bodies= self.environmentReference.systemOfBodies,
             estimated_parameters= parameterSet,
-            observation_settings= self.observationSettings,
+            observation_settings= self.observations.observationModelSettings,
             propagator_settings= self.environmentReference.arcPropagationSettings,
             integrate_on_creation= False
         )
