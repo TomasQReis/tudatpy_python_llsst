@@ -9,7 +9,7 @@ from observations.observation_class import observationsClass
 class oneWayObservationsClass ( observationsClass ):
 
     # Sets observation type as one-way range. 
-    observationType = one_way_range_type
+    observationType = [one_way_range_type]
 
     def make_observation_model_settings(self) -> None:
 

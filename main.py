@@ -156,25 +156,29 @@ if __name__ == "__main__":
 
         ### Environment and estimation parameters. 
         # Reference degree. 
-        referenceDegree = 10
+        referenceDegree = 12
         estimationDegree = referenceDegree
         # Simulation Days
-        simLengthDays = np.array( [4] ) * (24*60**2)
+        simLengthDays = np.array( [12] ) * (24*60**2)
         # Simulation arcLengths
         arcLengths = np.array( [24] ) * (60**2) 
+
+        ### Spacecraft values. 
         # Altitudes
-        altitudes = np.array( [50, 100, 200, 400, 800, 1600] ) *1e3  # km
+        altitudes = np.array( [50, 100, 200, 400, 800, 1600] ) * (1e3)  # km
+        # Longitude of ascending node.
+        longitudes = np.array( [0, 0, 0, 0] ) # degrees
         
         ### Initialize spacecraft and ground station.
         groundStations = [ grazStation ]
 
-        changingParameter = arcLengths 
+        changingParameter = longitudes 
         ### For loop
         for i in range( len(changingParameter) ):
 
             print(f"Estimation {i+1} out of {len(changingParameter)}")
 
-            ### Altered parameter.
+            ### Alter time-related parameters.
             # Given as [Year, Month, Day]
             simStartDate    = [2001, 1, 1, 0, 0, 0]
             simEndDate      = [2001, 1, 1, 0, 0, 0]
@@ -184,19 +188,32 @@ if __name__ == "__main__":
                 skipTimespanCheck= True
                 )
             # Add simulation time. 
-            simEndEpoch= simEndEpoch + simLengthDays[i]
+            simEndEpoch= simEndEpoch + simLengthDays[0]
             
             # Propagation time step size. 
             propTimeStep = 360.0     # [s]
             # Arc Length. 
-            arcLength = arcLengths[i]
+            arcLength = arcLengths[0]
 
+            ### Alter spacecraft-related parameters. 
             # Altitude. 
-            altitude = altitudes[i]
+            altitude = altitudes[0]
             semiMajorAxis = MOONRADIUS + altitude
 
+            # Longitude of ascending node. 
+            longitude = np.deg2rad( longitudes[i] )
+
+            ## Change spacecraft initial keplerian elements. 
+            # Semi-major axis.
+            grailList[0].keplerianElems[0] = semiMajorAxis
+            grailList[1].keplerianElems[0] = semiMajorAxis
+            # Longitude of ascending node. 
+            grailList[0].keplerianElems[4] = longitude
+            grailList[1].keplerianElems[4] = longitude
+
             # Label for plots.
-            alteredParameterLabel = f"Altitude:{altitudes[i]/1e3} km"
+            alteredParameterLabel = f"Longtidue of Asc. Node:{longitudes[i]} º"
+            plotTitle = f"Residuals vs Longitude of Ascending Node. Duration:{simLengthDays[0]/(24*60**2)} days"
 
             ### Initialize environments. 
             # Reality environment. 
@@ -211,21 +228,21 @@ if __name__ == "__main__":
     
                 customHarmonicsBool= True,
                 customHarmonicsFile= GGRX420L,
-                harmonicsMaxDegree= referenceDegree,
+                harmonicsMaxDegree= estimationDegree,
             )
             # Estimation Environment. 
             environmentReference = moonEnvironment(
-                    level= 3,
-                    simStartEpoch= simStartEpoch,   # type: ignore
-                    simEndEpoch= simEndEpoch,       # type: ignore
-                    timeStep= propTimeStep,         # type: ignore
-            
-                    spacecrafts= grailList,
-                    groundStations= groundStations,
-            
-                    customHarmonicsBool= True,
-                    customHarmonicsFile= LP150Q,
-                    harmonicsMaxDegree= estimationDegree,
+                level= 3,
+                simStartEpoch= simStartEpoch,   # type: ignore
+                simEndEpoch= simEndEpoch,       # type: ignore
+                timeStep= propTimeStep,         # type: ignore
+        
+                spacecrafts= grailList,
+                groundStations= groundStations,
+        
+                customHarmonicsBool= True,
+                customHarmonicsFile= LP150Q,
+                harmonicsMaxDegree= estimationDegree,
             )
             
             ### Produce estimate. 
@@ -280,9 +297,7 @@ if __name__ == "__main__":
             plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[i % len(lineStyles)],
                      color= lineColors[i % len(lineColors)], label= alteredParameterLabel )
 
-            # Change spacecraft keplerian elements. 
-            grailList[0].keplerianElems[0] = semiMajorAxis
-            grailList[1].keplerianElems[0] = semiMajorAxis
+            
 
         plt.yscale( "log" )
 
@@ -291,7 +306,7 @@ if __name__ == "__main__":
         plt.xlabel("Harmonics Degree")
         plt.legend()
 
-        plt.title(f"Residuals for 16 day propagation. 24hr arcs.")
+        plt.title( plotTitle )
 
         plt.show()
 

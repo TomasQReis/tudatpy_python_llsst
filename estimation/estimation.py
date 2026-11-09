@@ -5,6 +5,8 @@ from tudatpy import estimation
 ### Local imports. 
 from environment.environment import environmentClass 
 from bodies.bodies import body
+
+from observations.observation_class import merge_observations
 from observations.one_way_range import oneWayObservationsClass
 
 # TODO: Would be nice to have these in the estimator class or part of their own class. 
@@ -83,29 +85,41 @@ class estimatorClass ():
         observationEpochEnd = self.environmentReal.simEndEpoch - observationEpochMargin
 
         observationEpochs = np.arange( observationEpochStart,                       # type: ignore
-                                      step= self.environmentReal.timeStep ,    # type: ignore
+                                      step= self.environmentReal.timeStep ,         # type: ignore
                                       stop= observationEpochEnd )                   # type: ignore
 
-        # Link definition. One way range. 
         # TODO: Make a modular way for selecting observation pairs. 
-        receivers = [self.environmentReal.spacecrafts[0],
-                     self.environmentReal.spacecrafts[1]]
-        transmitters = [self.environmentReal.groundStations[0], 
-                        self.environmentReal.spacecrafts[0]]
+        # Link ends for range observations. 
+        transmittersRange = [self.environmentReal.spacecrafts[1],
+                             self.environmentReal.spacecrafts[0]]   
+        receiversRange = [self.environmentReal.spacecrafts[0],
+                          self.environmentReal.spacecrafts[1]]
+        # Link ends for doppler
+        transmittersDopp = [self.environmentReal.groundStations[0], 
+                            self.environmentReal.groundStations[0]]
+        receiversDopp = [self.environmentReal.spacecrafts[0],
+                         self.environmentReal.spacecrafts[1]]
 
         ### Observations creation.
         # One-way range observations. 
-        observationsOneWayRange = oneWayObservationsClass(
-            transmitters= transmitters,
-            receivers= receivers,
+        observationsIntersat = oneWayObservationsClass(
+            transmitters= transmittersRange,
+            receivers= receiversRange,
             times= observationEpochs,
             environmentReal= self.environmentReal
         )
-        observationsOneWayRange.make_link_definitions()
-        observationsOneWayRange.make_observation_model_settings()
+        # Doppler observations (Currently not doppler)
+        observationsGround = oneWayObservationsClass(
+            transmitters= transmittersDopp,
+            receivers= receiversDopp,
+            times= observationEpochs,
+            environmentReal= self.environmentReal
+        )
 
         # Converts to overall observations class.
-        self.observations = observationsOneWayRange
+        self.observations = merge_observations(
+            observationList = [observationsIntersat, observationsGround],
+            observationTimes= observationEpochs)
 
         self.observations.make_observation_simulation_settings()
 
@@ -133,7 +147,6 @@ class estimatorClass ():
     def make_estimation ( 
             self,
             maximumIterations: int= 10,
-            
             
             printEstimationOutput: bool= True,
     ):

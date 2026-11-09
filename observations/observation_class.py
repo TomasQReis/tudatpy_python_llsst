@@ -2,7 +2,7 @@
 # This file defines the parent class for observations. 
 
 ### Library imports. 
-from typing import Sequence, Mapping
+from typing import Sequence, MutableSequence
 from numpy.typing import NDArray
 
 ### Local imports.
@@ -22,9 +22,71 @@ from tudatpy.estimation.observable_models_setup import links
 from tudatpy.dynamics.environment import SystemOfBodies
 from tudatpy.estimation.observable_models_setup import light_time_corrections
 
+
+# Merges a list of observation classes.  
+def merge_observations(
+        observationList: list[ observationsClass ],
+        observationTimes: list[ float ]
+    ):
+    """Merges separate observation classes into a single one."""
+
+    # Empty lists of class inputs. 
+    mergedTransmitters  = []
+    mergedReceivers     = []
+
+    # Empty list of observation types. 
+    mergedObservationTypes = []
+
+    # Empty list of link definitions.
+    mergedLinkDefinitions = []
+
+    # Empty lists of model and simulator settings and simulators. 
+    mergedModelSettings     = []
+    mergedSimulatorSettings = []
+
+    for observation in observationList:
+
+        # Merges input arguments of class.
+        mergedTransmitters.extend( observation.transmitters )
+        mergedReceivers.extend( observation.receivers )
+
+        # Creates a list of observation types to match number of links.
+        mergedObservationTypes.extend( 
+            [ observation.observationType[0] ] * len( observation.linkDefinitions ) )
+
+        # Merges link definitions.
+        mergedLinkDefinitions.extend( observation.linkDefinitions )
+
+        # Merges model and simulator settings and simulators. 
+        mergedModelSettings.extend( observation.observationModelSettings )
+        mergedSimulatorSettings.extend( observation.observationSimulatorSettings )
+
+    # Initializes merged observations class. 
+    mergedObservations = observationsClass(
+        transmitters= mergedTransmitters,
+        receivers= mergedReceivers,
+        times= observationTimes,
+        environmentReal= observationList[0].environmentReal,
+        uniqueObservationType= False
+    )
+
+    # Overwrites observation type. 
+    mergedObservations.observationType = mergedObservationTypes
+
+    # Overwrites link definitions.
+    mergedObservations.linkDefinitions = mergedLinkDefinitions
+
+    # Overwrites simulator and model settings. 
+    mergedObservations.observationModelSettings     = mergedModelSettings
+    mergedObservations.observationSimulatorSettings = mergedSimulatorSettings
+
+    # Outputs merged observations class. 
+    return mergedObservations 
+
+
 class observationsClass ():
     # Type of observation.
-    observationType: ObservableType
+    observationType: list[ ObservableType ]
 
     # Empty list of simulator settings. 
     observationSimulatorSettings = []
@@ -35,7 +97,8 @@ class observationsClass ():
         receivers: Sequence[body],
         times: Sequence[float],
         
-        environmentReal: environmentClass) -> None:
+        environmentReal: environmentClass,
+        uniqueObservationType: bool= True) -> None:
 
         if len( transmitters ) != len( receivers ):
             raise ValueError(
@@ -47,7 +110,12 @@ class observationsClass ():
         self.receivers = receivers 
         self.times = times
 
-        self.systemOfBodiesReal = environmentReal.systemOfBodies
+        self.environmentReal = environmentReal
+
+        # If unique type, makes link definitions and model settings immediately. 
+        if uniqueObservationType:
+            self.make_link_definitions()
+            self.make_observation_model_settings()
 
     def make_link_definitions( self ) -> None:
 
@@ -88,18 +156,12 @@ class observationsClass ():
 
         self.linkDefinitions = linkDefinitions
 
-        # Dictionary of observation types and respective link definitions. 
-        self.linkEndsPerObservableType = {
-            self.observationType: self.linkDefinitions
-        }
-
     # Defined for each different observation model. 
     def make_observation_model_settings( self ) -> None: 
 
         # Generalized observation model settings. 
         self.observationModelSettings : Sequence[ObservationModelSettings]
 
-        
     # Makes observation simulation settings. Needs observation model settings. 
     def make_observation_simulation_settings(
         self,
@@ -112,17 +174,26 @@ class observationsClass ():
         # Create observational simulator. 
         self.observationSimulator = create_observation_simulators(
             observation_settings= self.observationModelSettings,
-            bodies= self.systemOfBodiesReal
+            bodies= self.environmentReal.systemOfBodies
         )
 
         # Adds tabulated observation simulator settings for each link.
-        for linkDefinition in self.linkDefinitions:
-            self.observationSimulatorSettings.append( tabulated_simulation_settings(
-                observable_type= self.observationType,
-                link_ends= linkDefinition,
-                simulation_times= self.times, # type: ignore (Float == time)
+        if len( self.observationType ) > 1:
+            for typeIndex, linkDefinition in enumerate( self.linkDefinitions ):
+                self.observationSimulatorSettings.append( tabulated_simulation_settings(
+                    observable_type= self.observationType[typeIndex],
+                    link_ends= linkDefinition,
+                    simulation_times= self.times, # type: ignore (Float == time)
+                    )
                 )
-            )
+        else:
+            for linkDefinition in self.linkDefinitions:
+                self.observationSimulatorSettings.append( tabulated_simulation_settings(
+                    observable_type= self.observationType[0],
+                    link_ends= linkDefinition,
+                    simulation_times= self.times, # type: ignore (Float == time)
+                    )
+                )
 
         # NOTE: The following snippet is commented out as it may not be needed.
         # Previously it solved an issue with the ground-stations causing
@@ -153,7 +224,7 @@ class observationsClass ():
         self.simulatedObservations = observations_wrapper.simulate_observations(
             simulation_settings= self.observationSimulatorSettings,
             observation_simulators= self.observationSimulator,
-            bodies= self.systemOfBodiesReal
+            bodies= self.environmentReal.systemOfBodies
         )
 
         return self.simulatedObservations
@@ -164,7 +235,5 @@ class observationsClass ():
         self,
         observableTypes: Sequence[ ObservableType ],
         noiseAmplitudes: Sequence[ float ],
-
     ): pass
-
-    
+  
