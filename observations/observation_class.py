@@ -85,6 +85,19 @@ def merge_observations(
     # Outputs merged observations class. 
     return mergedObservations 
 
+# Checks for ground station link ends. 
+def check_ground_station ( linkEnd: body, linkEndType:LinkEndType, linkEndIds: dict ) -> dict:
+    """Checks whether the link end is a ground station."""
+    if isinstance( linkEnd, groundStation ):
+        linkEndIds[ linkEndType ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
+            linkEnd.parentBody, linkEnd.name
+        )
+    else:
+        linkEndIds[ linkEndType ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
+            linkEnd.name
+        )
+    return linkEndIds
+
 
 class observationsClass ():
     # Type of observation.
@@ -95,11 +108,16 @@ class observationsClass ():
 
     def __init__(
         self,
-        transmitters: Sequence[body],
-        receivers: Sequence[body],
-        times: Sequence[float],
         
+        
+        times: Sequence[float],
+
         environmentReal: environmentClass,
+
+        transmitters: Sequence[body] = [],
+        receivers: Sequence[body] = [],
+        linkGroups: Sequence[Sequence[body]] = [[]],
+
         uniqueObservationType: bool= True) -> None:
 
         if len( transmitters ) != len( receivers ):
@@ -109,7 +127,9 @@ class observationsClass ():
             )
 
         self.transmitters = transmitters
-        self.receivers = receivers 
+        self.receivers = receivers  
+        self.linkGroups = linkGroups
+
         self.times = times
 
         self.environmentReal = environmentReal
@@ -117,55 +137,71 @@ class observationsClass ():
         # If unique type, makes link definitions and model settings immediately. 
         if uniqueObservationType:
             self.make_link_definitions()
-            self.make_observation_model_settings()
+            self.make_model_settings()
 
     def make_link_definitions( self ) -> None:
 
-        # Empty link definition list. 
-        linkDefinitions = []
+        
         # Emtpy link end IDs dictionary. 
         linkEndIds = dict()
+        # Empty link definition list.
+        linkDefinitions = []
 
-        # Cycles through transmitters. 
-        for index, transmitter in enumerate(self.transmitters):
-    
-            # Checks if the transmitter is a ground station and defines link accordingly.
-            # Otherwise, transmitter set to center of mass of transmitter dict object. 
-            if isinstance(transmitter, groundStation): 
-                linkEndIds[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_reference_point_link_end_id( 
-                    transmitter.parentBody, transmitter.name
+        # Iterates through lists of link Ends (groups). 
+        for groupIndex in range( len( self.linkGroups ) ):
+            
+            # Checks number of link ends.
+            if len( self.linkGroups[groupIndex] ) > 2:
+                # Sets transmitter.
+                linkEndIds = check_ground_station(
+                    linkEnd= self.linkGroups[groupIndex][0],
+                    linkEndType= LinkEndType.transmitter,
+                    linkEndIds= linkEndIds
+                ) 
+                # Sets intermediate ends as retransmitters. 
+                for retransmitterLinks in self.linkGroups[groupIndex][1:-1]:
+                    linkEndIds = check_ground_station(
+                        linkEnd= retransmitterLinks,
+                        linkEndType= LinkEndType.retransmitter,
+                        linkEndIds= linkEndIds
                     )
-            else:
-                linkEndIds[ LinkEndType.transmitter ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-                    transmitter.name 
-                    )
-    
-            receiver = self.receivers[index]
-            # Receiver links. NOTE: Should not be ground station. 
-            if not (receiver, spacecraft): 
-                raise TypeError(
-                    f"Ground stations must be set as transmitters.\n"
-                    f"{receiver.name} set as receiver.\n"
+                # Sets receiver. 
+                linkEndIds = check_ground_station(
+                    linkEnd= self.linkGroups[groupIndex][-1],
+                    linkEndType= LinkEndType.receiver,
+                    linkEndIds= linkEndIds
                 )
-            else:
-                linkEndIds[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-                    receiver.name 
+            else: # Sets link end Ids for a one-way link.
+            # Checks that last member of one-way link (Receiver) is not a ground station. 
+                if isinstance(self.linkGroups[groupIndex][-1], groundStation): 
+                    raise TypeError(
+                        f"Ground stations must be set as transmitters in a one-way link.\n"
+                        f"{self.linkGroups[groupIndex][-1].name} set as receiver.\n"
                     )
-    
-            # Appends to link definition list
-            linkDefinitions.append(
-                estimation.observable_models_setup.links.link_definition( linkEndIds ))
+                # Sets transmitter.
+                linkEndIds = check_ground_station(
+                    linkEnd= self.linkGroups[groupIndex][0],
+                    linkEndType= LinkEndType.transmitter,
+                    linkEndIds= linkEndIds
+                )
+                # Sets receiver. 
+                linkEndIds[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
+                        self.linkGroups[groupIndex][-1].name
+                    )
+                
+            # Link definition list. 
+            linkDefinitions.append( estimation.observable_models_setup.links.link_definition( linkEndIds ) )
 
         self.linkDefinitions = linkDefinitions
 
     # Defined for each different observation model. 
-    def make_observation_model_settings( self ) -> None: 
+    def make_model_settings( self ) -> None: 
 
         # Generalized observation model settings. 
         self.observationModelSettings : Sequence[ObservationModelSettings]
 
     # Makes observation simulation settings. Needs observation model settings. 
-    def make_observation_simulation_settings(
+    def make_simulation_settings(
         self,
     ):
 
@@ -233,7 +269,7 @@ class observationsClass ():
         
 
     # Adds observation noise to existing simulator settings. 
-    def set_observation_simulator_settings_noise(
+    def set_simulator_settings_noise(
         self,
         observableTypes: Sequence[ ObservableType ],
         noiseAmplitudes: Sequence[ float ],
@@ -249,6 +285,29 @@ class observationsClass ():
                 observable_type= observableType,
                 link_definition= self.linkDefinitions[noiseIndex]
             )
+
+    def set_simulator_settings_ancillary(
+        self,
+        ancillaryObsType: ObservableType,
+        ancillarySettings
+    ) -> None: 
+
+        # Stores types of each simulator settings object.
+        types = ( self.observationType * len( self.observationSimulatorSettings )
+            if len( self.observationType ) == 1 else self.observationType )
+
+        print( types )
+
+        # Sweeps through types and adds ancillary to matching settings. 
+        for observationType, settings in zip( types, self.observationSimulatorSettings, strict= True ):
+            if observationType == ancillaryObsType:
+                settings.ancillary_settings = ancillarySettings
+
+
+
+        
+
+        
 
         
 

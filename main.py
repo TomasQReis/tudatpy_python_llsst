@@ -169,7 +169,8 @@ if __name__ == "__main__":
         # Longitude of ascending node.
         longitudes = np.array( [ 0 ] ) # degrees
 
-        rangeNoiseSigmas = [0, 1e-6, 1e-4, 1e-2, 1]
+        rangeNoiseSigmas = [0, 1e-9, 1e-6, 1e-3]
+        #rangeNoiseSigmas = [1e-6]
 
         changingParameter = rangeNoiseSigmas 
         ### For loop
@@ -180,14 +181,11 @@ if __name__ == "__main__":
             ### Alter time-related parameters.
             # Given as [Year, Month, Day]
             simStartDate    = [2001, 1, 1, 0, 0, 0]
-            simEndDate      = [2001, 1, 1, 0, 0, 0]
-            # Load SPICE kernels and return J2000 formatted epochs.
-            simStartEpoch, simEndEpoch = load_spice( 
-                simStartDate= simStartDate, simEndDate= simEndDate,
-                skipTimespanCheck= True
-                )
+            
+            simStartEpoch= convert_to_j2000(simStartDate)
+            
             # Add simulation time. 
-            simEndEpoch= simEndEpoch + simLengthDays[0]
+            simEndEpoch= simStartDate + simLengthDays[0]
             
             # Propagation time step size. 
             propTimeStep = 360.0     # [s]
@@ -211,7 +209,7 @@ if __name__ == "__main__":
             grailList[1].keplerianElems[4] = longitude
 
             # Label for plots.
-            alteredParameterLabel = f"Range $\sigma$:{rangeNoiseSigmas[i]} m" # type: ignore
+            alteredParameterLabel = rf"Range $\sigma$:{rangeNoiseSigmas[i]} m"  
             plotTitle = f"Residuals vs Range noise. Duration:{simLengthDays[0]/(24*60**2)} days"
 
             ### Initialize environments. 
@@ -268,12 +266,12 @@ if __name__ == "__main__":
                 referenceHarmonics = shModelClass( inputHarmonics= environmentReality )
                 # SH class from LP150 environment. 
                 zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
-                # Residual harmonics. 
+                """ # Residual harmonics. 
                 deltaHarmonicsBase = referenceHarmonics.__sub__( other= zeroHarmonics )
                 degrees, rmsDeltaHarmonicsBase = deltaHarmonicsBase.rms_per_degree()
                 # Plots.
                 plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
-                            label="Clean Estimation Residual")
+                            label="Computer Accuracy") """
 
             # Estimate initial states and harmonic coefficients.
             estimatorReference.propagate_reality(
@@ -281,7 +279,6 @@ if __name__ == "__main__":
             )
             estimatorReference.make_observations(
                 observationEpochMargin= 1*60**2,
-
                 rangeNoiseSigmas= [rangeNoiseSigmas[i]] * 4,
             ) 
 
@@ -293,7 +290,7 @@ if __name__ == "__main__":
             estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
             # Compare with reference harmonics. 
             deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
-            _, rmsDeltaHarmonics = deltaHarmonics.rms_per_degree()
+            degrees, rmsDeltaHarmonics = deltaHarmonics.rms_per_degree()
 
             # Plot current estimate. 
             plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[i % len(lineStyles)],

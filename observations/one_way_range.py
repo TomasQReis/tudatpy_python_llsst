@@ -6,18 +6,14 @@ from tudatpy.estimation.observable_models_setup.model_settings import \
 # Local imports
 from observations.observation_class import observationsClass
 
-class oneWayObservationsClass ( observationsClass ):
+class oneWayRangeObservationsClass ( observationsClass ):
 
     # Sets observation type as one-way range. 
     observationType = [one_way_range_type]
 
-    def make_observation_model_settings(self) -> None:
+    def make_model_settings(self) -> None:
 
-        # Observation settings list. 
-        observationModelSettings = []
-
-        # Loops through exisitng
-        for linkDefinition in self.linkDefinitions:
-            observationModelSettings.append( one_way_range( linkDefinition ) )
-
-        self.observationModelSettings = observationModelSettings
+        # Observation model settings for each link definition.
+        self.observationModelSettings = [
+            one_way_range( linkDefinition ) for linkDefinition in self.linkDefinitions
+        ]
