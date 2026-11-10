@@ -4,7 +4,7 @@ from tudatpy import estimation
 from tudatpy.estimation.observable_models_setup.model_settings import \
     one_way_range_type, one_way_averaged_doppler_type, n_way_averaged_doppler_type
 from tudatpy.estimation.observations_setup.ancillary_settings import \
-    two_way_doppler_ancillary_settings
+    n_way_doppler_ancillary_settings, doppler_ancillary_settings, FrequencyBands
 
 ### Local imports. 
 from environment.environment import environmentClass 
@@ -85,8 +85,12 @@ class estimatorClass ():
         self,
         observationEpochMargin: float= 1*60**2,
 
-        rangeNoiseSigmas: list[ float ]= [],
-        dopplerNoiseSigmas: list[ float ]= []
+        rangeNoiseSigma: float= 0.0,
+        dopplerNoiseOneWaySigma: float= 0.0,
+        dopplerNoiseTwoWaySigma: float= 0.0,
+
+        noiseSettingsSwitch: bool= False,
+        ancillarySettingsSwitch: bool= False
         ):
         ### Simulate observations. 
         # Observation epoch. 
@@ -104,14 +108,22 @@ class estimatorClass ():
         rangeLinks2 = [self.environmentReal.spacecrafts[0],
                        self.environmentReal.spacecrafts[1]]
         rangeLinkGroups = [rangeLinks1, rangeLinks2]
-        # Link ends for doppler
+
+        # Link ends for 1-way doppler.
+        doppLinksOW1 = [self.environmentReal.spacecrafts[0],
+                        self.environmentReal.groundStations[0]]
+        doppLinksOW2 = [self.environmentReal.spacecrafts[1],
+                        self.environmentReal.groundStations[0]]
+        doppXBandGroups = [doppLinksOW1, doppLinksOW2]
+
+        # Link ends for 2-way doppler
         doppLinks1 = [self.environmentReal.groundStations[0],
                       self.environmentReal.spacecrafts[0],
                       self.environmentReal.groundStations[0],]
         doppLinks2 = [self.environmentReal.groundStations[0],
                       self.environmentReal.spacecrafts[1],
                       self.environmentReal.groundStations[0],]
-        doppLinkGroups = [ doppLinks1, doppLinks2 ]
+        doppSBandGroups = [ doppLinks1, doppLinks2 ]
 
         ### Observations creation.
         # One-way range observations. 
@@ -120,9 +132,15 @@ class estimatorClass ():
             times= observationEpochs,
             environmentReal= self.environmentReal
         )
-        # Doppler observations (Currently not doppler)
+        # Doppler observations one-way.
+        observationsGround = oneWayDopplerObservationsClass(
+            linkGroups= doppXBandGroups,
+            times= observationEpochs,
+            environmentReal= self.environmentReal
+        )
+        # Doppler observations two-way.
         observationsGround = twoWayDopplerObservationsClass(
-            linkGroups= doppLinkGroups,
+            linkGroups= doppSBandGroups,
             times= observationEpochs,
             environmentReal= self.environmentReal
         )
@@ -134,33 +152,46 @@ class estimatorClass ():
 
         self.observations.make_simulation_settings()
 
+        ### SWITCH FOR NOISE SETTINGS ###
+        if noiseSettingsSwitch:
         # Adds noise to range observations.  
-        if any( rangeNoiseSigmas ):
-            print("Range Noise Added")
-            self.observations.set_simulator_settings_noise(
-                observableTypes= [ one_way_range_type ] * len( rangeNoiseSigmas ),
-                noiseAmplitudes= rangeNoiseSigmas 
-            ) 
-        # Adds noise to doppler observations. 
-        if any( dopplerNoiseSigmas ):
-            print("Doppler Noise Added")
-            self.observations.set_simulator_settings_noise(
-                observableTypes= [ one_way_averaged_doppler_type ] * len( dopplerNoiseSigmas ),
-                noiseAmplitudes= dopplerNoiseSigmas
-            )
-        if not any( rangeNoiseSigmas ) and not any( dopplerNoiseSigmas ):
+            if rangeNoiseSigma:
+                print("Range Noise Added")
+                self.observations.set_simulator_settings_noise(
+                    observationType= one_way_range_type,
+                    noiseSigma= rangeNoiseSigma
+                ) 
+            # Adds noise to doppler observations. 
+            if dopplerNoiseOneWaySigma or dopplerNoiseOneWaySigma:
+                print("Doppler Noise Added")
+                self.observations.set_simulator_settings_noise(
+                    observationType= one_way_averaged_doppler_type,
+                    noiseSigma= dopplerNoiseOneWaySigma
+                )
+                self.observations.set_simulator_settings_noise(
+                    observationType= n_way_averaged_doppler_type,
+                    noiseSigma= dopplerNoiseTwoWaySigma
+                )
+        else:
             print("Clean Observations")
 
-
-        # Adds ancillary settings.
-        """ self.observations.set_simulator_settings_ancillary(
-            ancillaryObsType= one_way_averaged_doppler_type,
-            ancillarySettings= two_way_doppler_ancillary_settings(
-                integration_time= 10.0  # Integration time of 10s (DSN) 
+        ### SWITCH FOR ANCILLARY SETTINGS ###
+        if ancillarySettingsSwitch: 
+            # Adds ancillary settings.
+            self.observations.set_simulator_settings_ancillary(
+                ancillaryObsType= one_way_averaged_doppler_type,
+                ancillarySettings= n_way_doppler_ancillary_settings(
+                    integration_time= 10.0,  # Integration time of 10s (DSN) 
+                    frequency_bands= [FrequencyBands.x_band]
+                )
             )
-        ) """
-
-
+            self.observations.set_simulator_settings_ancillary(
+                ancillaryObsType= n_way_averaged_doppler_type,
+                ancillarySettings= n_way_doppler_ancillary_settings(
+                    integration_time= 10.0,  # Integration time of 10s (DSN) 
+                    frequency_bands= [FrequencyBands.s_band]
+                )
+            )
         
 
         # Simulates observations. 

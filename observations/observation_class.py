@@ -172,12 +172,6 @@ class observationsClass ():
                     linkEndIds= linkEndIds
                 )
             else: # Sets link end Ids for a one-way link.
-            # Checks that last member of one-way link (Receiver) is not a ground station. 
-                if isinstance(self.linkGroups[groupIndex][-1], groundStation): 
-                    raise TypeError(
-                        f"Ground stations must be set as transmitters in a one-way link.\n"
-                        f"{self.linkGroups[groupIndex][-1].name} set as receiver.\n"
-                    )
                 # Sets transmitter.
                 linkEndIds = check_ground_station(
                     linkEnd= self.linkGroups[groupIndex][0],
@@ -185,9 +179,11 @@ class observationsClass ():
                     linkEndIds= linkEndIds
                 )
                 # Sets receiver. 
-                linkEndIds[ LinkEndType.receiver ] = estimation.observable_models_setup.links.body_origin_link_end_id( 
-                        self.linkGroups[groupIndex][-1].name
-                    )
+                linkEndIds = check_ground_station(
+                    linkEnd= self.linkGroups[groupIndex][-1],
+                    linkEndType= LinkEndType.receiver,
+                    linkEndIds= linkEndIds
+                )
                 
             # Link definition list. 
             linkDefinitions.append( estimation.observable_models_setup.links.link_definition( linkEndIds ) )
@@ -271,20 +267,23 @@ class observationsClass ():
     # Adds observation noise to existing simulator settings. 
     def set_simulator_settings_noise(
         self,
-        observableTypes: Sequence[ ObservableType ],
-        noiseAmplitudes: Sequence[ float ],
+        observationType: ObservableType,
+        noiseSigma: float,
     ):
-        
-        # Iterates throuhg observable types and adds matching gaussian noise. 
-        for noiseIndex, observableType in enumerate( observableTypes ):
-            # TODO: Warning if no observations of the specified type are detected.
+        # Stores types of each simulator settings object.
+        types = ( self.observationType * len( self.observationSimulatorSettings )
+            if len( self.observationType ) == 1 else self.observationType )
 
-            random_noise.add_gaussian_noise_to_observable_for_link_ends(
-                observation_simulation_settings_list= self.observationSimulatorSettings,
-                noise_amplitude= noiseAmplitudes[noiseIndex],
-                observable_type= observableType,
-                link_definition= self.linkDefinitions[noiseIndex]
-            )
+        # Iterates through simulator settings and adds noise to matching observation types.
+        for currentType, currentLinkDefinition in zip( 
+            types, self.linkDefinitions, strict= True ):
+            if currentType == observationType:
+                random_noise.add_gaussian_noise_to_observable_for_link_ends(
+                    observation_simulation_settings_list= self.observationSimulatorSettings,
+                    noise_amplitude= noiseSigma,
+                    observable_type= observationType,
+                    link_definition= currentLinkDefinition
+                )
 
     def set_simulator_settings_ancillary(
         self,
@@ -295,8 +294,6 @@ class observationsClass ():
         # Stores types of each simulator settings object.
         types = ( self.observationType * len( self.observationSimulatorSettings )
             if len( self.observationType ) == 1 else self.observationType )
-
-        print( types )
 
         # Sweeps through types and adds ancillary to matching settings. 
         for observationType, settings in zip( types, self.observationSimulatorSettings, strict= True ):

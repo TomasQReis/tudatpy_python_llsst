@@ -25,16 +25,6 @@ if reformatLPQ150 := False:
 
     df.to_csv(dir + "lp150q_formatted.csv", index=False)
 
-arr1 = np.array([1,2])
-arr2 = np.array([1,2,3,4])
+test = 0.0
 
-combinations = np.empty( ( (len(arr1)*len(arr2)) , 2) ) 
-
-print( np.shape( combinations ) )
-
-for i in range(len(arr1)):
-    for j in range(len(arr2)):
-        rowIdx = i*len(arr2) + j
-        combinations[rowIdx] = [arr1[i], arr2[j]]
-
-print(combinations)
+if test: print("0.0")

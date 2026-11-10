@@ -45,6 +45,9 @@ class shModelClass ():
                 f"Input not environmentClass: {type(self.inputHarmonics)}"
             )
 
+        # TODO: Find a way to avoid the environment needing to be propagated 
+        # to extract the harmonic coefficients. 
+
         self.cosCoeffs, self.sinCoeffs, self.gravityParameter, self.referenceRadius\
             = self.inputHarmonics.get_harmonic_coefficients()
 
