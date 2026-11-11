@@ -50,13 +50,11 @@ class oneWayDopplerObservationsClass ( observationsClass ):
 
         # Initializes count time and frequency bands. 
         self.set_simulator_settings_ancillary(
-            ancillaryObsType= self.observationType[0], # TODO: Unnecessary. Remove.
             ancillarySettings= n_way_doppler_ancillary_settings(
                 integration_time= self.countTime,  
             )
         )
         self.set_simulator_settings_ancillary(
-            ancillaryObsType= self.observationType[0], # TODO: Unnecessary. Remove.
             ancillarySettings= n_way_doppler_ancillary_settings(
                 frequency_bands= self.frequencyBand,  
             )
@@ -68,7 +66,6 @@ class oneWayDopplerObservationsClass ( observationsClass ):
 
         # Re-sets simulation settings. 
         self.set_simulator_settings_ancillary(
-            ancillaryObsType= self.observationType[0], # TODO: Unnecessary. Remove.
             ancillarySettings= n_way_doppler_ancillary_settings(
                 integration_time= self.countTime,  
             )
@@ -80,7 +77,6 @@ class oneWayDopplerObservationsClass ( observationsClass ):
 
         # Re-sets simulation settings. 
         self.set_simulator_settings_ancillary(
-            ancillaryObsType= self.observationType[0], # TODO: Unnecessary. Remove.
             ancillarySettings= n_way_doppler_ancillary_settings(
                 frequency_bands= self.frequencyBand,  
             )

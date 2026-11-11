@@ -286,18 +286,12 @@ class observationsClass ():
     
     def set_simulator_settings_ancillary(
         self,
-        ancillaryObsType: ObservableType,
         ancillarySettings
     ) -> None: 
 
-        # Stores types of each simulator settings object.
-        types = ( self.observationType * len( self.observationSimulatorSettings )
-            if len( self.observationType ) == 1 else self.observationType )
-
         # Sweeps through types and adds ancillary to matching settings. 
-        for observationType, settings in zip( types, self.observationSimulatorSettings, strict= True ):
-            if observationType == ancillaryObsType:
-                settings.ancillary_settings = ancillarySettings
+        for settings in self.observationSimulatorSettings:
+            settings.ancillary_settings = ancillarySettings
 
 
 
