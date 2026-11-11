@@ -124,14 +124,16 @@ class estimatorClass ():
             linkGroups= rangeLinkGroups, 
             environmentReal= self.environmentReal,
 
-            noiseSigma= dopplerNoiseOneWaySigma
+            noiseSigma= dopplerNoiseOneWaySigma,
+            frequencyBand= FrequencyBands.x_band
         )
         # Doppler observations one-way.
         observationsGround = oneWayDopplerObservationsClass(
             linkGroups= doppXBandGroups,
             environmentReal= self.environmentReal,
 
-            noiseSigma= dopplerNoiseOneWaySigma
+            noiseSigma= dopplerNoiseOneWaySigma,
+            frequencyBand= FrequencyBands.x_band
         )
 
         # Doppler observations two-way.
