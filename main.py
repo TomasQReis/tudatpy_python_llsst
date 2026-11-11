@@ -156,12 +156,12 @@ if __name__ == "__main__":
 
         ### Environment and estimation parameters. 
         # Reference degree. 
-        referenceDegree = 12
+        referenceDegree = 7
         estimationDegree = referenceDegree
         # Simulation Days
-        simLengthDays = np.array( [8] ) * (24*60**2)
+        simLengthDays = np.array( [5] ) * (24*60**2)
         # Simulation arcLengths
-        arcLengths = np.array( [36] ) * (60**2) 
+        arcLengths = np.array( [24] ) * (60**2) 
 
         ### Spacecraft values. 
         # Altitudes
@@ -169,15 +169,15 @@ if __name__ == "__main__":
         # Longitude of ascending node.
         longitudes = np.array( [ 0 ] ) # degrees
 
-        rangeNoiseSigmas = [0, 1e-6]
-        doppNoiseSigmas = [0, 1e-6]
+        rangeNoiseSigmas = [0]
+        doppNoiseSigmas = [1e-4]
 
-        changingParameter = rangeNoiseSigmas 
+        changingParameter = simLengthDays 
         ### For loop
         for i in range( len(changingParameter) ):
             for j in range( len( doppNoiseSigmas ) ):
 
-                runCount = 2*i+j
+                runCount = i * len( doppNoiseSigmas ) + j 
 
                 print(f"Estimation {runCount+1} out of {len(changingParameter)*len(doppNoiseSigmas)}")
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
                 simStartEpoch= convert_to_j2000(simStartDate)
 
                 # Add simulation time. 
-                simEndEpoch= simStartEpoch + simLengthDays[0]
+                simEndEpoch= simStartEpoch + simLengthDays[i]
                 
                 # Propagation time step size. 
                 propTimeStep = 360.0     # [s]
@@ -212,8 +212,8 @@ if __name__ == "__main__":
                 grailList[1].keplerianElems[4] = longitude
 
                 # Label for plots.
-                alteredParameterLabel = rf"$\sigma_R$:{rangeNoiseSigmas[i]} $\sigma_D$:{doppNoiseSigmas[j]}  "  
-                plotTitle = f"Residuals vs Range noise. Duration:{simLengthDays[0]/(24*60**2)} days"
+                alteredParameterLabel = rf"$\sigma_D$:{doppNoiseSigmas[0]} -- Sim total:{simLengthDays[i]/(24*60**2)}  "  
+                plotTitle = rf"Residuals vs sim duration. Doppler noise $\sigma_D=1e-4$ m/s"
 
                 ### Initialize environments. 
                 # Reality environment. 
@@ -267,6 +267,10 @@ if __name__ == "__main__":
                     estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
                     # SH class for reference harmonics. 
                     referenceHarmonics = shModelClass( inputHarmonics= environmentReality )
+                    
+                    referenceHarmonics.save_coefficients(
+                        filePath= "data/results/test_iterations/reference_harmonics.csv"
+                    )
                     """ # SH class from LP150 environment. 
                     zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
                     # Residual harmonics. 
@@ -283,9 +287,9 @@ if __name__ == "__main__":
                 # Makes observations. 
                 estimatorReference.make_observations(
                     observationEpochMargin= 1*60**2,
-                    rangeNoiseSigma= rangeNoiseSigmas[i],
-                    dopplerNoiseOneWaySigma= doppNoiseSigmas[j],
-                    dopplerNoiseTwoWaySigma= doppNoiseSigmas[j],
+                    rangeNoiseSigma= rangeNoiseSigmas[0],
+                    dopplerNoiseOneWaySigma= doppNoiseSigmas[0],
+                    dopplerNoiseTwoWaySigma= doppNoiseSigmas[0],
 
                     noiseSettingsSwitch= True,
                     ancillarySettingsSwitch= False
@@ -296,10 +300,16 @@ if __name__ == "__main__":
                     printEstimationOutput= False )
 
                 # Save estimate values. 
-                estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference ) 
+                estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference )
+ 
                 # Compare with reference harmonics. 
                 deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
                 degrees, rmsDeltaHarmonics = deltaHarmonics.rms_per_degree()
+
+                # Saves estimates
+                estimatedHarmonics.save_coefficients(
+                    filePath= f"data/results/test_iterations/{int( simLengthDays[i]/(24*60**2) )}days_harmonics.csv"
+                )
 
                 # Plot current estimate. 
                 plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[runCount % len(lineStyles)],

@@ -3,6 +3,7 @@
 
 ### Library imports. 
 from typing import Sequence, MutableSequence
+import numpy as np
 from numpy.typing import NDArray
 
 ### Local imports.
@@ -27,30 +28,21 @@ from tudatpy.estimation.observable_models_setup import light_time_corrections
 
 # Merges a list of observation classes.  
 def merge_observations(
-        observationList: list[ observationsClass ],
-        observationTimes: list[ float ]
+        observationList: list[ observationsClass ]
     ):
     """Merges separate observation classes into a single one."""
 
-    # Empty lists of class inputs. 
-    mergedTransmitters  = []
-    mergedReceivers     = []
-
-    # Empty list of observation types. 
+    # Empty list of merged attributes. 
+    mergedLinkGroups  = []
     mergedObservationTypes = []
-
-    # Empty list of link definitions.
     mergedLinkDefinitions = []
-
-    # Empty lists of model and simulator settings and simulators. 
     mergedModelSettings     = []
     mergedSimulatorSettings = []
 
     for observation in observationList:
 
-        # Merges input arguments of class.
-        mergedTransmitters.extend( observation.transmitters )
-        mergedReceivers.extend( observation.receivers )
+        # Merges link groups.
+        mergedLinkGroups.extend( observation.linkGroups )
 
         # Creates a list of observation types to match number of links.
         mergedObservationTypes.extend( 
@@ -65,9 +57,7 @@ def merge_observations(
 
     # Initializes merged observations class. 
     mergedObservations = observationsClass(
-        transmitters= mergedTransmitters,
-        receivers= mergedReceivers,
-        times= observationTimes,
+        linkGroups= mergedLinkGroups,
         environmentReal= observationList[0].environmentReal,
         uniqueObservationType= False
     )
@@ -81,6 +71,9 @@ def merge_observations(
     # Overwrites simulator and model settings. 
     mergedObservations.observationModelSettings     = mergedModelSettings
     mergedObservations.observationSimulatorSettings = mergedSimulatorSettings
+
+    # Creates simulator for merged observations.
+    mergedObservations.make_simulator()
 
     # Outputs merged observations class. 
     return mergedObservations 
@@ -108,40 +101,43 @@ class observationsClass ():
 
     def __init__(
         self,
-        
-        
-        times: Sequence[float],
-
+        # TODO: Rework of observations class. 
+        # Takes only real environment, links and sigma (as a default).
+        # Offspring classes have their own unique attributes initialized 
+        # like connection bands for doppler. 
         environmentReal: environmentClass,
-
-        transmitters: Sequence[body] = [],
-        receivers: Sequence[body] = [],
+        epochMargin: float= 1*60**2,
         linkGroups: Sequence[Sequence[body]] = [[]],
-
-        uniqueObservationType: bool= True) -> None:
-
-        if len( transmitters ) != len( receivers ):
-            raise ValueError(
-                f"Must have same amount of transmitters and receivers.\n"
-                f"Num transmitters:{len( transmitters )} -- Num Receivers:{len( receivers )}"
-            )
-
-        self.transmitters = transmitters
-        self.receivers = receivers  
-        self.linkGroups = linkGroups
-
-        self.times = times
-
+        noiseSigma: float= 0,
+        uniqueObservationType: bool= True
+        ) -> None:
+        
+        # Real environment attribute. 
         self.environmentReal = environmentReal
+        # Initiates observation times attribute from reality environment. 
+        self.times = np.arange(
+            float( self.environmentReal.simStartEpoch ) + epochMargin,
+            step= float( self.environmentReal.timeStep ),
+            stop= float( self.environmentReal.simEndEpoch ) - epochMargin
+        )
+        # Link groups attribute. 
+        self.linkGroups = linkGroups
+        # Observation noise sigma.
+        self.noiseSigma = noiseSigma
 
-        # If unique type, makes link definitions and model settings immediately. 
+        # Makes link definitions and model settings on creation. 
         if uniqueObservationType:
             self.make_link_definitions()
             self.make_model_settings()
+            self.make_simulation_settings()
+            self.make_simulator()
+
+        # Adds noise to simulator settings on creation. 
+        if noiseSigma: 
+            self.set_simulator_settings_noise()
 
     def make_link_definitions( self ) -> None:
 
-        
         # Emtpy link end IDs dictionary. 
         linkEndIds = dict()
         # Empty link definition list.
@@ -196,6 +192,15 @@ class observationsClass ():
         # Generalized observation model settings. 
         self.observationModelSettings : Sequence[ObservationModelSettings]
 
+    # Makes observations simulator.
+    def make_simulator( self ): 
+
+        # Create observational simulator. 
+        self.observationSimulator = create_observation_simulators(
+            observation_settings= self.observationModelSettings,
+            bodies= self.environmentReal.systemOfBodies
+        )
+
     # Makes observation simulation settings. Needs observation model settings. 
     def make_simulation_settings(
         self,
@@ -205,12 +210,6 @@ class observationsClass ():
         # NOTE: As of now unused. 
         lightTimeCorrectionSettings = []
     
-        # Create observational simulator. 
-        self.observationSimulator = create_observation_simulators(
-            observation_settings= self.observationModelSettings,
-            bodies= self.environmentReal.systemOfBodies
-        )
-
         # Adds tabulated observation simulator settings for each link.
         if len( self.observationType ) > 1:
             for typeIndex, linkDefinition in enumerate( self.linkDefinitions ):
@@ -251,6 +250,7 @@ class observationsClass ():
                     reference_link_end_type= referenceLink
         ) ) """
 
+    # Simulates observations. 
     def simulate_observation( self ):
         """Simulates observations provided simulator and its settings have been
         previously created."""
@@ -262,29 +262,28 @@ class observationsClass ():
         )
 
         return self.simulatedObservations
-        
+
+    # Sets noise sigma.
+    def set_noise_sigma( self, noiseSigma: float ): 
+        # Sets new value.
+        self.noiseSigma = noiseSigma
+
+        # Re-sets simulator noise settings. 
+        self.set_simulator_settings_noise() 
 
     # Adds observation noise to existing simulator settings. 
-    def set_simulator_settings_noise(
-        self,
-        observationType: ObservableType,
-        noiseSigma: float,
-    ):
-        # Stores types of each simulator settings object.
-        types = ( self.observationType * len( self.observationSimulatorSettings )
-            if len( self.observationType ) == 1 else self.observationType )
+    def set_simulator_settings_noise( self ):
 
         # Iterates through simulator settings and adds noise to matching observation types.
-        for currentType, currentLinkDefinition in zip( 
-            types, self.linkDefinitions, strict= True ):
-            if currentType == observationType:
-                random_noise.add_gaussian_noise_to_observable_for_link_ends(
-                    observation_simulation_settings_list= self.observationSimulatorSettings,
-                    noise_amplitude= noiseSigma,
-                    observable_type= observationType,
-                    link_definition= currentLinkDefinition
-                )
+        for currentLinkDefinition in self.linkDefinitions:
+            random_noise.add_gaussian_noise_to_observable_for_link_ends(
+                observation_simulation_settings_list= self.observationSimulatorSettings,
+                noise_amplitude= self.noiseSigma,
+                observable_type= self.observationType[0],
+                link_definition= currentLinkDefinition
+            )
 
+    
     def set_simulator_settings_ancillary(
         self,
         ancillaryObsType: ObservableType,

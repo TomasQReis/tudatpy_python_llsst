@@ -93,13 +93,6 @@ class estimatorClass ():
         ancillarySettingsSwitch: bool= False
         ):
         ### Simulate observations. 
-        # Observation epoch. 
-        observationEpochStart = self.environmentReal.simStartEpoch + observationEpochMargin
-        observationEpochEnd = self.environmentReal.simEndEpoch - observationEpochMargin
-
-        observationEpochs = np.arange( observationEpochStart,                       # type: ignore
-                                      step= self.environmentReal.timeStep ,         # type: ignore
-                                      stop= observationEpochEnd )                   # type: ignore
 
         # TODO: Make a modular way for selecting observation pairs. 
         # Link ends for range observations. 
@@ -127,33 +120,34 @@ class estimatorClass ():
 
         ### Observations creation.
         # One-way range observations. 
-        observationsIntersat = oneWayRangeObservationsClass(
+        observationsIntersat = oneWayDopplerObservationsClass(
             linkGroups= rangeLinkGroups, 
-            times= observationEpochs,
-            environmentReal= self.environmentReal
+            environmentReal= self.environmentReal,
+
+            noiseSigma= dopplerNoiseOneWaySigma
         )
         # Doppler observations one-way.
         observationsGround = oneWayDopplerObservationsClass(
             linkGroups= doppXBandGroups,
-            times= observationEpochs,
-            environmentReal= self.environmentReal
+            environmentReal= self.environmentReal,
+
+            noiseSigma= dopplerNoiseOneWaySigma
         )
+
         # Doppler observations two-way.
-        observationsGround = twoWayDopplerObservationsClass(
+        """ observationsGround = twoWayDopplerObservationsClass(
             linkGroups= doppSBandGroups,
             times= observationEpochs,
             environmentReal= self.environmentReal
-        )
+        ) """
 
         # Converts to merged observations class.
         self.observations = merge_observations(
-            observationList = [observationsIntersat, observationsGround],
-            observationTimes= observationEpochs)
-
-        self.observations.make_simulation_settings()
+            observationList = [observationsIntersat, observationsGround]
+            )
 
         ### SWITCH FOR NOISE SETTINGS ###
-        if noiseSettingsSwitch:
+        """ if noiseSettingsSwitch:
         # Adds noise to range observations.  
             if rangeNoiseSigma:
                 print("Range Noise Added")
@@ -173,9 +167,9 @@ class estimatorClass ():
                     noiseSigma= dopplerNoiseTwoWaySigma
                 )
         else:
-            print("Clean Observations")
+            print("Clean Observations") """
 
-        ### SWITCH FOR ANCILLARY SETTINGS ###
+        """ ### SWITCH FOR ANCILLARY SETTINGS ###
         if ancillarySettingsSwitch: 
             # Adds ancillary settings.
             self.observations.set_simulator_settings_ancillary(
@@ -191,7 +185,7 @@ class estimatorClass ():
                     integration_time= 10.0,  # Integration time of 10s (DSN) 
                     frequency_bands= [FrequencyBands.s_band]
                 )
-            )
+            ) """
         
 
         # Simulates observations. 

@@ -164,6 +164,42 @@ class shModelClass ():
 
         return degrees, self.rmsPerDegrees
 
+    def save_coefficients( 
+        self,
+        filePath: str= "" ):
+
+        # Degree and order of every coefficient, in storage order
+        # (degree 2 orders 0..2, degree 3 orders 0..3, ...).
+        degrees = np.array( [ degree for degree in range( 2, self.harmonicsDegree + 1 )
+                              for _ in range( degree + 1 ) ] )
+        orders  = np.array( [ order for degree in range( 2, self.harmonicsDegree + 1 )
+                              for order in range( degree + 1 ) ] )
+
+        # Checks that the stored coefficients match the expected layout.
+        cosIdx, sinIdx = self.get_coefficient_index( self.harmonicsDegree )
+        if len( self.cosCoeffs ) != cosIdx or len( self.sinCoeffs ) != sinIdx:
+            raise ValueError(
+                f"Coefficient count does not match degree {self.harmonicsDegree}:\n"
+                f"Cosine: {len( self.cosCoeffs )} -- Expected: {cosIdx}\n"
+                f"Sine: {len( self.sinCoeffs )} -- Expected: {sinIdx}"
+            )
+
+        # Sine coefficients have no order 0 term. Inserts zeros there so
+        # every row has a cosine and a sine value.
+        sinCoeffsAllOrders = np.zeros( cosIdx )
+        sinCoeffsAllOrders[ orders != 0 ] = self.sinCoeffs
+
+        # Column stack: degree, order, C, S.
+        saveData = np.column_stack( [ degrees, orders, self.cosCoeffs, sinCoeffsAllOrders ] )
+
+        # Header line with gravitational parameter and reference radius.
+        # comments="" stops numpy prefixing the header with "# ".
+        header = f"{self.gravityParameter:.15e},{self.referenceRadius:.15e}"
+
+        np.savetxt( filePath, saveData, header= header, comments= "",
+                    fmt= [ "%i", "%i", "%.15e", "%.15e" ], delimiter= "," )
+
+
 
 def kaula_power_rule ( maxDegree: int,
                        kaulaCoefficient: float= 10**-5 ):
