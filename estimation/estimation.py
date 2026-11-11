@@ -109,15 +109,6 @@ class estimatorClass ():
                         self.environmentReal.groundStations[0]]
         doppXBandGroups = [doppLinksOW1, doppLinksOW2]
 
-        # Link ends for 2-way doppler
-        doppLinks1 = [self.environmentReal.groundStations[0],
-                      self.environmentReal.spacecrafts[0],
-                      self.environmentReal.groundStations[0],]
-        doppLinks2 = [self.environmentReal.groundStations[0],
-                      self.environmentReal.spacecrafts[1],
-                      self.environmentReal.groundStations[0],]
-        doppSBandGroups = [ doppLinks1, doppLinks2 ]
-
         ### Observations creation.
         # One-way range observations. 
         observationsIntersat = oneWayDopplerObservationsClass(
@@ -125,7 +116,8 @@ class estimatorClass ():
             environmentReal= self.environmentReal,
 
             noiseSigma= dopplerNoiseOneWaySigma,
-            frequencyBand= FrequencyBands.x_band
+            frequencyBand= FrequencyBands.x_band,
+            countTime= 10.0
         )
         # Doppler observations one-way.
         observationsGround = oneWayDopplerObservationsClass(
@@ -133,7 +125,8 @@ class estimatorClass ():
             environmentReal= self.environmentReal,
 
             noiseSigma= dopplerNoiseOneWaySigma,
-            frequencyBand= FrequencyBands.x_band
+            frequencyBand= FrequencyBands.x_band,
+            countTime= 10.0
         )
 
         # Doppler observations two-way.
