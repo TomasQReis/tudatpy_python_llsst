@@ -156,12 +156,12 @@ if __name__ == "__main__":
 
         ### Environment and estimation parameters. 
         # Reference degree. 
-        referenceDegree = 12
+        referenceDegree = 7
         estimationDegree = referenceDegree
         # Simulation Days
-        simLengthDays = np.array( [8] ) * (24*60**2)
+        simLengthDays = np.array( [5] ) * (24*60**2)
         # Simulation arcLengths
-        arcLengths = np.array( [36] ) * (60**2) 
+        arcLengths = np.array( [24] ) * (60**2) 
 
         ### Spacecraft values. 
         # Altitudes
@@ -169,8 +169,8 @@ if __name__ == "__main__":
         # Longitude of ascending node.
         longitudes = np.array( [ 0 ] ) # degrees
 
-        rangeNoiseSigmas = [0, 1e-6]
-        doppNoiseSigmas = [0, 1e-6]
+        rangeNoiseSigmas = [0]
+        doppNoiseSigmas = [1e-4]
 
         changingParameter = rangeNoiseSigmas 
         ### For loop

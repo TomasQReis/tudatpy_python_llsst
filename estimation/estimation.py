@@ -127,7 +127,7 @@ class estimatorClass ():
 
         ### Observations creation.
         # One-way range observations. 
-        observationsIntersat = oneWayRangeObservationsClass(
+        observationsIntersat = oneWayDopplerObservationsClass(
             linkGroups= rangeLinkGroups, 
             times= observationEpochs,
             environmentReal= self.environmentReal
@@ -139,11 +139,11 @@ class estimatorClass ():
             environmentReal= self.environmentReal
         )
         # Doppler observations two-way.
-        observationsGround = twoWayDopplerObservationsClass(
+        """ observationsGround = twoWayDopplerObservationsClass(
             linkGroups= doppSBandGroups,
             times= observationEpochs,
             environmentReal= self.environmentReal
-        )
+        ) """
 
         # Converts to merged observations class.
         self.observations = merge_observations(
