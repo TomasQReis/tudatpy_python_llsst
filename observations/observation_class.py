@@ -35,11 +35,12 @@ def merge_observations(
     """Merges separate observation classes into a single one."""
 
     # Empty list of merged attributes. 
-    mergedLinkGroups  = []
-    mergedObservationTypes = []
-    mergedLinkDefinitions = []
+    mergedLinkGroups        = []
+    mergedObservationTypes  = []
+    mergedLinkDefinitions   = []
     mergedModelSettings     = []
     mergedSimulatorSettings = []
+    mergedSimulators        = []
 
     for observation in observationList:
 
@@ -98,9 +99,6 @@ class observationsClass ():
     # Type of observation.
     observationType: list[ ObservableType ]
 
-    # Empty list of simulator settings. 
-    observationSimulatorSettings = []
-
     def __init__(
         self,
         # TODO: Rework of observations class. 
@@ -127,6 +125,9 @@ class observationsClass ():
         self.linkGroups = linkGroups
         # Observation noise sigma.
         self.noiseSigma = noiseSigma
+
+        # Empty list of simulator settings. 
+        self.observationSimulatorSettings = []
 
         # Makes link definitions and model settings on creation. 
         if uniqueObservationType:
@@ -224,6 +225,7 @@ class observationsClass ():
                 )
         else:
             for linkDefinition in self.linkDefinitions:
+                
                 self.observationSimulatorSettings.append( tabulated_simulation_settings(
                     observable_type= self.observationType[0],
                     link_ends= linkDefinition,
@@ -311,8 +313,8 @@ class observationsClass ():
         of observable types to extract observations from.
 
         Returns:
-        - values (NDArray): Values of the observation.
-        - epochs (list[float]): Epochs of the observation."""
+        - values (list[NDArray]): List of values of the observations.
+        - epochs (list[list[float]]): List of epochs of the observations."""
 
         # Uses input type vector if passed.
         if observableTypeVector:
@@ -324,11 +326,11 @@ class observationsClass ():
                 observable_type_vector= self.observationType )
         
         # Extracts observation values and epochs. 
-        values, epochs = self.simulatedObservations.get_concatenated_observations_and_times(
+        listOfValues, listOfEpochs = self.simulatedObservations.get_observations_and_times(
             parser
         )
 
-        return values, epochs
+        return listOfValues, listOfEpochs
         
             
         

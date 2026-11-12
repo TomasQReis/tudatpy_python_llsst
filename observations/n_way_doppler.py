@@ -102,7 +102,8 @@ class twoWayDopplerObservationsClass ( oneWayDopplerObservationsClass ):
         frequencyBand: FrequencyBands= FrequencyBands.s_band
             ) -> None:
         
-        super().__init__(environmentReal, epochMargin, linkGroups, noiseSigma, uniqueObservationType)
+        super().__init__(environmentReal, linkGroups, epochMargin,
+                         noiseSigma, uniqueObservationType)
 
         self.countTime = countTime
         self.frequencyBand = frequencyBand

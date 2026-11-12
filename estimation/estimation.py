@@ -136,6 +136,7 @@ class estimatorClass ():
         self.observations = merge_observations(
             observationList = observationsList
             )
+        #print( self.observations.observationSimulatorSettings )
 
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()

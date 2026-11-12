@@ -3,7 +3,8 @@ from environment.low_fidelity import *
 from environment.environment import *
 from environment.moon_environment import moonEnvironment, MOONRADIUS
 
-from observations.ll_sst import *
+from observations.ll_sst import *       # NOTE: Likely deprecated. 
+from observations.observation_class import merge_observations
 from observations.n_way_doppler import \
     oneWayDopplerObservationsClass
 
@@ -297,7 +298,6 @@ if __name__ == "__main__":
 
                     noiseSigma= KBRRSIGMA,
                     countTime= 10.0,
-                    frequencyBand= kABand
                 )
                 grailDSNObservations = oneWayDopplerObservationsClass(
                     environmentReal= environmentReality,
@@ -305,29 +305,40 @@ if __name__ == "__main__":
 
                     noiseSigma= DSNSIGMA,
                     countTime= DSNCOUNT,
-                    frequencyBand= xBand
                 )
                 
                 # Makes observations. 
-                estimatorReference.make_observations(
+                """ estimatorReference.make_observations(
                     observationsList= [ grailSSTObservations, grailDSNObservations ]
-                ) 
+                ) """ 
+
+                # Merge observations. 
+                grailMergedObservations = merge_observations(
+                    observationList= [ grailSSTObservations, grailDSNObservations ]
+                )
+
+                grailMergedObservations.simulate_observation()
 
                 # NOTE: TEMP, remove on verification. Simulates observations separately.
                 for observation in [ grailSSTObservations, grailDSNObservations ]:
                     observation.simulate_observation()
 
                 # Extract individual observations. 
-                #grailKBRR, observationEpochs = grailSSTObservations.get_observations()
-                #dsnRR, _ = grailDSNObservations.get_observations()
+                grailKBRR, observationEpochs = grailSSTObservations.get_observations()
+                dsnRR, _ = grailDSNObservations.get_observations()
 
                 # Extracts merged observations. 
-                grailCombined, observationEpochs = estimatorReference.observations.get_observations()
+                grailCombinedObservations, _ = grailMergedObservations.get_observations()
 
-                print( grailDSNObservations.observationModelSettings )
-                #print( estimatorReference.observations.observationModelSettings )
+                for index, times in enumerate( observationEpochs ):
+                    print(f"Difference Between combined and isolated:")
+                    print(f"DSN: { grailCombinedObservations[index] - dsnRR[index] }")
+                    print(f"KBRR: { grailCombinedObservations[index+2] - grailKBRR[index]}")
 
-                plt.plot( (np.array( observationEpochs ) - observationEpochs[0]) / 60**2 , grailCombined )
+                    plt.plot( (np.array( times ) - times[0]) / 60**2 , dsnRR[index] )
+                    plt.plot( (np.array( times ) - times[0]) / 60**2 , grailKBRR[index] )
+
+                #plt.plot( (np.array( observationEpochs ) - observationEpochs[0]) / 60**2 , grailCombined )
 
                 """ estimatorReference.make_estimation( 
                     maximumIterations= 10,
@@ -357,7 +368,7 @@ if __name__ == "__main__":
 
         plt.title( "Combined observations." )
 
-        #plt.show() 
+        plt.show() 
             
 
         """ plt.yscale( "log" )
