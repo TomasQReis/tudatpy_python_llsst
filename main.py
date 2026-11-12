@@ -297,50 +297,21 @@ if __name__ == "__main__":
                     linkGroups= sstLinks,
 
                     noiseSigma= KBRRSIGMA,
-                    countTime= 10.0,
+                    countTime= KBRRCOUNT
                 )
                 grailDSNObservations = oneWayDopplerObservationsClass(
                     environmentReal= environmentReality,
                     linkGroups= dsnXBandLinks,
 
                     noiseSigma= DSNSIGMA,
-                    countTime= DSNCOUNT,
+                    countTime= DSNCOUNT
                 )
                 
                 # Makes observations. 
-                """ estimatorReference.make_observations(
+                estimatorReference.make_observations(
                     observationsList= [ grailSSTObservations, grailDSNObservations ]
-                ) """ 
-
-                # Merge observations. 
-                grailMergedObservations = merge_observations(
-                    observationList= [ grailSSTObservations, grailDSNObservations ]
-                )
-
-                grailMergedObservations.simulate_observation()
-
-                # NOTE: TEMP, remove on verification. Simulates observations separately.
-                for observation in [ grailSSTObservations, grailDSNObservations ]:
-                    observation.simulate_observation()
-
-                # Extract individual observations. 
-                grailKBRR, observationEpochs = grailSSTObservations.get_observations()
-                dsnRR, _ = grailDSNObservations.get_observations()
-
-                # Extracts merged observations. 
-                grailCombinedObservations, _ = grailMergedObservations.get_observations()
-
-                for index, times in enumerate( observationEpochs ):
-                    print(f"Difference Between combined and isolated:")
-                    print(f"DSN: { grailCombinedObservations[index] - dsnRR[index] }")
-                    print(f"KBRR: { grailCombinedObservations[index+2] - grailKBRR[index]}")
-
-                    plt.plot( (np.array( times ) - times[0]) / 60**2 , dsnRR[index] )
-                    plt.plot( (np.array( times ) - times[0]) / 60**2 , grailKBRR[index] )
-
-                #plt.plot( (np.array( observationEpochs ) - observationEpochs[0]) / 60**2 , grailCombined )
-
-                """ estimatorReference.make_estimation( 
+                ) 
+                estimatorReference.make_estimation( 
                     maximumIterations= 10,
                     printEstimationOutput= False )
 
@@ -358,20 +329,10 @@ if __name__ == "__main__":
 
                 # Plot current estimate. 
                 plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[runCount % len(lineStyles)],
-                        color= lineColors[runCount % len(lineColors)], label= alteredParameterLabel ) """
-
-
-        plt.grid()
-        plt.ylabel("Range Rate [m/s]")
-        plt.xlabel("Time [hrs]")
-        plt.legend()
-
-        plt.title( "Combined observations." )
-
-        plt.show() 
+                        color= lineColors[runCount % len(lineColors)], label= alteredParameterLabel )
             
 
-        """ plt.yscale( "log" )
+        plt.yscale( "log" )
 
         plt.grid()
         plt.ylabel("RMS")
@@ -380,7 +341,7 @@ if __name__ == "__main__":
 
         plt.title( plotTitle )
 
-        plt.show() """
+        plt.show()
 
 
     ### TEST PLOTTING TOOLS ### 

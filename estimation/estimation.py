@@ -84,59 +84,13 @@ class estimatorClass ():
     def make_observations ( 
         self,
         observationsList: list[ observationsClass ],
-
-        rangeNoiseSigma: float= 0.0,
-        dopplerNoiseOneWaySigma: float= 0.0,
-        dopplerNoiseTwoWaySigma: float= 0.0,
-
-        noiseSettingsSwitch: bool= False,
-        ancillarySettingsSwitch: bool= False
         ):
-        
-        ### TODO: THIS WHOLE SECTION WILL BE MOVED OUTSIDE OF ESTIMATOR ###
-        ### ------------------------------------------------------------ ###
-        # TODO: Make a modular way for selecting observation pairs. 
-        # Link ends for range observations. 
-        """ rangeLinks1 = [self.environmentReal.spacecrafts[1],
-                       self.environmentReal.spacecrafts[0]]
-        rangeLinks2 = [self.environmentReal.spacecrafts[0],
-                       self.environmentReal.spacecrafts[1]]
-        rangeLinkGroups = [rangeLinks1, rangeLinks2]
-
-        # Link ends for 1-way doppler.
-        doppLinksOW1 = [self.environmentReal.spacecrafts[0],
-                        self.environmentReal.groundStations[0]]
-        doppLinksOW2 = [self.environmentReal.spacecrafts[1],
-                        self.environmentReal.groundStations[0]]
-        doppXBandGroups = [doppLinksOW1, doppLinksOW2] """
-
-        ### Observations creation.
-        # One-way range observations. 
-        """ observationsIntersat = oneWayDopplerObservationsClass(
-            linkGroups= rangeLinkGroups, 
-            environmentReal= self.environmentReal,
-
-            noiseSigma= dopplerNoiseOneWaySigma,
-            frequencyBand= FrequencyBands.x_band,
-            countTime= 10.0
-        )
-        # Doppler observations one-way.
-        observationsGround = oneWayDopplerObservationsClass(
-            linkGroups= doppXBandGroups,
-            environmentReal= self.environmentReal,
-
-            noiseSigma= dopplerNoiseOneWaySigma,
-            frequencyBand= FrequencyBands.x_band,
-            countTime= 10.0
-        ) """
-        ### ------------------------------------------------------------ ###
 
         ### Simulate observations. 
         # Converts to merged observations class.
         self.observations = merge_observations(
             observationList = observationsList
             )
-        #print( self.observations.observationSimulatorSettings )
 
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()
