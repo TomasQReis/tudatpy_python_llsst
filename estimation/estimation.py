@@ -10,7 +10,7 @@ from tudatpy.estimation.observations_setup.ancillary_settings import \
 from environment.environment import environmentClass 
 from bodies.bodies import body
 
-from observations.observation_class import merge_observations
+from observations.observation_class import merge_observations, observationsClass
 from observations.one_way_range import oneWayRangeObservationsClass
 from observations.n_way_doppler import \
     oneWayDopplerObservationsClass, twoWayDopplerObservationsClass
@@ -83,7 +83,7 @@ class estimatorClass ():
 
     def make_observations ( 
         self,
-        observationEpochMargin: float= 1*60**2,
+        observationsList: list[ observationsClass ],
 
         rangeNoiseSigma: float= 0.0,
         dopplerNoiseOneWaySigma: float= 0.0,
@@ -92,11 +92,12 @@ class estimatorClass ():
         noiseSettingsSwitch: bool= False,
         ancillarySettingsSwitch: bool= False
         ):
-        ### Simulate observations. 
-
+        
+        ### TODO: THIS WHOLE SECTION WILL BE MOVED OUTSIDE OF ESTIMATOR ###
+        ### ------------------------------------------------------------ ###
         # TODO: Make a modular way for selecting observation pairs. 
         # Link ends for range observations. 
-        rangeLinks1 = [self.environmentReal.spacecrafts[1],
+        """ rangeLinks1 = [self.environmentReal.spacecrafts[1],
                        self.environmentReal.spacecrafts[0]]
         rangeLinks2 = [self.environmentReal.spacecrafts[0],
                        self.environmentReal.spacecrafts[1]]
@@ -107,11 +108,11 @@ class estimatorClass ():
                         self.environmentReal.groundStations[0]]
         doppLinksOW2 = [self.environmentReal.spacecrafts[1],
                         self.environmentReal.groundStations[0]]
-        doppXBandGroups = [doppLinksOW1, doppLinksOW2]
+        doppXBandGroups = [doppLinksOW1, doppLinksOW2] """
 
         ### Observations creation.
         # One-way range observations. 
-        observationsIntersat = oneWayDopplerObservationsClass(
+        """ observationsIntersat = oneWayDopplerObservationsClass(
             linkGroups= rangeLinkGroups, 
             environmentReal= self.environmentReal,
 
@@ -127,87 +128,41 @@ class estimatorClass ():
             noiseSigma= dopplerNoiseOneWaySigma,
             frequencyBand= FrequencyBands.x_band,
             countTime= 10.0
-        )
-
-        # Doppler observations two-way.
-        """ observationsGround = twoWayDopplerObservationsClass(
-            linkGroups= doppSBandGroups,
-            times= observationEpochs,
-            environmentReal= self.environmentReal
         ) """
+        ### ------------------------------------------------------------ ###
 
+        ### Simulate observations. 
         # Converts to merged observations class.
         self.observations = merge_observations(
-            observationList = [observationsIntersat, observationsGround]
+            observationList = observationsList
             )
-
-        ### SWITCH FOR NOISE SETTINGS ###
-        """ if noiseSettingsSwitch:
-        # Adds noise to range observations.  
-            if rangeNoiseSigma:
-                print("Range Noise Added")
-                self.observations.set_simulator_settings_noise(
-                    observationType= one_way_range_type,
-                    noiseSigma= rangeNoiseSigma
-                ) 
-            # Adds noise to doppler observations. 
-            if dopplerNoiseOneWaySigma or dopplerNoiseOneWaySigma:
-                print("Doppler Noise Added")
-                self.observations.set_simulator_settings_noise(
-                    observationType= one_way_averaged_doppler_type,
-                    noiseSigma= dopplerNoiseOneWaySigma
-                )
-                self.observations.set_simulator_settings_noise(
-                    observationType= n_way_averaged_doppler_type,
-                    noiseSigma= dopplerNoiseTwoWaySigma
-                )
-        else:
-            print("Clean Observations") """
-
-        """ ### SWITCH FOR ANCILLARY SETTINGS ###
-        if ancillarySettingsSwitch: 
-            # Adds ancillary settings.
-            self.observations.set_simulator_settings_ancillary(
-                ancillaryObsType= one_way_averaged_doppler_type,
-                ancillarySettings= n_way_doppler_ancillary_settings(
-                    integration_time= 10.0,  # Integration time of 10s (DSN) 
-                    frequency_bands= [FrequencyBands.x_band]
-                )
-            )
-            self.observations.set_simulator_settings_ancillary(
-                ancillaryObsType= n_way_averaged_doppler_type,
-                ancillarySettings= n_way_doppler_ancillary_settings(
-                    integration_time= 10.0,  # Integration time of 10s (DSN) 
-                    frequency_bands= [FrequencyBands.s_band]
-                )
-            ) """
-        
 
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()
 
     def get_observations(
             self,
-            transmitter: body,
-    ):
+            observations: observationsClass,
+    ) -> tuple:
         """Returns simulated observations for the requested transmitter.
         Args:
-        - transmitter (body): Transmitter for desired observations.
+        - observations (observationsClass): Observations object.
         Returns: 
-        - observations (NDArray): Array with observations.
-        - observationTimes (NDArray): Array with observation epochs. """
+        - values (NDArray): Array with observation values.
+        - epochs (NDArray): Array with observation epochs. """
 
-        observations, observationTimes = one_way_range_get(
-            observationCollection= self.observationCollection,
-            transmitter= transmitter 
-        )
+        # Checks if observations have been produced.
+        if not hasattr( observations, "simulatedObservations"):
+            print(" WARNING: No observations simulated for this object!\n")
+            return None, None
 
-        return observations, observationTimes 
+        values, epochs = observations.get_observations() 
+
+        return values, epochs 
 
     def make_estimation ( 
             self,
             maximumIterations: int= 10,
-            
             printEstimationOutput: bool= True,
     ):
 

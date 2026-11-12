@@ -21,8 +21,9 @@ class oneWayDopplerObservationsClass ( observationsClass ):
     def __init__(
         self, 
         environmentReal: environmentClass, 
+        linkGroups: Sequence[Sequence[body]], 
+
         epochMargin: float = 1 * 60 ** 2, 
-        linkGroups: Sequence[Sequence[body]] = [[]], 
         noiseSigma: float = 0, 
         uniqueObservationType: bool = True,
         
@@ -30,7 +31,8 @@ class oneWayDopplerObservationsClass ( observationsClass ):
         frequencyBand: FrequencyBands= FrequencyBands.s_band
         ) -> None:
         
-        super().__init__(environmentReal, epochMargin, linkGroups, noiseSigma, uniqueObservationType)
+        super().__init__(environmentReal, linkGroups, epochMargin,
+                         noiseSigma, uniqueObservationType)
 
         # Attributes. 
         self.countTime = countTime
@@ -49,12 +51,12 @@ class oneWayDopplerObservationsClass ( observationsClass ):
     def make_doppler_ancillary_settings(self) -> None:
 
         # Initializes count time and frequency bands. 
-        self.set_simulator_settings_ancillary(
+        self.make_simulator_settings_ancillary(
             ancillarySettings= n_way_doppler_ancillary_settings(
                 integration_time= self.countTime,  
             )
         )
-        self.set_simulator_settings_ancillary(
+        self.make_simulator_settings_ancillary(
             ancillarySettings= n_way_doppler_ancillary_settings(
                 frequency_bands= self.frequencyBand,  
             )
@@ -65,7 +67,7 @@ class oneWayDopplerObservationsClass ( observationsClass ):
         self.countTime = countTime
 
         # Re-sets simulation settings. 
-        self.set_simulator_settings_ancillary(
+        self.make_simulator_settings_ancillary(
             ancillarySettings= n_way_doppler_ancillary_settings(
                 integration_time= self.countTime,  
             )
@@ -76,14 +78,14 @@ class oneWayDopplerObservationsClass ( observationsClass ):
         self.frequencyBand = [frequencyBand]        # Saved as sequence-like
 
         # Re-sets simulation settings. 
-        self.set_simulator_settings_ancillary(
+        self.make_simulator_settings_ancillary(
             ancillarySettings= n_way_doppler_ancillary_settings(
                 frequency_bands= self.frequencyBand,  
             )
         )
 
 # Two-way doppler. 
-class twoWayDopplerObservationsClass ( observationsClass ):
+class twoWayDopplerObservationsClass ( oneWayDopplerObservationsClass ):
 
     # Sets type as n-way doppler.
     observationType = [n_way_averaged_doppler_type]

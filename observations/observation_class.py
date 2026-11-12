@@ -16,6 +16,8 @@ from tudatpy.estimation.observations_setup import \
     random_noise, observations_wrapper
 from tudatpy.estimation.observations_setup.observations_simulation_settings import \
     tabulated_simulation_settings, create_observation_simulators
+from tudatpy.estimation.observations.observations_processing import \
+    observation_parser
 
 from tudatpy.estimation.observable_models_setup.model_settings import ObservableType, ObservationModelSettings
 from tudatpy.estimation.observable_models_setup.links import LinkEndType, LinkDefinition
@@ -29,7 +31,7 @@ from tudatpy.estimation.observable_models_setup import light_time_corrections
 # Merges a list of observation classes.  
 def merge_observations(
         observationList: list[ observationsClass ]
-    ):
+    ) -> observationsClass :
     """Merges separate observation classes into a single one."""
 
     # Empty list of merged attributes. 
@@ -106,8 +108,9 @@ class observationsClass ():
         # Offspring classes have their own unique attributes initialized 
         # like connection bands for doppler. 
         environmentReal: environmentClass,
+        linkGroups: Sequence[Sequence[body]],
+
         epochMargin: float= 1*60**2,
-        linkGroups: Sequence[Sequence[body]] = [[]],
         noiseSigma: float= 0,
         uniqueObservationType: bool= True
         ) -> None:
@@ -134,7 +137,7 @@ class observationsClass ():
 
         # Adds noise to simulator settings on creation. 
         if noiseSigma: 
-            self.set_simulator_settings_noise()
+            self.make_simulator_settings_noise()
 
     def make_link_definitions( self ) -> None:
 
@@ -250,6 +253,28 @@ class observationsClass ():
                     reference_link_end_type= referenceLink
         ) ) """
 
+    # Adds observation noise settings. 
+    def make_simulator_settings_noise( self ):
+
+        # Iterates through simulator settings and adds noise to matching observation types.
+        for currentLinkDefinition in self.linkDefinitions:
+            random_noise.add_gaussian_noise_to_observable_for_link_ends(
+                observation_simulation_settings_list= self.observationSimulatorSettings,
+                noise_amplitude= self.noiseSigma,
+                observable_type= self.observationType[0],
+                link_definition= currentLinkDefinition
+            )
+
+    # Sets ancillary settings. 
+    def make_simulator_settings_ancillary(
+        self,
+        ancillarySettings
+    ) -> None: 
+
+        # Sweeps through types and adds ancillary to matching settings. 
+        for settings in self.observationSimulatorSettings:
+            settings.ancillary_settings = ancillarySettings
+
     # Simulates observations. 
     def simulate_observation( self ):
         """Simulates observations provided simulator and its settings have been
@@ -263,38 +288,49 @@ class observationsClass ():
 
         return self.simulatedObservations
 
-    # Sets noise sigma.
+    # Set new noise sigma.
     def set_noise_sigma( self, noiseSigma: float ): 
         # Sets new value.
         self.noiseSigma = noiseSigma
 
         # Re-sets simulator noise settings. 
-        self.set_simulator_settings_noise() 
+        self.make_simulator_settings_noise() 
 
-    # Adds observation noise to existing simulator settings. 
-    def set_simulator_settings_noise( self ):
-
-        # Iterates through simulator settings and adds noise to matching observation types.
-        for currentLinkDefinition in self.linkDefinitions:
-            random_noise.add_gaussian_noise_to_observable_for_link_ends(
-                observation_simulation_settings_list= self.observationSimulatorSettings,
-                noise_amplitude= self.noiseSigma,
-                observable_type= self.observationType[0],
-                link_definition= currentLinkDefinition
-            )
-
-    
-    def set_simulator_settings_ancillary(
+    # Returns array of observation values and epochs. 
+    def get_observations( 
         self,
-        ancillarySettings
-    ) -> None: 
+        observableTypeVector: list[ ObservableType ] = [],
+        transmitterVector: list[ body ] = [] ):
 
-        # Sweeps through types and adds ancillary to matching settings. 
-        for settings in self.observationSimulatorSettings:
-            settings.ancillary_settings = ancillarySettings
+        """Extracts observations from the observations collections. Returns a 
+        tuple with the values and epochs (In SI relative to observation type).
 
+        Args:
+        - self (self)
+        - obsevableTypeVector (list[ObservableType]): Optional input for vector 
+        of observable types to extract observations from.
 
+        Returns:
+        - values (NDArray): Values of the observation.
+        - epochs (list[float]): Epochs of the observation."""
 
+        # Uses input type vector if passed.
+        if observableTypeVector:
+            # Observable parser.
+            parser = observation_parser(
+                observable_type_vector= observableTypeVector )
+        else:
+            parser = observation_parser( 
+                observable_type_vector= self.observationType )
+        
+        # Extracts observation values and epochs. 
+        values, epochs = self.simulatedObservations.get_concatenated_observations_and_times(
+            parser
+        )
+
+        return values, epochs
+        
+            
         
 
         

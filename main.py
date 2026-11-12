@@ -4,6 +4,8 @@ from environment.environment import *
 from environment.moon_environment import moonEnvironment, MOONRADIUS
 
 from observations.ll_sst import *
+from observations.n_way_doppler import \
+    oneWayDopplerObservationsClass
 
 from bodies.bodies import *
 from bodies.roci_ab import *
@@ -15,6 +17,9 @@ from visualization.plotting import *
 from estimation.estimation import estimatorClass, estimate_with_observation_noise
 
 from environment.harmonics import shModelClass, kaula_power_rule
+
+from observations.validation_models import \
+    sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT, kABand, xBand
 
 ### External library imports.
 import numpy as np
@@ -66,7 +71,7 @@ if __name__ == "__main__":
     referenceDegree = 10
 
     ### TEST ENVIRONMENT CREATION ###
-    if testEnvironment := True:
+    if testEnvironment := False:
         # Real environment. 
         environmentReal = moonEnvironment(
             level= 3,
@@ -159,7 +164,7 @@ if __name__ == "__main__":
         referenceDegree = 7
         estimationDegree = referenceDegree
         # Simulation Days
-        simLengthDays = np.array( [5] ) * (24*60**2)
+        simLengthDays = np.array( [6] ) * (24*60**2)
         # Simulation arcLengths
         arcLengths = np.array( [24] ) * (60**2) 
 
@@ -267,7 +272,7 @@ if __name__ == "__main__":
                     estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
                     # SH class for reference harmonics. 
                     referenceHarmonics = shModelClass( inputHarmonics= environmentReality )
-                    
+
                     referenceHarmonics.save_coefficients(
                         filePath= "data/results/test_iterations/reference_harmonics.csv"
                     )
@@ -284,18 +289,47 @@ if __name__ == "__main__":
                 estimatorReference.propagate_reality(
                     initialStateOffset= initialStateOffset,
                 )
+
+                ### Observations objects. 
+                grailSSTObservations = oneWayDopplerObservationsClass(
+                    environmentReal= environmentReality,
+                    linkGroups= sstLinks,
+
+                    noiseSigma= KBRRSIGMA,
+                    countTime= 10.0,
+                    frequencyBand= kABand
+                )
+                grailDSNObservations = oneWayDopplerObservationsClass(
+                    environmentReal= environmentReality,
+                    linkGroups= dsnXBandLinks,
+
+                    noiseSigma= DSNSIGMA,
+                    countTime= DSNCOUNT,
+                    frequencyBand= xBand
+                )
+                
                 # Makes observations. 
                 estimatorReference.make_observations(
-                    observationEpochMargin= 1*60**2,
-                    rangeNoiseSigma= rangeNoiseSigmas[0],
-                    dopplerNoiseOneWaySigma= doppNoiseSigmas[0],
-                    dopplerNoiseTwoWaySigma= doppNoiseSigmas[0],
-
-                    noiseSettingsSwitch= True,
-                    ancillarySettingsSwitch= False
+                    observationsList= [ grailSSTObservations, grailDSNObservations ]
                 ) 
 
-                estimatorReference.make_estimation( 
+                # NOTE: TEMP, remove on verification. Simulates observations separately.
+                for observation in [ grailSSTObservations, grailDSNObservations ]:
+                    observation.simulate_observation()
+
+                # Extract individual observations. 
+                #grailKBRR, observationEpochs = grailSSTObservations.get_observations()
+                #dsnRR, _ = grailDSNObservations.get_observations()
+
+                # Extracts merged observations. 
+                grailCombined, observationEpochs = estimatorReference.observations.get_observations()
+
+                print( grailDSNObservations.observationModelSettings )
+                #print( estimatorReference.observations.observationModelSettings )
+
+                plt.plot( (np.array( observationEpochs ) - observationEpochs[0]) / 60**2 , grailCombined )
+
+                """ estimatorReference.make_estimation( 
                     maximumIterations= 10,
                     printEstimationOutput= False )
 
@@ -313,11 +347,20 @@ if __name__ == "__main__":
 
                 # Plot current estimate. 
                 plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[runCount % len(lineStyles)],
-                        color= lineColors[runCount % len(lineColors)], label= alteredParameterLabel )
+                        color= lineColors[runCount % len(lineColors)], label= alteredParameterLabel ) """
 
+
+        plt.grid()
+        plt.ylabel("Range Rate [m/s]")
+        plt.xlabel("Time [hrs]")
+        plt.legend()
+
+        plt.title( "Combined observations." )
+
+        #plt.show() 
             
 
-        plt.yscale( "log" )
+        """ plt.yscale( "log" )
 
         plt.grid()
         plt.ylabel("RMS")
@@ -326,7 +369,7 @@ if __name__ == "__main__":
 
         plt.title( plotTitle )
 
-        plt.show()
+        plt.show() """
 
 
     ### TEST PLOTTING TOOLS ### 
