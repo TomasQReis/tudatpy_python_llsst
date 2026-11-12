@@ -40,7 +40,6 @@ def merge_observations(
     mergedLinkDefinitions   = []
     mergedModelSettings     = []
     mergedSimulatorSettings = []
-    mergedSimulators        = []
 
     for observation in observationList:
 
@@ -99,6 +98,9 @@ class observationsClass ():
     # Type of observation.
     observationType: list[ ObservableType ]
 
+    # Observation identifier.
+    name: str
+
     def __init__(
         self,
         # TODO: Rework of observations class. 
@@ -110,7 +112,9 @@ class observationsClass ():
 
         epochMargin: float= 1*60**2,
         noiseSigma: float= 0,
-        uniqueObservationType: bool= True
+        uniqueObservationType: bool= True,
+
+        name: str= ""
         ) -> None:
         
         # Real environment attribute. 
@@ -125,6 +129,8 @@ class observationsClass ():
         self.linkGroups = linkGroups
         # Observation noise sigma.
         self.noiseSigma = noiseSigma
+        # Identifier.
+        self.name       = name
 
         # Empty list of simulator settings. 
         self.observationSimulatorSettings = []

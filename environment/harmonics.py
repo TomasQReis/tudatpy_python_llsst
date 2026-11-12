@@ -6,10 +6,12 @@ import numpy as np
 
 # Local imports. 
 from environment.environment import environmentClass
-from estimation.estimation import estimatorClass
+from estimation.estimation import estimatorClass, get_coefficient_index
+
+#  
 
 
-class shModelClass (): 
+class shModelClass ():  
     def __init__(
         self,
         inputHarmonics: environmentClass | estimatorClass | None= None,
@@ -74,14 +76,7 @@ class shModelClass ():
         _, _, self.gravityParameter, self.referenceRadius = \
             estimationEnvironment.get_harmonic_coefficients()
 
-        self.harmonicsDegree = self.inputHarmonics.harmonicsDegreeReference
-
-    def get_coefficient_index ( self, degree: int ):
-        # Coefficient max indices. 
-        cosIdx = int( ( (degree - 1) * (degree + 4) ) / 2 )
-        sinIdx = int( ( degree**2 + degree - 2) / 2 )
-
-        return cosIdx, sinIdx
+        self.harmonicsDegree = self.inputHarmonics.harmonicsDegreeEstimated
 
     def __sub__( self, other: shModelClass ) -> shModelClass:
         """Outputs difference between two shModelClass harmonics coefficients.
@@ -93,7 +88,7 @@ class shModelClass ():
         # Checks which shModel has higher max degree. 
         if self.harmonicsDegree <= other.harmonicsDegree:
             # Maximum idices for larger model (Other)
-            cosIdx, sinIdx = self.get_coefficient_index ( self.harmonicsDegree )
+            cosIdx, sinIdx = get_coefficient_index ( self.harmonicsDegree )
 
             # Subtracts coefficients. 
             resultCosCoeffs = self.cosCoeffs - other.cosCoeffs[:cosIdx]
@@ -102,8 +97,8 @@ class shModelClass ():
             # Output harmonics degree.
             resultDegree = self.harmonicsDegree
         else:
-            # Maximum idices for larger model (Self)
-            cosIdx, sinIdx = self.get_coefficient_index ( other.harmonicsDegree )
+            # Maximum indices for larger model (Self)
+            cosIdx, sinIdx = get_coefficient_index ( other.harmonicsDegree )
 
             # Subtracts coefficients. 
             resultCosCoeffs = self.cosCoeffs[:cosIdx] - other.cosCoeffs
@@ -144,7 +139,7 @@ class shModelClass ():
 
         for degree in range( self.harmonicsDegree + 1 )[2:]:
             # Coefficient max indices. 
-            cosIdx, sinIdx = self.get_coefficient_index( degree )
+            cosIdx, sinIdx = get_coefficient_index( degree )
 
             # RMS of degree.
             sumOfCosCoeffsSqrd = np.sum( self.cosCoeffs[prevCosIdx:cosIdx]**2 )
@@ -176,7 +171,7 @@ class shModelClass ():
                               for order in range( degree + 1 ) ] )
 
         # Checks that the stored coefficients match the expected layout.
-        cosIdx, sinIdx = self.get_coefficient_index( self.harmonicsDegree )
+        cosIdx, sinIdx = get_coefficient_index( self.harmonicsDegree )
         if len( self.cosCoeffs ) != cosIdx or len( self.sinCoeffs ) != sinIdx:
             raise ValueError(
                 f"Coefficient count does not match degree {self.harmonicsDegree}:\n"
@@ -198,8 +193,6 @@ class shModelClass ():
 
         np.savetxt( filePath, saveData, header= header, comments= "",
                     fmt= [ "%i", "%i", "%.15e", "%.15e" ], delimiter= "," )
-
-
 
 def kaula_power_rule ( maxDegree: int,
                        kaulaCoefficient: float= 10**-5 ):

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import itertools
 
 dir = "data/models/gravity/"
 
@@ -25,6 +26,16 @@ if reformatLPQ150 := False:
 
     df.to_csv(dir + "lp150q_formatted.csv", index=False)
 
-test = 0.0
+testDict = dict()
+testDict["A"] = [1,2,3]
+testDict["B"] = [1,3,5]
 
-if test: print("0.0")
+emptyArr = np.empty((3*3,2))
+
+i = 0
+for combination in itertools.product( *testDict.values() ):
+    emptyArr[i,:] = combination
+    currentSettings = dict( zip( testDict.keys(), combination ) )
+    i+=1
+
+print( emptyArr )

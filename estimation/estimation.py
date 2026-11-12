@@ -11,9 +11,6 @@ from environment.environment import environmentClass
 from bodies.bodies import body
 
 from observations.observation_class import merge_observations, observationsClass
-from observations.one_way_range import oneWayRangeObservationsClass
-from observations.n_way_doppler import \
-    oneWayDopplerObservationsClass, twoWayDopplerObservationsClass
 
 # TODO: Would be nice to have these in the estimator class or part of their own class. 
 # Just make them modular and easy to access...
@@ -23,7 +20,21 @@ from observations.ll_sst import one_way_range_link_definitions, one_way_range_ob
 ### External imports.
 import numpy as np
 from numpy.typing import NDArray
+from itertools import product
 
+
+def get_coefficient_index ( degree: int ):
+    """For a tudat-concatenated harmonics coefficient list, returns the index
+    of the passed degree harmonics coefficient, including all orders. NOTE: Assumes
+    an order-up-to-degree coefficient list. (I.e maxDegree = maxOrder).
+
+    Args:
+    - degree (int): Degree of desired harmonic coefficients. """
+    # Coefficient max indices. 
+    cosIdx = int( ( (degree - 1) * (degree + 4) ) / 2 )
+    sinIdx = int( ( degree**2 + degree - 2) / 2 )
+
+    return cosIdx, sinIdx
 
 class estimatorClass ():
     def __init__(
@@ -48,6 +59,7 @@ class estimatorClass ():
         # NOTE: reference environment harmonics degree is currently unused. 
         self.harmonicsDegreeReal = harmonicsDegreeReal
         self.harmonicsDegreeReference = harmonicsDegreeReference
+        self.harmonicsDegreeEstimated = harmonicsDegreeReference
 
     def propagate_reality ( 
         self,
@@ -119,6 +131,7 @@ class estimatorClass ():
             self,
             maximumIterations: int= 10,
             printEstimationOutput: bool= True,
+            estimationDegree: int= 0,
     ):
 
         ### Estimation parameters.
@@ -128,18 +141,30 @@ class estimatorClass ():
             bodies= self.environmentReference.systemOfBodies
         )
 
+        # Uses input max degree if passed.
+        if estimationDegree: 
+            # Checks that input degree is not higher than available in environment. 
+            if estimationDegree > self.harmonicsDegreeReference:
+                print("WARNING!: Input max degree larger than environment.\n"\
+                "Using environment degree instead...")
+                maximumDegreeOrder = self.harmonicsDegreeReference
+            else: 
+                maximumDegreeOrder = estimationDegree
+                self.harmonicsDegreeEstimated = estimationDegree
+        else: maximumDegreeOrder = self.harmonicsDegreeReference
+
         # Harmonic coefficients. 
         estimationParameters.append( dynamics.parameters_setup.spherical_harmonics_c_coefficients (
             body= self.environmentReference.frameOriginBody,
-            maximum_degree= self.harmonicsDegreeReference,
-            maximum_order= self.harmonicsDegreeReference,
+            maximum_degree= maximumDegreeOrder,
+            maximum_order= maximumDegreeOrder,
             minimum_degree= 2,
             minimum_order= 0 
         ) )
         estimationParameters.append( dynamics.parameters_setup.spherical_harmonics_s_coefficients (
             body= self.environmentReference.frameOriginBody,
-            maximum_degree= self.harmonicsDegreeReference,
-            maximum_order= self.harmonicsDegreeReference,
+            maximum_degree= maximumDegreeOrder,
+            maximum_order= maximumDegreeOrder,
             minimum_degree= 2,
             minimum_order= 1 
         ) )
@@ -196,13 +221,9 @@ class estimatorClass ():
                                numArcs )
 
         # Index for last cosine and sine coefficients. 
-        cosineCoeffIdx = initialStateIdx + int ( 
-            ( (self.harmonicsDegreeReference - 1) * 
-              (self.harmonicsDegreeReference + 4) 
-            ) / 2 ) 
-        sineCoeffIdx = cosineCoeffIdx + int ( (
-            self.harmonicsDegreeReference ** 2 + self.harmonicsDegreeReference
-            - 2 ) / 2 ) 
+        cosIdxSolo, sinIdxSolo = get_coefficient_index ( degree= self.harmonicsDegreeEstimated )
+        cosineCoeffIdx = initialStateIdx + cosIdxSolo
+        sineCoeffIdx = cosineCoeffIdx + sinIdxSolo
 
         # Isolates specific estimate results. 
         initialStates = finalParameters[:initialStateIdx]
@@ -221,10 +242,11 @@ class estimatorClass ():
 
 def estimate_with_observation_noise(
     estimator: estimatorClass, 
+    observationsList: list[ observationsClass ], 
+
     initialStateOffset: NDArray= np.array( [0,0,0,0,0,0] ),
 
-    dopplerNoiseSigmaList: NDArray = np.zeros(1),
-    sstRangeSigmaList: NDArray = np.zeros(1)
+    noiseDict:dict = {}
     ) -> None:
     """Performs a set of estimates that vary the observations noise. NOTE this
     does not apply noise on acceleration values, only DSN doppler and sst range
@@ -233,12 +255,15 @@ def estimate_with_observation_noise(
     Args:
     - estimator (estimatorClass): Estimator with which the estimation will be \
     performed. 
+    - observationsList (list[observationsClass]): List with observationClasses 
+    for this estimation.
+    - initialStateOffset (NDArray): Initial state offset for each arc. 
+    - noiseDict (dict): Dictionary of noise values. The keys indicating the name 
+    of the observationClass they apply to and the value its standard deviation. 
     
     """
     # Create index array for tested noise sigmas. 
-    testValuesArr = np.empty( (
-        len(dopplerNoiseSigmaList)*len(sstRangeSigmaList),2 
-        ) )
+    testValues = np.empty( (len( noiseDict.values() ), 2) )
     
     # Propagate reality once.
     estimator.propagate_reality(
@@ -247,25 +272,30 @@ def estimate_with_observation_noise(
 
     ### Nested for loops
     # NOTE: this is likely the part that would benefit from multithreading. 
-    for dopplerIdx, dopplerNoiseSigma in enumerate(dopplerNoiseSigmaList):
-        for sstIdx, sstRangeSigma in enumerate(sstRangeSigmaList):
-            # Save tested values. 
-            testValuesArr[dopplerIdx *len(sstRangeSigmaList) + sstIdx] = \
-                np.array( [dopplerNoiseSigma, sstRangeSigma] )
-            
-            # Create observations using noise values. 
-            estimator.make_observations(
-                #dopplerNoiseSigma = dopplerNoiseSigma,
-                #sstRangeSigma = sstRangeSigma
-            )
+    # Iterates through all combinations of noise values. 
+    i = 0
+    for combination in product( *noiseDict.values() ):
+        # Save combination.
+        testValues[i,:] = combination
+        i+=1
 
-            # Estimate
-            estimator.make_estimation(
-                maximumIterations= 10,
-                printEstimationOutput= False
-            )
+        currentCombination = dict( zip( noiseDict.keys(), combination ) )
 
-            # Save to array
 
-    # Output array
+        # Set new noise values. 
+        for observation in observationsList: 
+            observation.set_noise_sigma( noiseSigma= currentCombination[ observation.name ] )
+        
+        # Create observations using noise values. 
+        estimator.make_observations()
+
+        # Estimate
+        estimator.make_estimation(
+            maximumIterations= 10,
+            printEstimationOutput= False
+        )
+
+        # Save to array
+
+# Output array
 

@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
         ### Environment and estimation parameters. 
         # Reference degree. 
-        referenceDegree = 7
+        referenceDegree = 8
         estimationDegree = referenceDegree
         # Simulation Days
         simLengthDays = np.array( [6] ) * (24*60**2)
@@ -313,7 +313,12 @@ if __name__ == "__main__":
                 ) 
                 estimatorReference.make_estimation( 
                     maximumIterations= 10,
-                    printEstimationOutput= False )
+                    printEstimationOutput= False,
+                    estimationDegree= 0
+                )
+
+                print( np.size( estimatorReference.estimationOutput.final_parameters ) - 
+                      environmentReality.arcNumber*6*2 )
 
                 # Save estimate values. 
                 estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference )
