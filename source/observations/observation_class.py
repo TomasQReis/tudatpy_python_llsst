@@ -16,6 +16,8 @@ from tudatpy.estimation.observations_setup import \
     random_noise, observations_wrapper
 from tudatpy.estimation.observations_setup.observations_simulation_settings import \
     tabulated_simulation_settings, create_observation_simulators
+
+from tudatpy.estimation.observations import ObservationCollection
 from tudatpy.estimation.observations.observations_processing import \
     observation_parser
 
@@ -284,7 +286,7 @@ class observationsClass ():
             settings.ancillary_settings = ancillarySettings
 
     # Simulates observations. 
-    def simulate_observation( self ):
+    def simulate_observation( self ) -> ObservationCollection:
         """Simulates observations provided simulator and its settings have been
         previously created."""
 
@@ -337,6 +339,8 @@ class observationsClass ():
         )
 
         return listOfValues, listOfEpochs
+
+
         
             
         

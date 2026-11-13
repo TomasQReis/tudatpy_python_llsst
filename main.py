@@ -31,9 +31,14 @@ from tudatpy.util import result2array
 from tudatpy import dynamics
 from tudatpy.estimation.estimation_analysis import Estimator
 
+
 ### Directories 
 # Data directory. 
 resultsDir = "results/"
+
+import tudatpy
+from tudatpy.estimation.observations import ObservationCollection
+print(tudatpy.__version__, hasattr(ObservationCollection, "save_to_binary") )
 
 if __name__ == "__main__":
 
@@ -282,10 +287,6 @@ if __name__ == "__main__":
                         fileDir= resultsDir,
                         fileName= "testSave"
                     )
-
-                    testLoadHarmonics = shModelClass.make_from_file(
-                        filePath= resultsDir + "testSave.csv"
-                    )
                     
                     """ # SH class from LP150 environment. 
                     zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
@@ -299,6 +300,12 @@ if __name__ == "__main__":
                 # Estimate initial states and harmonic coefficients.
                 estimatorReference.propagate_reality(
                     initialStateOffset= initialStateOffset,
+                )
+
+                # NOTE: Currently unusable. Requires new version of tudat. 
+                estimatorReference.save_real_propagation(
+                    fileDir= resultsDir,
+                    fileName= "testSave"
                 )
 
                 ### Observations objects. 
@@ -317,15 +324,20 @@ if __name__ == "__main__":
                     countTime= DSNCOUNT
                 )
                 
-                """ # Makes observations. 
+                # Makes observations. 
                 estimatorReference.make_observations(
                     observationsList= [ grailSSTObservations, grailDSNObservations ]
                 ) 
+
+                
+
+                break
+
                 estimatorReference.make_estimation( 
                     maximumIterations= 10,
                     printEstimationOutput= False,
                     estimationDegree= 0
-                ) """
+                )
 
                 print( np.size( estimatorReference.estimationOutput.final_parameters ) - 
                       environmentReality.arcNumber*6*2 )

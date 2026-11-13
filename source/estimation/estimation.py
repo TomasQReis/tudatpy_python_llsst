@@ -1,10 +1,13 @@
 ### Tudat imports. 
 from tudatpy import dynamics
 from tudatpy import estimation
+
 from tudatpy.estimation.observable_models_setup.model_settings import \
     one_way_range_type, one_way_averaged_doppler_type, n_way_averaged_doppler_type
 from tudatpy.estimation.observations_setup.ancillary_settings import \
     n_way_doppler_ancillary_settings, doppler_ancillary_settings, FrequencyBands
+
+from tudatpy.util import result2array
 
 ### Local imports. 
 from source.environment.environment import environmentClass 
@@ -74,7 +77,7 @@ class estimatorClass ():
         )
 
         # Save propagation results. 
-        self.referencePropagationResults = self.environmentReal.propagate()
+        self.realPropagationResults = self.environmentReal.propagate()
 
         # Match initial state offset to number of spacecraft. 
         initialStateOffset = np.tile( initialStateOffset, 
@@ -106,26 +109,6 @@ class estimatorClass ():
 
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()
-
-    def get_observations(
-            self,
-            observations: observationsClass,
-    ) -> tuple:
-        """Returns simulated observations for the requested transmitter.
-        Args:
-        - observations (observationsClass): Observations object.
-        Returns: 
-        - values (NDArray): Array with observation values.
-        - epochs (NDArray): Array with observation epochs. """
-
-        # Checks if observations have been produced.
-        if not hasattr( observations, "simulatedObservations"):
-            print(" WARNING: No observations simulated for this object!\n")
-            return None, None
-
-        values, epochs = observations.get_observations() 
-
-        return values, epochs 
 
     def make_estimation ( 
             self,
@@ -202,43 +185,82 @@ class estimatorClass ():
             estimation_input= estimatorSettings
         )
 
+    def get_observations(
+            self,
+            observations: observationsClass,
+    ) -> tuple:
+        """Returns simulated observations for the requested transmitter.
+        Args:
+        - observations (observationsClass): Observations object.
+        Returns: 
+        - values (NDArray): Array with observation values.
+        - epochs (NDArray): Array with observation epochs. """
+
+        # Checks if observations have been produced.
+        if not hasattr( observations, "simulatedObservations"):
+            print(" WARNING: No observations simulated for this object!\n")
+            return None, None
+
+        values, epochs = observations.get_observations() 
+
+        return values, epochs 
+
     def get_final_estimates( self ):
-        """Isolates final parameters from estimation. Splits into initial states,
-        cosine coefficients and sine coefficients (...)."""
+            """Isolates final parameters from estimation. Splits into initial states,
+            cosine coefficients and sine coefficients (...)."""
+    
+            finalParameters = self.estimationOutput.final_parameters
+    
+            # Number of arcs. 
+            if self.arcLengthReference == 0.0:
+                numArcs = 1
+            else:
+                numArcs = int ( float( self.environmentReference.simEndEpoch - 
+                    self.environmentReference.simStartEpoch ) // float( 
+                    self.arcLengthReference ) )
+    
+            # Index of last estimated state element.
+            initialStateIdx = 6 * ( len(self.environmentReference.spacecrafts) * 
+                                   numArcs )
+    
+            # Index for last cosine and sine coefficients. 
+            cosIdxSolo, sinIdxSolo = get_coefficient_index ( degree= self.harmonicsDegreeEstimated )
+            cosineCoeffIdx = initialStateIdx + cosIdxSolo
+            sineCoeffIdx = cosineCoeffIdx + sinIdxSolo
+    
+            # Isolates specific estimate results. 
+            initialStates = finalParameters[:initialStateIdx]
+            estimatedCosineCoeffs = finalParameters[initialStateIdx:cosineCoeffIdx]
+            estimatedSineCoefffs = finalParameters[cosineCoeffIdx:sineCoeffIdx]
+    
+            # Re-formats initial states into a per-arc format.
+            # (Each arc is a row of the array)
+            nSC = len( self.environmentReal.spacecrafts )
+            nArcs = self.environmentReference.arcNumber
+            initialStateInRows = np.reshape( initialStates, (nSC * nArcs, 6) )
+            initialStatePerArc = np.hstack( [initialStateInRows[i*nArcs:(i+1)*nArcs] for i in range(nSC)] )
+    
+    
+            return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
+    
 
-        finalParameters = self.estimationOutput.final_parameters
+    def save_observations(
+        self,
+        fileDir: str,
+        fileName: str,
+    ):
+        # Saves to file. 
+        self.observations.simulatedObservations.save_to_binary(
+            path= fileDir + fileName
+        )
+        
+    def save_real_propagation( self, fileDir: str, fileName: str ):
+        """Saves the real states to a binary file using the tudat function."""
 
-        # Number of arcs. 
-        if self.arcLengthReference == 0.0:
-            numArcs = 1
-        else:
-            numArcs = int ( float( self.environmentReference.simEndEpoch - 
-                self.environmentReference.simStartEpoch ) // float( 
-                self.arcLengthReference ) )
+        self.realPropagationResults.save_to_binary(
+            path= fileDir + fileName
+        )
 
-        # Index of last estimated state element.
-        initialStateIdx = 6 * ( len(self.environmentReference.spacecrafts) * 
-                               numArcs )
-
-        # Index for last cosine and sine coefficients. 
-        cosIdxSolo, sinIdxSolo = get_coefficient_index ( degree= self.harmonicsDegreeEstimated )
-        cosineCoeffIdx = initialStateIdx + cosIdxSolo
-        sineCoeffIdx = cosineCoeffIdx + sinIdxSolo
-
-        # Isolates specific estimate results. 
-        initialStates = finalParameters[:initialStateIdx]
-        estimatedCosineCoeffs = finalParameters[initialStateIdx:cosineCoeffIdx]
-        estimatedSineCoefffs = finalParameters[cosineCoeffIdx:sineCoeffIdx]
-
-        # Re-formats initial states into a per-arc format.
-        # (Each arc is a row of the array)
-        nSC = len( self.environmentReal.spacecrafts )
-        nArcs = self.environmentReference.arcNumber
-        initialStateInRows = np.reshape( initialStates, (nSC * nArcs, 6) )
-        initialStatePerArc = np.hstack( [initialStateInRows[i*nArcs:(i+1)*nArcs] for i in range(nSC)] )
-
-
-        return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
 
 def estimate_with_observation_noise(
     estimator: estimatorClass, 

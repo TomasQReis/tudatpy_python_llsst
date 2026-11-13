@@ -79,6 +79,8 @@ class shModelClass ():
         # Coefficients from 3rd and 4th columns.
         cosCoeffs = data[ :,2 ]
         sinCoeffs = data[ :,3 ]
+        # Removes zero sine coefficients to match the used structure. 
+        # NOTE: Probably more complicated than it needs to be...
         nonZeroSinCoeffs = sinCoeffs[ sinCoeffs != 0 ]
         # Maximum degree from final value of first column. 
         harmonicsDegree = data[ -1,0 ]
@@ -86,7 +88,6 @@ class shModelClass ():
         return cls( cosCoeffs, nonZeroSinCoeffs, gravityParameter, referenceRadius,
                     harmonicsDegree)
         
-
     def __sub__( self, other: shModelClass ) -> shModelClass:
         """Outputs difference between two shModelClass harmonics coefficients.
         Args: ---
