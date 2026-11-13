@@ -1,25 +1,25 @@
 ### Local imports. 
-from environment.low_fidelity import *
-from environment.environment import *
-from environment.moon_environment import moonEnvironment, MOONRADIUS
+from source.environment.low_fidelity import *
+from source.environment.environment import *
+from source.environment.moon_environment import moonEnvironment, MOONRADIUS
 
-from observations.ll_sst import *       # NOTE: Likely deprecated. 
-from observations.observation_class import merge_observations
-from observations.n_way_doppler import \
+from source.observations.ll_sst import *       # NOTE: Likely deprecated. 
+from source.observations.observation_class import merge_observations
+from source.observations.n_way_doppler import \
     oneWayDopplerObservationsClass
 
-from bodies.bodies import *
-from bodies.roci_ab import *
-from bodies.grail_spacecraft import grailList
-from bodies.ground_stations import *
+from source.bodies.bodies import *
+from source.bodies.roci_ab import *
+from source.bodies.grail_spacecraft import grailList
+from source.bodies.ground_stations import *
 
-from visualization.plotting import *
+from source.visualization.plotting import *
 
-from estimation.estimation import estimatorClass, estimate_with_observation_noise
+from source.estimation.estimation import estimatorClass, estimate_with_observation_noise
 
-from environment.harmonics import shModelClass, kaula_power_rule
+from source.environment.harmonics import shModelClass, kaula_power_rule
 
-from observations.validation_models import \
+from source.observations.validation_models import \
     sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT, kABand, xBand
 
 ### External library imports.
@@ -33,6 +33,9 @@ from tudatpy.estimation.estimation_analysis import Estimator
 
 
 if __name__ == "__main__":
+
+    # NOTE: TEmp
+    print("Test run")
 
     # Data directory. 
     resultsDir = "data/results/"

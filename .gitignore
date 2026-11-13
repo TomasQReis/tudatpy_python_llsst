@@ -1,4 +1,5 @@
 Figures/
-data/
+models/
 auxiliary/playground.py
 deprecated/
+results/
