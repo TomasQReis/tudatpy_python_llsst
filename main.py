@@ -329,7 +329,10 @@ if __name__ == "__main__":
                     observationsList= [ grailSSTObservations, grailDSNObservations ]
                 ) 
 
-                
+                estimatorReference.save_observations(
+                    fileDir= resultsDir,
+                    fileName= "observations"
+                )
 
                 break
 

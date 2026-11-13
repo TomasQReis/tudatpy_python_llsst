@@ -243,14 +243,9 @@ class estimatorClass ():
     
             return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
     
-
-    def save_observations(
-        self,
-        fileDir: str,
-        fileName: str,
-    ):
+    def save_observations( self, fileDir: str, fileName: str ):
         # Saves to file. 
-        self.observations.simulatedObservations.save_to_binary(
+        self.observations.simulatedObservations.save_to_binary( # type: ignore
             path= fileDir + fileName
         )
         
