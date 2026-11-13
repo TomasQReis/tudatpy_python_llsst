@@ -1,6 +1,7 @@
 
 # External Imports
 import numpy as np
+from numpy.typing import NDArray
 
 # Tudat imports.
 
@@ -8,75 +9,83 @@ import numpy as np
 from source.environment.environment import environmentClass
 from source.estimation.estimation import estimatorClass, get_coefficient_index
 
-#  
 
 
 class shModelClass ():  
     def __init__(
         self,
-        inputHarmonics: environmentClass | estimatorClass | None= None,
-        harmonicsDegree: int= 2,
+        cosCoeffs: NDArray[ np.float64 ],
+        sinCoeffs: NDArray[ np.float64 ],
+        gravityParameter: float,
+        referenceRadius: float,
+        harmonicsDegree: int,
+    ) -> None:
+        
+        # Store coefficients directly. 
+        self.cosCoeffs = np.asarray( cosCoeffs )
+        self.sinCoeffs = np.asarray( sinCoeffs )
+        self.gravityParameter = gravityParameter
+        self.referenceRadius = referenceRadius
+        self.harmonicsDegree = harmonicsDegree
 
-        cosCoeffs = [],
-        sinCoeffs = [],
-
-        gravityParameter: float= 0,
-        referenceRadius: float= 0,
-        ) -> None:
-
-        self.inputHarmonics = inputHarmonics
-
-        if isinstance ( inputHarmonics, environmentClass ): self.make_harmonics_from_environment()
-        elif isinstance ( inputHarmonics, estimatorClass ): self.make_harmonics_from_estimate()
-        elif ( np.isfinite(cosCoeffs).all() and np.isfinite(sinCoeffs).all() and gravityParameter and referenceRadius ):
-            # NOTE: This option is extremely sensitive to well-formatted inputs. 
-            self.cosCoeffs = np.array( cosCoeffs )
-            self.sinCoeffs = np.array( sinCoeffs )
-            self.gravityParameter = gravityParameter
-            self.referenceRadius = referenceRadius
-            self.harmonicsDegree = harmonicsDegree
-        else: raise RuntimeError(
-            f"Input Harmonics of wrong type: {type(inputHarmonics)}"
-        )
-
-    def make_harmonics_from_environment( self ):
+    @classmethod
+    def make_from_environment( cls, environment: environmentClass ):
         """Takes spherical harmonic coefficient data from environment."""
-
-        if not isinstance( self.inputHarmonics, environmentClass):
-            raise TypeError(
-                f"Input not environmentClass: {type(self.inputHarmonics)}"
-            )
 
         # TODO: Find a way to avoid the environment needing to be propagated 
         # to extract the harmonic coefficients. 
 
-        self.cosCoeffs, self.sinCoeffs, self.gravityParameter, self.referenceRadius\
-            = self.inputHarmonics.get_harmonic_coefficients()
+        cosCoeffs, sinCoeffs, gravityParameter, referenceRadius\
+            = environment.get_harmonic_coefficients()
+        harmonicsDegree= environment.harmonicsMaxDegree
 
-        self.harmonicsDegree = self.inputHarmonics.harmonicsMaxDegree
-        
-    def make_harmonics_from_estimate( self ):
+        return cls( cosCoeffs, sinCoeffs, gravityParameter, referenceRadius,
+                    harmonicsDegree)
+
+    @classmethod
+    def make_from_estimate( cls, estimator: estimatorClass ):
         """Takes spherical harmonic coefficient data from estimator. Note, 
         assumes estimation has already been completed for this estimator."""
 
-        if not isinstance( self.inputHarmonics, estimatorClass):
-            raise TypeError(
-                f"Input not environmentClass: {type(self.inputHarmonics)}"
-            )
-
         # Extracts coefficients from estimation results. 
-        _, self.cosCoeffs, self.sinCoeffs = self.inputHarmonics.get_final_estimates()
+        _, cosCoeffs, sinCoeffs = estimator.get_final_estimates()
 
         ### TODO: Remove if you end up adding gravitational parameter and
         # or reference radius to estimation outputs. 
-        # Extracts estimation environment. 
-        estimationEnvironment = self.inputHarmonics.environmentReference
+        # Extracts estimation environment.
 
-        # Extracts gravity parameter and reference radius. 
-        _, _, self.gravityParameter, self.referenceRadius = \
-            estimationEnvironment.get_harmonic_coefficients()
+        # Extracts gravity parameter, reference radius and max degree. 
+        _, _, gravityParameter, referenceRadius = \
+            estimator.environmentReference.get_harmonic_coefficients()
+        harmonicsDegree = estimator.harmonicsDegreeEstimated
 
-        self.harmonicsDegree = self.inputHarmonics.harmonicsDegreeEstimated
+        return cls( cosCoeffs, sinCoeffs, gravityParameter, referenceRadius,
+                    harmonicsDegree)
+
+    @classmethod
+    def make_from_file( cls, filePath: str ):
+        """Generates an shModelClass from a given csv file. Assumes the same
+        file structure as used in the save_coefficients method and the tudat
+        from_file_spherical_harmonics function.
+        Args:
+        - filePath (str): relative filepath of harmonics file."""
+
+        # Load data from file. 
+        header = np.genfromtxt( filePath, delimiter= ",", max_rows= 1)
+        data = np.genfromtxt( filePath, delimiter= ",", skip_header= 1)
+
+        # Gravity parameter and reference radius from header. 
+        gravityParameter, referenceRadius = header
+        # Coefficients from 3rd and 4th columns.
+        cosCoeffs = data[ :,2 ]
+        sinCoeffs = data[ :,3 ]
+        nonZeroSinCoeffs = sinCoeffs[ sinCoeffs != 0 ]
+        # Maximum degree from final value of first column. 
+        harmonicsDegree = data[ -1,0 ]
+
+        return cls( cosCoeffs, nonZeroSinCoeffs, gravityParameter, referenceRadius,
+                    harmonicsDegree)
+        
 
     def __sub__( self, other: shModelClass ) -> shModelClass:
         """Outputs difference between two shModelClass harmonics coefficients.
@@ -109,7 +118,6 @@ class shModelClass ():
 
         # Creates SH object from results. 
         resultSHModel = shModelClass(
-            inputHarmonics= None, # type: ignore
             cosCoeffs= resultCosCoeffs,
             sinCoeffs= resultSinCoeffs,
             gravityParameter= self.gravityParameter,
@@ -161,7 +169,14 @@ class shModelClass ():
 
     def save_coefficients( 
         self,
-        filePath: str= "" ):
+        fileDir: str= "",
+        fileName: str= "" ):
+        """Saves harmonic coefficients in a csv format. The header containts the
+        gravitational parameter and reference radius in SI units. The columns contain
+        the degree, order, cosine and sine coefficient in that order.
+        Args:
+        - fileDir (str): directory where the file is saved.
+        - fileName (str): filename without type extension."""
 
         # Degree and order of every coefficient, in storage order
         # (degree 2 orders 0..2, degree 3 orders 0..3, ...).
@@ -188,11 +203,14 @@ class shModelClass ():
         saveData = np.column_stack( [ degrees, orders, self.cosCoeffs, sinCoeffsAllOrders ] )
 
         # Header line with gravitational parameter and reference radius.
-        # comments="" stops numpy prefixing the header with "# ".
-        header = f"{self.gravityParameter:.15e},{self.referenceRadius:.15e}"
+        # "" stops numpy prefixing the header with "# ".
+        header = f"{self.gravityParameter:24.16e},{self.referenceRadius:24.17e}"
+
+        # Final filepath.
+        filePath = fileDir + fileName + ".csv"
 
         np.savetxt( filePath, saveData, header= header, comments= "",
-                    fmt= [ "%i", "%i", "%.15e", "%.15e" ], delimiter= "," )
+                    fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], delimiter= "," )
 
 def kaula_power_rule ( maxDegree: int,
                        kaulaCoefficient: float= 10**-5 ):

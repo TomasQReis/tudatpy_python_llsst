@@ -31,19 +31,15 @@ from tudatpy.util import result2array
 from tudatpy import dynamics
 from tudatpy.estimation.estimation_analysis import Estimator
 
+### Directories 
+# Data directory. 
+resultsDir = "results/"
 
 if __name__ == "__main__":
-
-    # NOTE: TEmp
-    print("Test run")
-
-    # Data directory. 
-    resultsDir = "data/results/"
 
     ### -----------------------------------------------------------------------
     ### Propagation of "reality".
     ### -----------------------------------------------------------------------
-    
 
     # Propagation start and end dates. 
     #
@@ -73,6 +69,11 @@ if __name__ == "__main__":
 
     # Reference degree. 
     referenceDegree = 10
+
+
+    
+
+
 
     ### TEST ENVIRONMENT CREATION ###
     if testEnvironment := False:
@@ -275,11 +276,17 @@ if __name__ == "__main__":
                     # Creates an initial set of environment properties. 
                     estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
                     # SH class for reference harmonics. 
-                    referenceHarmonics = shModelClass( inputHarmonics= environmentReality )
+                    referenceHarmonics = shModelClass.make_from_environment( environmentReality )
 
                     referenceHarmonics.save_coefficients(
-                        filePath= "data/results/test_iterations/reference_harmonics.csv"
+                        fileDir= resultsDir,
+                        fileName= "testSave"
                     )
+
+                    testLoadHarmonics = shModelClass.make_from_file(
+                        filePath= resultsDir + "testSave.csv"
+                    )
+                    
                     """ # SH class from LP150 environment. 
                     zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
                     # Residual harmonics. 
@@ -310,7 +317,7 @@ if __name__ == "__main__":
                     countTime= DSNCOUNT
                 )
                 
-                # Makes observations. 
+                """ # Makes observations. 
                 estimatorReference.make_observations(
                     observationsList= [ grailSSTObservations, grailDSNObservations ]
                 ) 
@@ -318,13 +325,13 @@ if __name__ == "__main__":
                     maximumIterations= 10,
                     printEstimationOutput= False,
                     estimationDegree= 0
-                )
+                ) """
 
                 print( np.size( estimatorReference.estimationOutput.final_parameters ) - 
                       environmentReality.arcNumber*6*2 )
 
                 # Save estimate values. 
-                estimatedHarmonics = shModelClass( inputHarmonics= estimatorReference )
+                estimatedHarmonics = shModelClass.make_from_estimate( estimatorReference )
  
                 # Compare with reference harmonics. 
                 deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
@@ -332,7 +339,8 @@ if __name__ == "__main__":
 
                 # Saves estimates
                 estimatedHarmonics.save_coefficients(
-                    filePath= f"data/results/test_iterations/{int( simLengthDays[i]/(24*60**2) )}days_harmonics.csv"
+                    fileDir= resultsDir,
+                    fileName= f"testSave_results"
                 )
 
                 # Plot current estimate. 
