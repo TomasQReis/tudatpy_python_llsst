@@ -14,16 +14,15 @@ from source.environment.environment import environmentClass
 from source.bodies.bodies import body
 
 from source.observations.observation_class import merge_observations, observationsClass
-
 # TODO: Would be nice to have these in the estimator class or part of their own class. 
 # Just make them modular and easy to access...
 from source.observations.ll_sst import one_way_range_link_definitions, one_way_range_observation_simulator,\
     one_way_range_observations, one_way_range_get
 
+
 ### External imports.
 import numpy as np
 from numpy.typing import NDArray
-from itertools import product
 
 
 def get_coefficient_index ( degree: int ):
@@ -256,63 +255,4 @@ class estimatorClass ():
             path= fileDir + fileName
         )
 
-
-def estimate_with_observation_noise(
-    estimator: estimatorClass, 
-    observationsList: list[ observationsClass ], 
-
-    initialStateOffset: NDArray= np.array( [0,0,0,0,0,0] ),
-
-    noiseDict:dict = {}
-    ) -> None:
-    """Performs a set of estimates that vary the observations noise. NOTE this
-    does not apply noise on acceleration values, only DSN doppler and sst range
-    observations. Returns two arrays with the stored noise combinations and 
-
-    Args:
-    - estimator (estimatorClass): Estimator with which the estimation will be \
-    performed. 
-    - observationsList (list[observationsClass]): List with observationClasses 
-    for this estimation.
-    - initialStateOffset (NDArray): Initial state offset for each arc. 
-    - noiseDict (dict): Dictionary of noise values. The keys indicating the name 
-    of the observationClass they apply to and the value its standard deviation. 
-    
-    """
-    # Create index array for tested noise sigmas. 
-    testValues = np.empty( (len( noiseDict.values() ), 2) )
-    
-    # Propagate reality once.
-    estimator.propagate_reality(
-        initialStateOffset= initialStateOffset
-    )
-
-    ### Nested for loops
-    # NOTE: this is likely the part that would benefit from multithreading. 
-    # Iterates through all combinations of noise values. 
-    i = 0
-    for combination in product( *noiseDict.values() ):
-        # Save combination.
-        testValues[i,:] = combination
-        i+=1
-
-        currentCombination = dict( zip( noiseDict.keys(), combination ) )
-
-
-        # Set new noise values. 
-        for observation in observationsList: 
-            observation.set_noise_sigma( noiseSigma= currentCombination[ observation.name ] )
-        
-        # Create observations using noise values. 
-        estimator.make_observations()
-            
-        # Estimate
-        estimator.make_estimation(
-            maximumIterations= 10,
-            printEstimationOutput= False
-        )
-
-        # Save to array
-
-# Output array
 

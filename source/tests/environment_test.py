@@ -14,7 +14,7 @@ from source.environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, 
     ,convert_to_j2000, check_timespan_limit, check_arc_timespan_limit, load_spice
 from source.environment.moon_environment import moonEnvironment
 
-from source.estimation.estimation import estimatorClass
+from source.estimation.estimator_class import estimatorClass
 
 class environmentTests ( unittest.TestCase ):
     # Load kernels

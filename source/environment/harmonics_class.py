@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 
 # Local imports. 
 from source.environment.environment import environmentClass
-from source.estimation.estimation import estimatorClass, get_coefficient_index
+from source.estimation.estimator_class import estimatorClass, get_coefficient_index
 
 
 

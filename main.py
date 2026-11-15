@@ -15,9 +15,10 @@ from source.bodies.ground_stations import *
 
 from source.visualization.plotting import *
 
-from source.estimation.estimation import estimatorClass, estimate_with_observation_noise
+from source.estimation.estimator_class import estimatorClass
+from source.estimation.run_functions import estimate_with_observation_noise
 
-from source.environment.harmonics import shModelClass, kaula_power_rule
+from source.environment.harmonics_class import shModelClass, kaula_power_rule
 
 from source.observations.validation_models import \
     sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT, kABand, xBand
@@ -35,10 +36,6 @@ from tudatpy.estimation.estimation_analysis import Estimator
 ### Directories 
 # Data directory. 
 resultsDir = "results/"
-
-import tudatpy
-from tudatpy.estimation.observations import ObservationCollection
-print(tudatpy.__version__, hasattr(ObservationCollection, "save_to_binary") )
 
 if __name__ == "__main__":
 
@@ -74,6 +71,8 @@ if __name__ == "__main__":
 
     # Reference degree. 
     referenceDegree = 10
+
+
 
 
     
