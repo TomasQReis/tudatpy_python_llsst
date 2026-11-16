@@ -68,7 +68,12 @@ class shModelClass ():
         file structure as used in the save_coefficients method and the tudat
         from_file_spherical_harmonics function.
         Args:
-        - filePath (str): relative filepath of harmonics file."""
+        - filePath (str): relative filepath of harmonics file. (Csv file)
+        Example:
+        With a harmonics.csv file saved in the relative directory sourceDirector.
+        >>> filePath = 'sourceDirectory/harmonics.csv'
+        >>> loadedHarmonics = harmonics.make_from_file( filePath= filePath )
+        """
 
         # Load data from file. 
         header = np.genfromtxt( filePath, delimiter= ",", max_rows= 1)
@@ -83,7 +88,7 @@ class shModelClass ():
         # NOTE: Probably more complicated than it needs to be...
         nonZeroSinCoeffs = sinCoeffs[ sinCoeffs != 0 ]
         # Maximum degree from final value of first column. 
-        harmonicsDegree = data[ -1,0 ]
+        harmonicsDegree = int( data[ -1,0 ] )
 
         return cls( cosCoeffs, nonZeroSinCoeffs, gravityParameter, referenceRadius,
                     harmonicsDegree)
@@ -131,9 +136,8 @@ class shModelClass ():
     def rms_per_degree( self ):
         """Calculates the rms (And additionallity the 1-sigma value) of the self 
         harmonics coefficients. 
-        Args: ---
-        - Self.
-        Returns: ---
+
+        Returns: 
         - degrees (NDArray): Array of degrees used in rms calculation.
         - rmsPerDegrees (NDArray): RMS value per degree. """
 
@@ -208,7 +212,7 @@ class shModelClass ():
         header = f"{self.gravityParameter:24.16e},{self.referenceRadius:24.17e}"
 
         # Final filepath.
-        filePath = fileDir + fileName + ".csv"
+        filePath = fileDir + fileName
 
         np.savetxt( filePath, saveData, header= header, comments= "",
                     fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], delimiter= "," )

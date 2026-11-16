@@ -51,14 +51,16 @@ class estimatorClass ():
         harmonicsDegreeReference: int= 5
     ) -> None:
 
+        # Avoids conflicting systemOfBodies between environments. 
+        if environmentReal is environmentReference:
+            raise ValueError( "environmentReal and environmentReference must be separate instances." )
         
         self.environmentReal   = environmentReal
         self.environmentReference  = environmentReference
 
         self.arcLengthReal     = arcLengthReal
         self.arcLengthReference    = arcLengthReference
-
-        # NOTE: reference environment harmonics degree is currently unused. 
+ 
         self.harmonicsDegreeReal = harmonicsDegreeReal
         self.harmonicsDegreeReference = harmonicsDegreeReference
         self.harmonicsDegreeEstimated = harmonicsDegreeReference

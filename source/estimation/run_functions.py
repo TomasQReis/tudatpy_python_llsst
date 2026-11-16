@@ -1,6 +1,7 @@
 ### Library imports
 import numpy as np
 import re
+import csv
 from numpy.typing import NDArray
 from itertools import product
 from datetime import date
@@ -11,6 +12,14 @@ from source.estimation.estimator_class import estimatorClass
 from source.observations.observation_class import observationsClass
 from source.environment.harmonics_class import shModelClass
 
+
+### Constants
+# Estimates filename.
+ESTIMATEFILE = f"estimated_harmonics.csv"
+NOISEVALSFILE = f"noise_values.csv"
+OBSERVATIONSFILE = f"observations"
+REALSTATESFILE = f"reality_states"
+INTEGRATIONFILE = f"integration_parameters"
 
 def get_last_run_number( runsDir: str, prefix: str= "run_" ) -> int:
 
@@ -35,6 +44,7 @@ def estimate_with_observation_noise(
     initialStateOffset: NDArray= np.array( [0,0,0,0,0,0] ),
 
     noiseDict: dict= {},
+    intParamsDict: dict= {},
 
     resultsDir: str= "",
     ) -> None:
@@ -74,8 +84,10 @@ def estimate_with_observation_noise(
         prefix= runDirPrefix
     )
 
-    # Create index array for tested noise sigmas. 
-    testValues = np.empty( (len( noiseDict.values() ), 2) )
+    # Save propagation parameters. 
+    with open( runsDir + INTEGRATIONFILE, 'w' ) as file:
+        for key, value in intParamsDict.items():
+            file.write( f"{key}: {value}\n")
     
     # Propagate reality once.
     estimator.propagate_reality(
@@ -84,16 +96,20 @@ def estimate_with_observation_noise(
     # Saves reality propagation to overall run directory. 
     estimator.save_real_propagation(
         fileDir= runsDir,
-        fileName= "reality_states"
+        fileName= REALSTATESFILE
     )
 
     # Initializes observations objects 
     for observation in observationsList: observation.initial_setup()
-
-    # NOTE: this is likely the part that would benefit from multithreading. 
-    # Iterates through all combinations of noise values. 
-    i = 0
+    
+    # Creates list of all possible combinations of given noise values. 
     combinations = list( product( *noiseDict.values() ) )
+    # Create index array for tested noise sigmas. 
+    testValues = np.empty( (len( combinations ), 2) )
+
+    # NOTE: this is likely the part that would benefit from multithreading.
+    # Iterates through all combinations of noise values.    
+    i = 0
     for combination in combinations:
         # Current combination linked to keys 
         currentCombination = dict( zip( noiseDict.keys(), combination ) )
@@ -122,7 +138,7 @@ def estimate_with_observation_noise(
         # Save observation values. 
         estimator.save_observations(
             fileDir= runDir,
-            fileName= f"observations"
+            fileName= OBSERVATIONSFILE
         )
         # Estimate
         estimator.make_estimation(
@@ -136,13 +152,51 @@ def estimate_with_observation_noise(
         # Save estimated harmonics. 
         estimatedHarmonics.save_coefficients(
             fileDir= runDir,
-            fileName= f"estimated_harmonics"
+            fileName= ESTIMATEFILE
         )
         # Save combination to text file.
-        noiseDictKeys = list( noiseDict.values() )
+        noiseDictKeys = list( noiseDict.keys() )
         header = f"{noiseDictKeys[0]},{noiseDictKeys[1]}"
-        combinationDir = runDir + "noise_values.csv"
-        np.savetxt( combinationDir, combination, header= header, comments= "",
-                   delimiter= ",")
+        combinationDir = runDir + NOISEVALSFILE
+        np.savetxt( combinationDir, [ combination ], header= header, comments= "",
+                   fmt= '%2.4e', delimiter= "," )
 
         i+=1
+
+def read_observation_noise_estimates(
+    runsDir: str,
+    runNums: list[int]= [1],
+    prefix: str= "run_",
+) -> tuple[ list[ shModelClass ], NDArray ]: 
+    '''Outputs a list of harmonics objects and structured array of noise values
+    for the selected runs. 
+
+    Args:
+    - runsDir (str): Folder directory of runs. 
+    - runNums (list[int]): List of run numbers you wish to load.
+    - prefix (str): OPTIONAL. The prefix of individual run folders. 
+    
+    '''
+    # Empty output lists. 
+    harmonicsList = []
+    noiseList= []
+
+    for runNum in runNums:
+        # Run directory
+        runDir = runsDir + prefix + str( runNum ) + '/'
+
+        # Extract harmonics model from each estimates file. 
+        harmonicsEstimated = shModelClass.make_from_file(
+            filePath= runDir + ESTIMATEFILE
+        ) 
+        harmonicsList.append( harmonicsEstimated )
+
+        # Read noise file. 
+        noiseList.append( np.genfromtxt( runDir + NOISEVALSFILE, delimiter= ',',
+                                   names= True )
+        )
+
+    # Turn noise list into structured array. 
+    noiseVals = np.array( noiseList )
+        
+    return harmonicsList, noiseVals
