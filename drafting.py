@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import itertools
+from datetime import date
+from source.estimation.run_functions import *
 
 dir = "data/models/gravity/"
 
@@ -32,10 +34,4 @@ testDict["B"] = [1,3,5]
 
 emptyArr = np.empty((3*3,2))
 
-i = 0
-for combination in itertools.product( *testDict.values() ):
-    emptyArr[i,:] = combination
-    currentSettings = dict( zip( testDict.keys(), combination ) )
-    i+=1
 
-print( emptyArr )

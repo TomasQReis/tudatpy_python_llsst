@@ -25,6 +25,8 @@ from source.observations.validation_models import \
 
 ### External library imports.
 import numpy as np
+import sys
+
 from pathlib import Path
 
 ### Tudat imports
@@ -71,13 +73,6 @@ if __name__ == "__main__":
 
     # Reference degree. 
     referenceDegree = 10
-
-
-
-
-    
-
-
 
     ### TEST ENVIRONMENT CREATION ###
     if testEnvironment := False:
@@ -168,201 +163,273 @@ if __name__ == "__main__":
         lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
         lineStyles = ["-", "--", "-.", ":"]
 
-        ### Environment and estimation parameters. 
-        # Reference degree. 
-        referenceDegree = 8
-        estimationDegree = referenceDegree
+        ### Environment and estimation parameters.
+        # Initial epoch. 
+        simStartDate    = [2001, 1, 1, 0, 0, 0]
+        simStartEpoch= convert_to_j2000(simStartDate)
+
         # Simulation Days
-        simLengthDays = np.array( [6] ) * (24*60**2)
+        simLength = 6 * (24*60**2)
+        # Final Epoch 
+        simEndEpoch= simStartEpoch + simLength
+
         # Simulation arcLengths
-        arcLengths = np.array( [24] ) * (60**2) 
+        arcLength = 24 * (60**2) 
 
-        ### Spacecraft values. 
-        # Altitudes
-        altitudes = np.array( [50, 100, 200, 400, 800, 1600] ) * (1e3)  # km
-        # Longitude of ascending node.
-        longitudes = np.array( [ 0 ] ) # degrees
-
-        rangeNoiseSigmas = [0]
-        doppNoiseSigmas = [1e-4]
-
-        changingParameter = simLengthDays 
-        ### For loop
-        for i in range( len(changingParameter) ):
-            for j in range( len( doppNoiseSigmas ) ):
-
-                runCount = i * len( doppNoiseSigmas ) + j 
-
-                print(f"Estimation {runCount+1} out of {len(changingParameter)*len(doppNoiseSigmas)}")
-
-                ### Alter time-related parameters.
-                # Given as [Year, Month, Day]
-                simStartDate    = [2001, 1, 1, 0, 0, 0]
-                
-                simStartEpoch= convert_to_j2000(simStartDate)
-
-                # Add simulation time. 
-                simEndEpoch= simStartEpoch + simLengthDays[i]
-                
-                # Propagation time step size. 
-                propTimeStep = 360.0     # [s]
-                # Arc Length. 
-                arcLength = arcLengths[0]
-
-                ### Alter spacecraft-related parameters. 
-                # Altitude. 
-                altitude = altitudes[0]
-                semiMajorAxis = MOONRADIUS + altitude
-
-                # Longitude of ascending node. 
-                longitude = np.deg2rad( longitudes[0] )
-
-                ## Change spacecraft initial keplerian elements. 
-                # Semi-major axis.
-                grailList[0].keplerianElems[0] = semiMajorAxis
-                grailList[1].keplerianElems[0] = semiMajorAxis
-                # Longitude of ascending node. 
-                grailList[0].keplerianElems[4] = longitude
-                grailList[1].keplerianElems[4] = longitude
-
-                # Label for plots.
-                alteredParameterLabel = rf"$\sigma_D$:{doppNoiseSigmas[0]} -- Sim total:{simLengthDays[i]/(24*60**2)}  "  
-                plotTitle = rf"Residuals vs sim duration. Doppler noise $\sigma_D=1e-4$ m/s"
-
-                ### Initialize environments. 
-                # Reality environment. 
-                environmentReality = moonEnvironment(
-                    level= 3,
-                    simStartEpoch= simStartEpoch,   # type: ignore
-                    simEndEpoch= simEndEpoch,       # type: ignore
-                    timeStep= propTimeStep,         # type: ignore
+        # Propagation time step
+        propTimeStep = 60*6     # s 
         
-                    spacecrafts= grailList,
-                    groundStations= groundStations,
-        
-                    customHarmonicsBool= True,
-                    customHarmonicsFile= GGRX420L,
-                    harmonicsMaxDegree= estimationDegree,
-                )
-                # Estimation Environment. 
-                environmentReference = moonEnvironment(
-                    level= 3,
-                    simStartEpoch= simStartEpoch,   # type: ignore
-                    simEndEpoch= simEndEpoch,       # type: ignore
-                    timeStep= propTimeStep,         # type: ignore
+        # Dictionary of noise values. 
+        noiseDict = {
+            'sst_range_noise' : [1e-9, 1e-6],
+            'doppler_noise' : [1e-9, 1e-6]
+        }
+        # Initial state offset for each arc. 
+        initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+
+        # Environment definition.
+        environmentReality = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+    
+            spacecrafts= grailList,
+            groundStations= groundStations,
+    
+            customHarmonicsBool= True,
+            customHarmonicsFile= GGRX420L,
+            harmonicsMaxDegree= 20,
+        )
+
+        # Observations 
+        ### Observations objects. 
+        grailSSTObservations = oneWayDopplerObservationsClass(
+            environmentReal= environmentReality,
+            linkGroups= sstLinks,
+
+            noiseSigma= KBRRSIGMA,
+            countTime= KBRRCOUNT,
+            epochMargin= 1*60**2,
+
+            name= 'sst_range_noise'
+        )
+        grailDSNObservations = oneWayDopplerObservationsClass(
+            environmentReal= environmentReality,
+            linkGroups= dsnXBandLinks,
+
+            noiseSigma= DSNSIGMA,
+            countTime= DSNCOUNT,
+            epochMargin= 1*60**2,
+
+            name= 'doppler_noise'
+        )
+
+        ### Estimator object.
+        estimator = estimatorClass(
+            environmentReal= environmentReality,
+            environmentReference= environmentReality,
+
+            arcLengthReal= arcLength,
+            arcLengthReference= arcLength,
+
+            harmonicsDegreeReal= 10,
+            harmonicsDegreeReference= 10
+        )
+
+        ### Run noise estimation loop.
+        estimate_with_observation_noise(
+            estimator= estimator,
+            estimationDegree= 7,
+            observationsList= [grailSSTObservations,
+                               grailDSNObservations],
+            initialStateOffset= initialStateOffset,
+            noiseDict= noiseDict,
+            resultsDir= resultsDir
+        )
+
+
+        if doIteration := False:
+            changingParameter = simLengthDays 
+
+            # Altitudes
+            altitude = np.array( [100] ) * (1e3)  # km
+            # Longitude of ascending node.
+            longitude = np.array( [ 0 ] ) # degrees
+            ### For loop
+            for i in range( len(changingParameter) ):
+                for j in range( len( doppNoiseSigmas ) ):
+
+                    runCount = i * len( doppNoiseSigmas ) + j 
+
+                    print(f"Estimation {runCount+1} out of {len(changingParameter)*len(doppNoiseSigmas)}")
+
+                    ### Alter time-related parameters.
+                    # Given as [Year, Month, Day]
+                    simStartDate    = [2001, 1, 1, 0, 0, 0]
+                    
+                    simStartEpoch= convert_to_j2000(simStartDate)
+
+                    # Add simulation time. 
+                    simEndEpoch= simStartEpoch + simLengthDays[i]
+                    
+                    # Propagation time step size. 
+                    propTimeStep = 360.0     # [s]
+                    # Arc Length. 
+                    arcLength = arcLengths[0]
+
+                    ### Alter spacecraft-related parameters. 
+                    # Altitude. 
+                    altitude = altitudes[0]
+                    semiMajorAxis = MOONRADIUS + altitude
+
+                    # Longitude of ascending node. 
+                    longitude = np.deg2rad( longitudes[0] )
+
+                    ## Change spacecraft initial keplerian elements. 
+                    # Semi-major axis.
+                    grailList[0].keplerianElems[0] = semiMajorAxis
+                    grailList[1].keplerianElems[0] = semiMajorAxis
+                    # Longitude of ascending node. 
+                    grailList[0].keplerianElems[4] = longitude
+                    grailList[1].keplerianElems[4] = longitude
+
+                    # Label for plots.
+                    alteredParameterLabel = rf"$\sigma_D$:{doppNoiseSigmas[0]} -- Sim total:{simLengthDays[i]/(24*60**2)}  "  
+                    plotTitle = rf"Residuals vs sim duration. Doppler noise $\sigma_D=1e-4$ m/s"
+
+                    ### Initialize environments. 
+                    # Reality environment. 
+                    environmentReality = moonEnvironment(
+                        level= 3,
+                        simStartEpoch= simStartEpoch,   # type: ignore
+                        simEndEpoch= simEndEpoch,       # type: ignore
+                        timeStep= propTimeStep,         # type: ignore
             
-                    spacecrafts= grailList,
-                    groundStations= groundStations,
+                        spacecrafts= grailList,
+                        groundStations= groundStations,
             
-                    customHarmonicsBool= True,
-                    customHarmonicsFile= GGRX420L,
-                    harmonicsMaxDegree= estimationDegree,
-                )
+                        customHarmonicsBool= True,
+                        customHarmonicsFile= GGRX420L,
+                        harmonicsMaxDegree= estimationDegree,
+                    )
+                    # Estimation Environment. 
+                    environmentReference = moonEnvironment(
+                        level= 3,
+                        simStartEpoch= simStartEpoch,   # type: ignore
+                        simEndEpoch= simEndEpoch,       # type: ignore
+                        timeStep= propTimeStep,         # type: ignore
                 
-                ### Produce estimate. 
-                # Creates estimator. 
-                estimatorReference = estimatorClass(
-                    environmentReal= environmentReality,
-                    environmentReference= environmentReference,
-        
-                    arcLengthReal= arcLength,
-                    arcLengthReference= arcLength,
-        
-                    harmonicsDegreeReal= referenceDegree,
-                    harmonicsDegreeReference= referenceDegree
-                )
+                        spacecrafts= grailList,
+                        groundStations= groundStations,
+                
+                        customHarmonicsBool= True,
+                        customHarmonicsFile= GGRX420L,
+                        harmonicsMaxDegree= estimationDegree,
+                    )
+                    
+                    ### Produce estimate. 
+                    # Creates estimator. 
+                    estimatorReference = estimatorClass(
+                        environmentReal= environmentReality,
+                        environmentReference= environmentReference,
+            
+                        arcLengthReal= arcLength,
+                        arcLengthReference= arcLength,
+            
+                        harmonicsDegreeReal= referenceDegree,
+                        harmonicsDegreeReference= referenceDegree
+                    )
 
-                # Initial state offset for each spacecraft. 
-                initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+                    # Initial state offset for each spacecraft. 
+                    initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
 
-                # If first iteration creates a residual between LP150 and GGRX1200
-                if i == 0:
-                    # Creates an initial set of environment properties. 
-                    estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
-                    # SH class for reference harmonics. 
-                    referenceHarmonics = shModelClass.make_from_environment( environmentReality )
+                    # If first iteration creates a residual between LP150 and GGRX1200
+                    if i == 0:
+                        # Creates an initial set of environment properties. 
+                        estimatorReference.propagate_reality(initialStateOffset= np.zeros(6)) 
+                        # SH class for reference harmonics. 
+                        referenceHarmonics = shModelClass.make_from_environment( environmentReality )
 
-                    referenceHarmonics.save_coefficients(
+                        referenceHarmonics.save_coefficients(
+                            fileDir= resultsDir,
+                            fileName= "testSave"
+                        )
+                        
+                        """ # SH class from LP150 environment. 
+                        zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
+                        # Residual harmonics. 
+                        deltaHarmonicsBase = referenceHarmonics.__sub__( other= zeroHarmonics )
+                        degrees, rmsDeltaHarmonicsBase = deltaHarmonicsBase.rms_per_degree()
+                        # Plots.
+                        plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
+                                    label="Computer Accuracy") """
+
+                    # Estimate initial states and harmonic coefficients.
+                    estimatorReference.propagate_reality(
+                        initialStateOffset= initialStateOffset,
+                    )
+
+                    # NOTE: Currently unusable. Requires new version of tudat. 
+                    estimatorReference.save_real_propagation(
                         fileDir= resultsDir,
                         fileName= "testSave"
                     )
+
+                    ### Observations objects. 
+                    grailSSTObservations = oneWayDopplerObservationsClass(
+                        environmentReal= environmentReality,
+                        linkGroups= sstLinks,
+
+                        noiseSigma= KBRRSIGMA,
+                        countTime= KBRRCOUNT
+                    )
+                    grailDSNObservations = oneWayDopplerObservationsClass(
+                        environmentReal= environmentReality,
+                        linkGroups= dsnXBandLinks,
+
+                        noiseSigma= DSNSIGMA,
+                        countTime= DSNCOUNT
+                    )
                     
-                    """ # SH class from LP150 environment. 
-                    zeroHarmonics = shModelClass( inputHarmonics= environmentReference )
-                    # Residual harmonics. 
-                    deltaHarmonicsBase = referenceHarmonics.__sub__( other= zeroHarmonics )
-                    degrees, rmsDeltaHarmonicsBase = deltaHarmonicsBase.rms_per_degree()
-                    # Plots.
-                    plt.plot( degrees, rmsDeltaHarmonicsBase, linestyle= "-", color= "black",
-                                label="Computer Accuracy") """
+                    # Makes observations. 
+                    estimatorReference.make_observations(
+                        observationsList= [ grailSSTObservations, grailDSNObservations ]
+                    ) 
 
-                # Estimate initial states and harmonic coefficients.
-                estimatorReference.propagate_reality(
-                    initialStateOffset= initialStateOffset,
-                )
+                    estimatorReference.save_observations(
+                        fileDir= resultsDir,
+                        fileName= "observations"
+                    )
 
-                # NOTE: Currently unusable. Requires new version of tudat. 
-                estimatorReference.save_real_propagation(
-                    fileDir= resultsDir,
-                    fileName= "testSave"
-                )
+                    estimatorReference.make_estimation( 
+                        maximumIterations= 10,
+                        printEstimationOutput= False,
+                        estimationDegree= 0
+                    )
 
-                ### Observations objects. 
-                grailSSTObservations = oneWayDopplerObservationsClass(
-                    environmentReal= environmentReality,
-                    linkGroups= sstLinks,
+                    print( np.size( estimatorReference.estimationOutput.final_parameters ) - 
+                        environmentReality.arcNumber*6*2 )
 
-                    noiseSigma= KBRRSIGMA,
-                    countTime= KBRRCOUNT
-                )
-                grailDSNObservations = oneWayDopplerObservationsClass(
-                    environmentReal= environmentReality,
-                    linkGroups= dsnXBandLinks,
+                    # Save estimate values. 
+                    estimatedHarmonics = shModelClass.make_from_estimate( estimatorReference )
+    
+                    # Compare with reference harmonics. 
+                    deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
+                    degrees, rmsDeltaHarmonics = deltaHarmonics.rms_per_degree()
 
-                    noiseSigma= DSNSIGMA,
-                    countTime= DSNCOUNT
-                )
+                    # Saves estimates
+                    estimatedHarmonics.save_coefficients(
+                        fileDir= resultsDir,
+                        fileName= f"testSave_results"
+                    )
+
+                    # Plot current estimate. 
+                    plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[runCount % len(lineStyles)],
+                            color= lineColors[runCount % len(lineColors)], label= alteredParameterLabel )
                 
-                # Makes observations. 
-                estimatorReference.make_observations(
-                    observationsList= [ grailSSTObservations, grailDSNObservations ]
-                ) 
 
-                estimatorReference.save_observations(
-                    fileDir= resultsDir,
-                    fileName= "observations"
-                )
-
-                break
-
-                estimatorReference.make_estimation( 
-                    maximumIterations= 10,
-                    printEstimationOutput= False,
-                    estimationDegree= 0
-                )
-
-                print( np.size( estimatorReference.estimationOutput.final_parameters ) - 
-                      environmentReality.arcNumber*6*2 )
-
-                # Save estimate values. 
-                estimatedHarmonics = shModelClass.make_from_estimate( estimatorReference )
- 
-                # Compare with reference harmonics. 
-                deltaHarmonics = referenceHarmonics.__sub__( other= estimatedHarmonics )
-                degrees, rmsDeltaHarmonics = deltaHarmonics.rms_per_degree()
-
-                # Saves estimates
-                estimatedHarmonics.save_coefficients(
-                    fileDir= resultsDir,
-                    fileName= f"testSave_results"
-                )
-
-                # Plot current estimate. 
-                plt.plot( degrees, rmsDeltaHarmonics, linestyle= lineStyles[runCount % len(lineStyles)],
-                        color= lineColors[runCount % len(lineColors)], label= alteredParameterLabel )
-            
-
-        plt.yscale( "log" )
+        """ plt.yscale( "log" )
 
         plt.grid()
         plt.ylabel("RMS")
@@ -371,7 +438,7 @@ if __name__ == "__main__":
 
         plt.title( plotTitle )
 
-        plt.show()
+        plt.show() """
 
 
     ### TEST PLOTTING TOOLS ### 

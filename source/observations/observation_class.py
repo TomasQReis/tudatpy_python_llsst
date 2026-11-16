@@ -100,9 +100,6 @@ class observationsClass ():
     # Type of observation.
     observationType: list[ ObservableType ]
 
-    # Observation identifier.
-    name: str
-
     def __init__(
         self,
         # TODO: Rework of observations class. 
@@ -114,6 +111,7 @@ class observationsClass ():
 
         epochMargin: float= 1*60**2,
         noiseSigma: float= 0,
+        
         uniqueObservationType: bool= True,
 
         name: str= ""
@@ -127,27 +125,22 @@ class observationsClass ():
             step= float( self.environmentReal.timeStep ),
             stop= float( self.environmentReal.simEndEpoch ) - epochMargin
         )
-        # Link groups attribute. 
+        
         self.linkGroups = linkGroups
-        # Observation noise sigma.
         self.noiseSigma = noiseSigma
-        # Identifier.
         self.name       = name
+        self.uniqueObservationType = uniqueObservationType
 
         # Empty list of simulator settings. 
         self.observationSimulatorSettings = []
+        
+    def initial_setup( self ):
 
-        # Makes link definitions and model settings on creation. 
-        if uniqueObservationType:
-            self.make_link_definitions()
-            self.make_model_settings()
-            self.make_simulation_settings()
-            self.make_simulator()
-
-        # Adds noise to simulator settings on creation. 
-        if noiseSigma: 
-            self.make_simulator_settings_noise()
-
+        # Initializes the observation object. 
+        self.make_link_definitions()
+        self.make_model_settings()
+        self.make_simulation_settings()
+        
     def make_link_definitions( self ) -> None:
 
         # Emtpy link end IDs dictionary. 
@@ -267,6 +260,8 @@ class observationsClass ():
     def make_simulator_settings_noise( self ):
 
         # Iterates through simulator settings and adds noise to matching observation types.
+        # NOTE: This only works for isolated observations. In merged observations
+        # there will be issues if multiple observationTypes are present. 
         for currentLinkDefinition in self.linkDefinitions:
             random_noise.add_gaussian_noise_to_observable_for_link_ends(
                 observation_simulation_settings_list= self.observationSimulatorSettings,

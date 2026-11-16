@@ -24,21 +24,27 @@ class oneWayDopplerObservationsClass ( observationsClass ):
         linkGroups: Sequence[Sequence[body]], 
 
         epochMargin: float = 1 * 60 ** 2, 
-        noiseSigma: float = 0, 
-        uniqueObservationType: bool = True,
+        noiseSigma: float = 0,
         
         countTime: float= 10,
-        frequencyBand: FrequencyBands= FrequencyBands.s_band
+        frequencyBand: FrequencyBands= FrequencyBands.s_band,
+
+        name: str= "one_way_doppler"
         ) -> None:
         
         super().__init__(environmentReal, linkGroups, epochMargin,
-                         noiseSigma, uniqueObservationType)
+                         noiseSigma, 
+                         uniqueObservationType= True, 
+                         name= name)
 
         # Attributes. 
         self.countTime = countTime
         self.frequencyBand = [frequencyBand]        # Saved as sequence-like
 
-        # Make doppler-specific ancillary settings. 
+    def initial_setup(self):
+
+        super().initial_setup()
+        # Adds ancillary settings to parent inital_setup. 
         self.make_doppler_ancillary_settings()
 
     def make_model_settings(self) -> None:
@@ -99,11 +105,14 @@ class twoWayDopplerObservationsClass ( oneWayDopplerObservationsClass ):
         uniqueObservationType: bool = True,
         
         countTime: float= 10,
-        frequencyBand: FrequencyBands= FrequencyBands.s_band
-            ) -> None:
+        frequencyBand: FrequencyBands= FrequencyBands.s_band,
+
+        name: str= "two_way_doppler"
+        ) -> None:
         
         super().__init__(environmentReal, linkGroups, epochMargin,
-                         noiseSigma, uniqueObservationType)
+                         noiseSigma, uniqueObservationType,
+                         name= name)
 
         self.countTime = countTime
         self.frequencyBand = frequencyBand
