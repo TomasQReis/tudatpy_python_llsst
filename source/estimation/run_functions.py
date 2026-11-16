@@ -43,6 +43,9 @@ def estimate_with_observation_noise(
         initialStateOffset= initialStateOffset
     )
 
+    # Creates directory for current day if not existing.
+    # TODO 
+
     # Saves reality propagation to overall run directory. 
     estimator.save_real_propagation(
         fileDir= resultsDir + runsDir,
@@ -55,7 +58,7 @@ def estimate_with_observation_noise(
     i = 0
     for combination in product( *noiseDict.values() ):
         # Individual run directory.
-        runDir = f"run_{i+1}/"
+        runDir = f"run_noise_{i+1}/"
 
         # Save combination.
         testValues[i,:] = combination
