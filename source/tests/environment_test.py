@@ -13,8 +13,7 @@ from source.bodies.ground_stations import grazStation
 from source.environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, GGRX1200A\
     ,convert_to_j2000, check_timespan_limit, check_arc_timespan_limit, load_spice
 from source.environment.moon_environment import moonEnvironment
-
-from source.estimation.estimator_class import estimatorClass
+from source.environment.harmonics_class import shModelClass
 
 class environmentTests ( unittest.TestCase ):
     # Load kernels
@@ -323,3 +322,71 @@ class propagationTests ( unittest.TestCase ):
                            environmentLP150Q.get_initial_states().all() )
         np.testing.assert_allclose( environmentDefault.get_initial_states(), 
             environmentLP150Q.get_initial_states(), rtol= 1e-14 )
+
+    def test_import_saved_harmonics( self ):
+        # Given as [Year, Month, Day]
+        simStartDate    = [2001, 1, 1, 0, 0, 0]
+        simDuration     = 1*60**2
+        simStartEpoch   = convert_to_j2000( simStartDate )
+        simEndEpoch     = simStartEpoch + simDuration
+    
+        # Propagation time step size. 
+        propTimeStep = 120.0     # [s]s
+
+        # Default Environment. 
+        environmentDefault = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+
+            spacecrafts= [rociA],
+            groundStations= [],
+
+            customHarmonicsBool= True,
+            customHarmonicsFile= GGRX1200A,
+            harmonicsMaxDegree= 10,
+        )
+        environmentDefault.make_propagation_settings( 
+                    skipArcCheck= True,
+                    dependentVariables= []
+        )
+        environmentDefault.propagate() 
+        # Extract harmonics from default environment. 
+        harmonicsDefault = shModelClass.make_from_environment(
+            environment= environmentDefault
+        )
+        # Save extracted harmonics.
+        harmonicsDefault.save_coefficients(
+            fileDir= "source/tests/",
+            fileName= "exported_harmonics.csv"
+        )
+
+        # Extracts states from default environment. 
+        statesDefault = environmentDefault.get_states()
+
+        # Saved harmonics environment. 
+        environmentSaved = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+
+            spacecrafts= [rociA],
+            groundStations= [],
+
+            customHarmonicsBool= True,
+            customHarmonicsFile= "source/tests/exported_harmonics.csv",
+            harmonicsMaxDegree= 10,
+        )
+        environmentSaved.make_propagation_settings( 
+            skipArcCheck= True,
+            dependentVariables= []
+        )
+        # Propagate.
+        environmentSaved.propagate()
+        # Extract states.
+        statesSaved = environmentSaved.get_states()
+
+        # Compare states.
+        np.testing.assert_allclose( statesDefault, statesSaved, rtol= 1e-16 )

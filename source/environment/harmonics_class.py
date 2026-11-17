@@ -181,7 +181,7 @@ class shModelClass ():
         the degree, order, cosine and sine coefficient in that order.
         Args:
         - fileDir (str): directory where the file is saved.
-        - fileName (str): filename without type extension."""
+        - fileName (str): filename with type extension. (csv)"""
 
         # Degree and order of every coefficient, in storage order
         # (degree 2 orders 0..2, degree 3 orders 0..3, ...).
