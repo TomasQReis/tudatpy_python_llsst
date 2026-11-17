@@ -327,7 +327,10 @@ class estimatorClass ():
             ( arcNum, 6*spacecraftNum ) )
 
         # Harmonic estimate error. 
-        harmonicsError  = formalErrors[initialStateEstimatedParams:]
+        harmonicsError  = formalErrors[ 
+            initialStateEstimatedParams:
+            (initialStateEstimatedParams + harmonicsIndx) 
+        ]
         # Cosine formal errors. 
         cosineErrors    = harmonicsError[ :cosIndx ]
         # Sine formal errors ( =0 where not estimated )
@@ -343,7 +346,6 @@ class estimatorClass ():
         harmonicsData = np.column_stack(
             [ degrees, orders, cosineErrors, sineErrors ]
         )
-
 
         ### Save values to file.
         description = (

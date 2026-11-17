@@ -127,18 +127,19 @@ class shModelClass ():
         # Harmonic coefficients. 
         cosCoeffs = data[ :, 2 ]
         sinCoeffs = data[ orders != 0, 3 ]
-        harmonicsDegree = data[ -1, 0 ]
+        harmonicsDegree = int( data[ -1, 0 ] ) 
 
         # Initialize class. 
         return cls( cosCoeffs, sinCoeffs, gravityParam, 
                    referenceRadius, harmonicsDegree )
         
-    def __sub__( self, other: shModelClass ) -> shModelClass:
+    def make_from_difference( self, other: shModelClass ) -> shModelClass:
         """Outputs difference between two shModelClass harmonics coefficients.
-        Args: ---
-        - other (shModelClass): SH model being subtracted from self model. 
-        Returns: --- 
-        - resultSHModel (shModelClass): "self" minus "other" SH model class."""
+        Args:
+            other (shModelClass): SH model being subtracted from self model. 
+
+        Returns:
+            resultSHModel (shModelClass): "self" minus "other" SH model class."""
         
         # Checks which shModel has higher max degree. 
         if self.harmonicsDegree <= other.harmonicsDegree:
@@ -173,13 +174,13 @@ class shModelClass ():
 
         return resultSHModel
 
-    def rms_per_degree( self ):
-        """Calculates the rms (And additionallity the 1-sigma value) of the self 
-        harmonics coefficients. 
+    def rms_per_degree( self ) -> tuple[ NDArray, NDArray ]:
+        """Outputs the degrees and corresponding rms value of the shModel.  
 
         Returns: 
-        - degrees (NDArray): Array of degrees used in rms calculation.
-        - rmsPerDegrees (NDArray): RMS value per degree. """
+            degrees (NDArray): Array of degrees used in rms calculation.
+            rmsPerDegrees (NDArray): RMS value per degree. 
+        """
 
         # Degrees.
         degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree + 1)

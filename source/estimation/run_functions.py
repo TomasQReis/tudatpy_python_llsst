@@ -15,11 +15,12 @@ from source.environment.harmonics_class import shModelClass
 
 ### Constants
 # Estimates filename.
-ESTIMATEFILE = f"estimated_harmonics.csv"
-NOISEVALSFILE = f"noise_values.csv"
+ESTIMATEFILE    = f"estimated_harmonics.csv"
+NOISEVALSFILE   = f"noise_values.csv"
 OBSERVATIONSFILE = f"observations"
-REALSTATESFILE = f"reality_states"
+REALSTATESFILE  = f"reality_states"
 INTEGRATIONFILE = f"integration_parameters"
+ERRORSFILE      = f"formal_errors.csv"
 
 def get_last_run_number( runsDir: str, prefix: str= "run_" ) -> int:
 
@@ -160,6 +161,10 @@ def estimate_with_observation_noise(
         combinationDir = runDir + NOISEVALSFILE
         np.savetxt( combinationDir, [ combination ], header= header, comments= "",
                    fmt= '%2.4e', delimiter= "," )
+        estimator.save_formal_error(
+            fileDir= runDir,
+            fileName= ERRORSFILE
+        )
 
         i+=1
 

@@ -25,7 +25,7 @@ from source.observations.validation_models import \
 
 ### External library imports.
 import numpy as np
-import os
+import matplotlib
 
 from pathlib import Path
 
@@ -159,7 +159,7 @@ if __name__ == "__main__":
                 estimatorReference.environmentReal.get_harmonic_coefficients()
 
     ##### For loop for testing chaging orbital parameters vs estimate. #####
-    if iterateNoise := True:
+    if iterateNoise := False:
 
         ### Environment and estimation parameters.
         # Initial epoch. 
@@ -167,12 +167,13 @@ if __name__ == "__main__":
         simStartEpoch= convert_to_j2000(simStartDate)
 
         # Simulation Days
-        simLength = 6 * (24*60**2)
+        simLength = 4 * (24*60**2)
         # Final Epoch 
         simEndEpoch= simStartEpoch + simLength
 
         # Simulation arcLengths
-        arcLength = 24 * (60**2) 
+        arcLength = 12 * (60**2) 
+        #arcLength = 0.0
 
         # Propagation time step
         propTimeStep = 60*6     # s 
@@ -186,8 +187,8 @@ if __name__ == "__main__":
         
         # Dictionary of noise values. 
         noiseDict = {
-            'sst_range_noise' : [1e-9, 1],
-            'doppler_noise' : [1e-9, 1]
+            'sst_range_noise' : [1e-4],
+            'doppler_noise' : [1e-4]
         }
         # Initial state offset for each arc. 
         initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
@@ -273,20 +274,40 @@ if __name__ == "__main__":
     harmonicsList = []
     noiseValuesDict = dict() 
 
-    runsDir = 'results/20261116/noise_runs_2/'
+    runsDir = 'results/20261117/noise_runs_9/'
     prefix = "run_"
-    runNums = [1,2,3,4]
+    runNum = 1
+
+    runDir = runsDir + prefix + str( runNum ) + "/"
 
     harmonicsReference = shModelClass.make_from_file(
         filePath= 'models/gravity/gggrx_420a_formatted.csv'
     )
-
-    oldRmsDiff = np.zeros(4)
-
-    harmonics, noiseVals = read_observation_noise_estimates(
-        runsDir= 'results/20261116/noise_runs_1/',
-        runNums= [1,2,3,4]
+    harmonicsEstimated = shModelClass.make_from_file(
+        filePath= runDir + 'estimated_harmonics.csv'
+    ) 
+    harmonicsError = shModelClass.make_from_formal_errors(
+        filePath= runDir + "formal_errors.csv"
     )
+    harmonicsDelta = harmonicsReference.make_from_difference(
+        other= harmonicsEstimated
+    )
+
+    # RMS Values.
+    degrees, formalRMS = harmonicsError.rms_per_degree()
+    _, deltaRMS  = harmonicsDelta.rms_per_degree()
+    _, referenceRMS  = harmonicsReference.rms_per_degree()
+    _, estimatedRMS  = harmonicsEstimated.rms_per_degree()
+
+    rmsList = [ formalRMS, deltaRMS, estimatedRMS ]
+    labels = ["Formal", "Delta", "Estimated" ]
+    
+    for index, rms in enumerate( rmsList ):
+        # Plot
+        plt.plot( degrees, rms, 
+            label= labels[index], color= lineColors[index % len(lineColors)],
+            linestyle= lineStyles[index % len(lineColors)] ) 
+
 
     """ for index, runNum in enumerate( runNums ):
         harmonicsDifference = None
