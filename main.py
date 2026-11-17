@@ -167,12 +167,12 @@ if __name__ == "__main__":
         simStartEpoch= convert_to_j2000(simStartDate)
 
         # Simulation Days
-        simLength = 4 * (24*60**2)
+        simLength = 28 * (24*60**2)
         # Final Epoch 
         simEndEpoch= simStartEpoch + simLength
 
         # Simulation arcLengths
-        arcLength = 12 * (60**2) 
+        arcLength = 24 * (60**2) 
         #arcLength = 0.0
 
         # Propagation time step
@@ -187,8 +187,8 @@ if __name__ == "__main__":
         
         # Dictionary of noise values. 
         noiseDict = {
-            'sst_range_noise' : [1e-4],
-            'doppler_noise' : [1e-4]
+            'sst_range_noise' : [KBRRSIGMA],
+            'doppler_noise' : [DSNSIGMA]
         }
         # Initial state offset for each arc. 
         initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     
             customHarmonicsBool= True,
             customHarmonicsFile= GGRX420L,
-            harmonicsMaxDegree= 20,
+            harmonicsMaxDegree= 40,
         )
         environmentReference = moonEnvironment(
             level= 3,
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     
             customHarmonicsBool= True,
             customHarmonicsFile= GGRX420L,
-            harmonicsMaxDegree= 20,
+            harmonicsMaxDegree= 40,
         )
 
         # Observations 
@@ -252,14 +252,14 @@ if __name__ == "__main__":
             arcLengthReal= intParamsDict["arcLength"],
             arcLengthReference= intParamsDict["arcLength"],
 
-            harmonicsDegreeReal= 7,
-            harmonicsDegreeReference= 7
+            harmonicsDegreeReal= 40,
+            harmonicsDegreeReference= 40
         )
 
         ### Run noise estimation loop.
         estimate_with_observation_noise(
             estimator= estimator,
-            estimationDegree= 5,
+            estimationDegree= 25,
             observationsList= [grailSSTObservations,
                                grailDSNObservations],
             initialStateOffset= initialStateOffset,
@@ -268,8 +268,123 @@ if __name__ == "__main__":
             resultsDir= resultsDir
         )
 
+    if iterateSimulationTime:= True:
+
+        simLengths = [28]        # Days
+
+        # Max degrees.
+        environmentDegree   = 40
+        estimatedDegree     = 40
+
+        for simLength in simLengths:
+            ### Environment and estimation parameters.
+            # Initial epoch. 
+            simStartDate    = [2001, 1, 1, 0, 0, 0]
+            simStartEpoch= convert_to_j2000(simStartDate)
+
+            # Final Epoch 
+            simEndEpoch= simStartEpoch + simLength * (24*60**2)
+
+            # Simulation arcLengths
+            arcLength = 24 * (60**2) 
+
+            # Propagation time step
+            propTimeStep = 60*6     # s 
+
+            intParamsDict = {
+                'startEpoch': simStartEpoch,
+                'endEpoch': simEndEpoch,
+                'arcLength': arcLength,
+                'timeStep': propTimeStep
+            }
+            
+            # Dictionary of noise values. 
+            noiseDict = {
+                'sst_range_noise' : [KBRRSIGMA],
+                'doppler_noise' : [DSNSIGMA]
+            }
+            # Initial state offset for each arc. 
+            initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+
+            # Environment definition.
+            environmentReality = moonEnvironment(
+                level= 3,
+                simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
+                simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
+                timeStep= intParamsDict['timeStep'],         # type: ignore
+
+                spacecrafts= grailList,
+                groundStations= groundStations,
+
+                customHarmonicsBool= True,
+                customHarmonicsFile= GGRX420L,
+                harmonicsMaxDegree= environmentDegree,
+            )
+            environmentReference = moonEnvironment(
+                level= 3,
+                simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
+                simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
+                timeStep= intParamsDict['timeStep'],         # type: ignore
+
+                spacecrafts= grailList,
+                groundStations= groundStations,
+
+                customHarmonicsBool= True,
+                customHarmonicsFile= GGRX420L,
+                harmonicsMaxDegree= environmentDegree,
+            )
+
+            # Observations 
+            ### Observations objects. 
+            grailSSTObservations = oneWayDopplerObservationsClass(
+                environmentReal= environmentReality,
+                linkGroups= sstLinks,
+
+                noiseSigma= KBRRSIGMA,
+                countTime= KBRRCOUNT,
+                epochMargin= 1*60**2,
+
+                name= 'sst_range_noise'
+            )
+            grailDSNObservations = oneWayDopplerObservationsClass(
+                environmentReal= environmentReality,
+                linkGroups= dsnXBandLinks,
+
+                noiseSigma= DSNSIGMA,
+                countTime= DSNCOUNT,
+                epochMargin= 1*60**2,
+
+                name= 'doppler_noise'
+            )
+
+            ### Estimator object.
+            estimator = estimatorClass(
+                environmentReal= environmentReality,
+                environmentReference= environmentReference,
+
+                arcLengthReal= intParamsDict["arcLength"],
+                arcLengthReference= intParamsDict["arcLength"],
+
+                harmonicsDegreeReal= environmentDegree,
+                harmonicsDegreeReference= environmentDegree
+            )
+
+            ### Run noise estimation loop.
+            estimate_with_observation_noise(
+                estimator= estimator,
+                estimationDegree= estimatedDegree,
+                estimationMaxIterations= 10,
+                observationsList= [grailSSTObservations,
+                                    grailDSNObservations],
+                initialStateOffset= initialStateOffset,
+                noiseDict= noiseDict,
+                intParamsDict= intParamsDict,
+                resultsDir= resultsDir
+            )
+
     lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
     lineStyles = ["-", "--", "-.", ":"]
+    markerStyles = ["+", ".", "3", "*"]
 
     harmonicsList = []
     noiseValuesDict = dict() 
@@ -281,7 +396,7 @@ if __name__ == "__main__":
     runDir = runsDir + prefix + str( runNum ) + "/"
 
     harmonicsReference = shModelClass.make_from_file(
-        filePath= 'models/gravity/gggrx_420a_formatted.csv'
+        filePath= 'models/gravity/gggrx_420l_formatted.csv'
     )
     harmonicsEstimated = shModelClass.make_from_file(
         filePath= runDir + 'estimated_harmonics.csv'
@@ -293,54 +408,42 @@ if __name__ == "__main__":
         other= harmonicsEstimated
     )
 
-    # RMS Values.
-    degrees, formalRMS = harmonicsError.rms_per_degree()
-    _, deltaRMS  = harmonicsDelta.rms_per_degree()
-    _, referenceRMS  = harmonicsReference.rms_per_degree()
-    _, estimatedRMS  = harmonicsEstimated.rms_per_degree()
-
-    rmsList = [ formalRMS, deltaRMS, estimatedRMS ]
-    labels = ["Formal", "Delta", "Estimated" ]
     
-    for index, rms in enumerate( rmsList ):
+    # RMS Values.
+    degreesEstimate, rmsFormal = harmonicsError.rms_per_degree()
+    _, rmsDelta  = harmonicsDelta.rms_per_degree()
+    degreesReference, rmsReference  = harmonicsReference.rms_per_degree()
+    _, rmsEstimated  = harmonicsEstimated.rms_per_degree()
+
+    scatterList = [ rmsDelta, rmsEstimated ]
+    scatterLabels = [ "Reference - Estimate RMS", "Estimate Field RMS" ]
+    
+    for index, rms in enumerate( scatterList ):
         # Plot
-        plt.plot( degrees, rms, 
-            label= labels[index], color= lineColors[index % len(lineColors)],
-            linestyle= lineStyles[index % len(lineColors)] ) 
+        plt.scatter( degreesEstimate, rms, 
+            label= scatterLabels[index], color= lineColors[index % len(lineColors)],
+            marker= markerStyles[index % len(markerStyles)] )  
+    
 
-
-    """ for index, runNum in enumerate( runNums ):
-        harmonicsDifference = None
-
-        runDir = runsDir + prefix + str( runNum ) + '/'
-
-        harmonicsEstimated = shModelClass.make_from_file(
-            filePath= runDir + 'estimated_harmonics.csv'
-        ) 
-        harmonicsList.append( harmonicsEstimated )
-
-        # Subtract harmonics from reference.
-        harmonicsDifference = harmonicsReference.__sub__(
-            other= harmonicsEstimated
-        )
-
-        # Produce rms of difference. 
-        degrees, rmsPerDegree = harmonicsDifference.rms_per_degree()
-
-        # Plot
-        plt.plot( degrees, rmsPerDegree, 
-            label= f'run:{index+1}', color= lineColors[index % len(lineColors)],
-            linestyle= lineStyles[index % len(lineColors)] ) """
+    plt.plot( degreesEstimate, rmsFormal, color= "red",
+             label= "Formal Error RMS")
+    plt.plot( degreesReference, rmsReference, color= "black",
+              label= "Reference Field RMS" )
+    
+    #print(harmonicsError.cosCoeffs)
 
 
     plt.yscale( "log" )
 
     plt.grid()
     plt.ylabel("RMS")
+    plt.xlim(-1, 41)
     plt.xlabel("Harmonics Degree")
     plt.legend()
 
-    plt.title( 'Runs Results' )
+    plt.title( f'Weighed Observations Estimate - 28 Days - 10 Iterations' )
+
+    plt.rcParams.update( { "font.size": 22 } )
 
     plt.show()
 
