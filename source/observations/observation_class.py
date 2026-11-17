@@ -140,6 +140,7 @@ class observationsClass ():
         self.make_link_definitions()
         self.make_model_settings()
         self.make_simulation_settings()
+       
         
     def make_link_definitions( self ) -> None:
 
@@ -189,7 +190,9 @@ class observationsClass ():
             # Link definition list. 
             linkDefinitions.append( estimation.observable_models_setup.links.link_definition( linkEndIds ) )
 
-        self.linkDefinitions = linkDefinitions
+        self.linkEndsDict       = linkEndIds
+
+        self.linkDefinitions    = linkDefinitions
 
     # Defined for each different observation model. 
     def make_model_settings( self ) -> None: 
