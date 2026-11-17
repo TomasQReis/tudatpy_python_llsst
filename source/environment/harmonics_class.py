@@ -7,7 +7,8 @@ from numpy.typing import NDArray
 
 # Local imports. 
 from source.environment.environment import environmentClass
-from source.estimation.estimator_class import estimatorClass, get_coefficient_index
+from source.estimation.estimator_class import \
+    estimatorClass, get_coefficient_index, get_error_block_lines
 
 
 
@@ -92,6 +93,45 @@ class shModelClass ():
 
         return cls( cosCoeffs, nonZeroSinCoeffs, gravityParameter, referenceRadius,
                     harmonicsDegree)
+
+    @classmethod
+    def make_from_formal_errors( cls, filePath: str, blockName: str= "Block B" ):
+        """Generates an shModelClass from one block of a divided output file.
+        The block must use the save_coefficients layout: Columns with degree, 
+        order, cosine value, sine value. NOTE: Currently assigns zero to reference
+        radius and gravitational parameter. Change if these become estimated values.
+
+        Args:
+            filePath (str): Path of the file.
+            blockName (str): Block containing the harmonics. Defaults to "Block B".
+
+        Returns:
+            shModelClass: SH model built from the block."""
+
+        print( "Creating shModelClass from formal error...")
+        print( "NOTE: This does not correspond to an actual harmonics model.")
+
+        # Reads lines from target file. 
+        lines= get_error_block_lines( filePath= filePath, blockName= blockName )
+
+        # Sets gravity parameter and radius to zero. 
+        # NOTE: Change if these become estimated parameters. 
+        gravityParam, referenceRadius = 0.0 , 0.0
+
+        # Loads data array from lines.  
+        data = np.loadtxt( lines, delimiter= ",", ndmin= 2 )
+
+        # Orders of harmonics for sorting sinCoefficients. 
+        orders = data[ :, 1 ].astype( int )
+
+        # Harmonic coefficients. 
+        cosCoeffs = data[ :, 2 ]
+        sinCoeffs = data[ orders != 0, 3 ]
+        harmonicsDegree = data[ -1, 0 ]
+
+        # Initialize class. 
+        return cls( cosCoeffs, sinCoeffs, gravityParam, 
+                   referenceRadius, harmonicsDegree )
         
     def __sub__( self, other: shModelClass ) -> shModelClass:
         """Outputs difference between two shModelClass harmonics coefficients.

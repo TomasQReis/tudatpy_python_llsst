@@ -27,6 +27,43 @@ def get_coefficient_index ( degree: int ):
 
     return cosIdx, sinIdx
 
+def get_error_block_lines( filePath: str, blockName: str= "Block B",
+                           divider: str= "#--- ") -> list[str] :
+    """Returns the data lines of one block in a file with '# --- <name> ---' dividers.
+
+    Args:
+        filePath (str): Path of the file.
+        blockName (str): Text identifying the block's divider line. Defaults to "Block B".
+        divider (str): Start of every divider line. Defaults to "# ---".
+
+    Returns:
+        list[str]: Data lines of the block, without comments or blank lines.
+
+    Raises:
+        ValueError: If the block is missing or empty."""
+    
+    lines, inBlock = [], False
+    with open( filePath ) as file:
+        # Line by line. 
+        for line in file:
+            # Check when divider occurs. 
+            if line.startswith( divider ):
+                # Check if we're in the requested block. 
+                if inBlock:                       
+                    break
+                # Check if requested block starts. 
+                inBlock = blockName in line      
+                continue
+            # If no divider, checks if in desired block and takes line.
+            if inBlock and line.strip() and not line.startswith( "#" ):
+                lines.append( line )
+    # Error for no lines available. 
+    if not lines:
+        raise ValueError( f"No data found for '{blockName}' in {filePath}" )
+    return lines
+
+
+
 class estimatorClass ():
     def __init__(
         self,
@@ -266,12 +303,11 @@ class estimatorClass ():
         """Saves formal errors resulting from propagation. Takes in file directory
         and (Optional) file name.
         Args:
-        - fileDir (str):    String containing individual run results file directory.
-        - fileName (str):   OPTIONAL. File name, defaults to "formal_errors.csv". 
-                            Requires file extension.
+            fileDir (str):    String containing individual run results file directory.
+            fileName (str):   OPTIONAL. File name, defaults to "formal_errors.csv". Requires file extension.
         """
         
-        print( "Saving formal errors...\n")
+        print( "Saving formal errors...")
         # Get formal errors.
         formalErrors = self.get_formal_error()
 
@@ -317,7 +353,7 @@ class estimatorClass ():
             "spacecraft-by-spacecraft arrangement. For n-spacecrafts \n"
             "Columns: x_1, y_1, z_1, Vx_1, Vy_1, Vz_1, x_2, (...), Vy_n, Vz_n\n\n"
             "Block B: Harmonic coefficient formal error. Columns:\n " 
-            "1: Degree, 2: Order, 3: Cosine coeff. Error\n "
+            "1: Degree, 2: Order, 3: Cosine coeff. formal error\n "
             "4: Sine coeff. formal error.\n"
         )
         with open( fileDir + fileName, "w" ) as file:
@@ -332,5 +368,5 @@ class estimatorClass ():
 
             # Write harmonics errors.
             file.write("#--- Block B ---\n")
-            np.savetxt( file, harmonicsData, fmt= "%23.16e", 
+            np.savetxt( file, harmonicsData, fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], 
                        delimiter= ",")
