@@ -2,23 +2,12 @@
 from tudatpy import dynamics
 from tudatpy import estimation
 
-from tudatpy.estimation.observable_models_setup.model_settings import \
-    one_way_range_type, one_way_averaged_doppler_type, n_way_averaged_doppler_type
-from tudatpy.estimation.observations_setup.ancillary_settings import \
-    n_way_doppler_ancillary_settings, doppler_ancillary_settings, FrequencyBands
-
-from tudatpy.util import result2array
+from tudatpy.estimation.estimation_analysis import CovarianceAnalysisInput
 
 ### Local imports. 
 from source.environment.environment import environmentClass 
-from source.bodies.bodies import body
 
 from source.observations.observation_class import merge_observations, observationsClass
-# TODO: Would be nice to have these in the estimator class or part of their own class. 
-# Just make them modular and easy to access...
-from source.observations.ll_sst import one_way_range_link_definitions, one_way_range_observation_simulator,\
-    one_way_range_observations, one_way_range_get
-
 
 ### External imports.
 import numpy as np
@@ -116,6 +105,8 @@ class estimatorClass ():
             maximumIterations: int= 10,
             printEstimationOutput: bool= True,
             estimationDegree: int= 0,
+
+            covarianceAnalysis: bool= False
     ):
 
         ### Estimation parameters.
@@ -181,7 +172,14 @@ class estimatorClass ():
             condition_number_warning_each_iteration= printEstimationOutput
         )
 
-        ### Perform estimation.
+        ### Perform covariance analysis. 
+        if covarianceAnalysis: 
+            # TODO: Still need to add weights to this operation. 
+            self.estimationCovarianceOutput = estimator.compute_covariance(
+                CovarianceAnalysisInput( self.observationCollection )
+            )
+
+        ### Perform parameter estimation.
         self.estimationOutput = estimator.perform_estimation(
             estimation_input= estimatorSettings
         )
@@ -243,6 +241,10 @@ class estimatorClass ():
     
     
             return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
+
+    def get_formal_error( self ):
+
+        return self.estimationOutput.formal_errors
     
     def save_observations( self, fileDir: str, fileName: str ):
         # Saves to file. 
@@ -257,4 +259,78 @@ class estimatorClass ():
             path= fileDir + fileName
         )
 
+    def save_formal_error( 
+            self, 
+            fileDir: str, 
+            fileName: str= "formal_errors.csv" ) -> None:
+        """Saves formal errors resulting from propagation. Takes in file directory
+        and (Optional) file name.
+        Args:
+        - fileDir (str):    String containing individual run results file directory.
+        - fileName (str):   OPTIONAL. File name, defaults to "formal_errors.csv". 
+                            Requires file extension.
+        """
+        
+        print( "Saving formal errors...\n")
+        # Get formal errors.
+        formalErrors = self.get_formal_error()
 
+        ### Separate errors ( State - Harmonics - etc. )
+        ### Add additional splits here when estimating additional parameters.
+        # Auxiliary values.
+        spacecraftNum   = len( self.environmentReference.spacecrafts )
+        arcNum          = self.environmentReference.arcNumber
+        cosIndx, sinIndx= get_coefficient_index( self.harmonicsDegreeEstimated )
+        harmonicsIndx   = sum( [ cosIndx, sinIndx ] )
+
+        # Number of individual estimated parameters. 
+        initialStateEstimatedParams = spacecraftNum * arcNum * 6
+        # Separated initial state estimate error. 
+        initialStateError = np.reshape( 
+            formalErrors[:initialStateEstimatedParams], 
+            ( arcNum, 6*spacecraftNum ) )
+
+        # Harmonic estimate error. 
+        harmonicsError  = formalErrors[initialStateEstimatedParams:]
+        # Cosine formal errors. 
+        cosineErrors    = harmonicsError[ :cosIndx ]
+        # Sine formal errors ( =0 where not estimated )
+        sineErrors      = np.zeros( cosIndx )
+        orders  = np.array( [ order for degree in range( 
+                            2, self.harmonicsDegreeEstimated + 1 )
+                            for order in range( degree + 1 ) ] )
+        degrees = np.array( [ degree for degree in range( 
+                            2, self.harmonicsDegreeEstimated + 1 )
+                            for _ in range( degree + 1 ) ] )
+        sineErrors[ orders != 0 ] = harmonicsError[cosIndx:]
+        # Match data format for saved harmonics.
+        harmonicsData = np.column_stack(
+            [ degrees, orders, cosineErrors, sineErrors ]
+        )
+
+
+        ### Save values to file.
+        description = (
+            "----- Estimation formal errors. -----\n"
+            "Block A: Initial state formal error. Each row corresponds to a \n"
+            "single arc's initial estimate. The values are ordered by a \n"
+            "spacecraft-by-spacecraft arrangement. For n-spacecrafts \n"
+            "Columns: x_1, y_1, z_1, Vx_1, Vy_1, Vz_1, x_2, (...), Vy_n, Vz_n\n\n"
+            "Block B: Harmonic coefficient formal error. Columns:\n " 
+            "1: Degree, 2: Order, 3: Cosine coeff. Error\n "
+            "4: Sine coeff. formal error.\n"
+        )
+        with open( fileDir + fileName, "w" ) as file:
+            # Write description
+            for line in description.splitlines():
+                file.write( f"#{line}\n")
+
+            # Write state errors.
+            file.write("#--- Block A ---\n")
+            np.savetxt( file, initialStateError, fmt= "%23.16e", 
+                       delimiter= ",")
+
+            # Write harmonics errors.
+            file.write("#--- Block B ---\n")
+            np.savetxt( file, harmonicsData, fmt= "%23.16e", 
+                       delimiter= ",")
