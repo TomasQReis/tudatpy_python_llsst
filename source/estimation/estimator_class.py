@@ -3,11 +3,12 @@ from tudatpy import dynamics
 from tudatpy import estimation
 
 from tudatpy.estimation.estimation_analysis import CovarianceAnalysisInput
+from tudatpy.estimation.observations.observations_processing import observation_parser
 
 ### Local imports. 
 from source.environment.environment import environmentClass 
-
-from source.observations.observation_class import merge_observations, observationsClass
+from source.observations.observation_class import \
+    merge_observations, observationsClass
 
 ### External imports.
 import numpy as np
@@ -126,6 +127,8 @@ class estimatorClass ():
     def make_observations ( 
         self,
         observationsList: list[ observationsClass ],
+
+        weighObservations: bool= False,
         ):
 
         ### Simulate observations. 
@@ -134,8 +137,22 @@ class estimatorClass ():
             observationList = observationsList
             )
 
+
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()
+
+        if weighObservations:
+            # Iterates through observation objects 
+            for observations in observationsList:
+                # Sets observation weight from class attributes. 
+                self.observationCollection.set_constant_weight(
+                    weight= 1 / (observations.noiseSigma)**2,
+                    observation_parser= observation_parser(
+                        link_ends= observations.linkEndsDict
+                    )
+                )
+
+            # Adds weight to observation collection using links as parser.
 
     def make_estimation ( 
             self,
@@ -372,3 +389,5 @@ class estimatorClass ():
             file.write("#--- Block B ---\n")
             np.savetxt( file, harmonicsData, fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], 
                        delimiter= ",")
+
+

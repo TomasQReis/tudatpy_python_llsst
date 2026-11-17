@@ -41,6 +41,7 @@ def estimate_with_observation_noise(
     estimator: estimatorClass, 
     observationsList: list[ observationsClass ], 
     estimationDegree: int= 5,
+    estimationMaxIterations: int= 10,
 
     initialStateOffset: NDArray= np.array( [0,0,0,0,0,0] ),
 
@@ -133,7 +134,9 @@ def estimate_with_observation_noise(
 
         # Create observations using noise values. 
         estimator.make_observations(
-            observationsList= observationsList
+            observationsList= observationsList,
+
+            weighObservations= True
         )
 
         # Save observation values. 
@@ -143,7 +146,7 @@ def estimate_with_observation_noise(
         )
         # Estimate
         estimator.make_estimation(
-            maximumIterations= 10,
+            maximumIterations= estimationMaxIterations,
             printEstimationOutput= False,
             estimationDegree= estimationDegree
         )
