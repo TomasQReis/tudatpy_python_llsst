@@ -609,3 +609,11 @@ class environmentClass ():
             initialStates = np.vstack( ( initialStates, states[-1,:] ) )
 
         return finalStates 
+
+    def save_propagation( self, fileDir: str, fileName: str ):
+        """Saves the real states to a binary file using the tudat function."""
+
+        self.propagationResults.save_to_binary(
+            path= fileDir + fileName
+        ) 
+    

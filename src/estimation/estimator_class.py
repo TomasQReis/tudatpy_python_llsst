@@ -105,7 +105,7 @@ class estimatorClass ():
         )
 
         # Save propagation results. 
-        self.realPropagationResults = self.environmentReal.propagate()
+        self.environmentReal.propagate()
 
         # Match initial state offset to number of spacecraft. 
         initialStateOffset = np.tile( initialStateOffset, 
@@ -309,8 +309,9 @@ class estimatorClass ():
     def save_real_propagation( self, fileDir: str, fileName: str ):
         """Saves the real states to a binary file using the tudat function."""
 
-        self.realPropagationResults.save_to_binary(
-            path= fileDir + fileName
+        self.environmentReal.save_propagation(
+            fileDir= fileDir,
+            fileName= fileName
         )
 
     def save_formal_error( 

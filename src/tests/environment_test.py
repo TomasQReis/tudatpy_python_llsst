@@ -7,9 +7,9 @@ import numpy as np
 from tudatpy.interface import spice
 from tudatpy.util import result2array
 from tudatpy.dynamics.propagation import MultiArcSimulationResults
+import tudatpy.astro.element_conversion as element
 
-
-### Custom Imports
+### Local Imports
 from src.bodies.roci_ab import rociA, rociB
 from src.bodies.ground_stations import grazStation
 
@@ -17,6 +17,8 @@ from src.environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, GGR
     ,convert_to_j2000, check_timespan_limit, check_arc_timespan_limit, load_spice
 from src.environment.moon_environment import moonEnvironment
 from src.environment.harmonics_class import shModelClass
+
+from src.estimation.analysis import cartesian_to_spherical
 
 class environmentTests ( unittest.TestCase ):
     # Load kernels
@@ -454,4 +456,31 @@ class propagationTests ( unittest.TestCase ):
             loadedState = result2array( loadedArc.state_history )
 
             np.testing.assert_allclose( defaultState, loadedState, rtol= 1e-15 )
-    
+
+class analysisTest ( unittest.TestCase ):
+
+    def test_cartesian_to_spherical( self ):
+
+        # Test case. 
+        positions = np.array( [ [ 1738e3,      0.0,    0.0 ],
+                                [    0.0,   1738e3,    0.0 ],
+                                [    0.0,      0.0, 1838e3 ],
+                                [  -1e6,     -1e6,     0.0 ] ] )
+
+        localSpherical = cartesian_to_spherical( positions )
+
+        for index, row in enumerate( positions[:] ):
+            formatted = np.zeros(6)
+            formatted[:3] = row
+
+            # Target from tudatpy function. 
+            targetSpherical = element.cartesian_to_spherical( formatted )[:3]
+
+            # Compare
+            np.testing.assert_allclose( localSpherical[index, :], targetSpherical,
+                                        rtol= 1e-15 )
+
+
+
+
+

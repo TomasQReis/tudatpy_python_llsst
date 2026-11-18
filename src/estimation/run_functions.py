@@ -92,6 +92,7 @@ def estimate_with_observation_noise(
     with open( runsDir + INTEGRATIONFILE, 'w' ) as file:
         for key, value in intParamsDict.items():
             file.write( f"{key}: {value}\n")
+        file.write( f"spacecraft: { len( estimator.environmentReal.spacecrafts ) }")
     
     # Propagate reality once.
     estimator.propagate_reality(

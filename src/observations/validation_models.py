@@ -1,14 +1,8 @@
 ### Local imports.
-from src.observations.n_way_doppler import \
-    oneWayDopplerObservationsClass
-
 from src.bodies.grail_spacecraft import \
     grailA, grailB
 from src.bodies.ground_stations import \
     grazStation
-
-from src.environment.moon_environment import \
-    moonEnvironment
 
 ### Tudat imports.
 from tudatpy.estimation.observations_setup.ancillary_settings import \
