@@ -362,11 +362,20 @@ class shPyshClass ():
         mesh = ax.pcolormesh( grid.rad.lons(), grid.rad.lats(), anomaly,
                                 cmap= "RdBu_r", vmin= -limit, vmax= limit, shading= "auto" )
         fig.colorbar( mesh, ax= ax, label= "Radial gravity anomaly [mGal]" )
+
+        # Set axis limits to show the extremes.
+        ax.set_ylim( bottom= -90, top= 90 )
+        ax.set_yticks( np.arange( -90, 90 + 15, 15 ) )
+        ax.set_xlim( left= 0, right= 360 )
+        ax.set_xticks( np.arange( 0, 360 + 30, 30 ) )
+
+        # Labels
         ax.set_xlabel( "Longitude [deg]" )
         ax.set_ylabel( "Latitude [deg]" )
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
+        
         if show: fig.show()
 
         self.gravAnomFig, self.gravAnomAx = fig, ax
