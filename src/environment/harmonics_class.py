@@ -280,6 +280,17 @@ class shPyshClass ():
 
     @classmethod
     def from_shModelClass (cls, shModelClass: shModelClass):
+        """Initializes shPyshClass from an existing shModelClass. Existing class 
+        must be given with non-zero reference radius and gravity parameter.
+
+        Args:
+            shModelClass (shModelClass): Existing shModelClass. """
+
+        if shModelClass.gravityParameter == 0 or shModelClass.referenceRadius == 0:
+            raise ValueError(
+                "ERROR: Existing shModelClass must be given with a non-zero" \
+                "gravity parameter and reference radius."
+            )
 
         # Reshape shModelClass coefficients into pyshtools compatible array. 
         coeffsArr = np.zeros( ( 2, shModelClass.harmonicsDegree+1, 
@@ -302,7 +313,14 @@ class shPyshClass ():
         return cls( shGravCoeffs, shModelClass.gravityParameter, shModelClass.referenceRadius,
                     shModelClass.harmonicsDegree )
 
-    def plot_gravity_anomaly( self, title: str ):
+    def plot_gravity_anomaly( self, title: str ) -> None:
+        """Plots a flat gravity anomaly map. Saves the figure and axis as class
+        attributes for later use in savefig.
+
+        Args:
+            title (str): Title of plot. 
+        """
+
         # Initialize grid with maximum degree higher than current for finer resolution. 
         grid = self.shGrav.expand( lmax= 4* self.harmonicDegree )
         assert grid.rad is not None
@@ -323,6 +341,29 @@ class shPyshClass ():
         ax.set_ylabel( "Latitude [deg]" )
         ax.set_aspect( "equal" )
         ax.set_title( title )
+
+        fig.show()
+
+        self.gravAnomFig, self.gravAnomAx = fig, ax
+
+    def save_gravity_anomaly_plot( self, fileDir: str, fileName: str ) -> None:
+        """Saves gravity anomaly plot. Requires plot_gravity_anomaly to be run
+        before. Will raise a runtime error otherwise.
+        
+        Args:
+            fileDir (str): Directory in which to save the plot. Must end in a /.
+            fileName (str): Name of file. Must end in file extension (.png, .jpg, etc.)
+        """
+        if not hasattr( self, "gravAnomFig" ):
+            raise RuntimeError(
+                "ERROR: Gravity anomaly figure has not yet been plotted. Run" \
+                "self.plot_gravity_anomaly before this function."
+            )
+        
+        filePath = fileDir + fileName 
+
+        self.gravAnomFig.savefig( fname= filePath )
+
 
 def kaula_power_rule ( maxDegree: int,
                        kaulaCoefficient: float= 10**-5 ):
