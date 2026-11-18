@@ -6,8 +6,8 @@ from tudatpy.astro import time_representation
 import numpy as np
 
 ### Self-made imports.
-from source.bodies.bodies import spacecraft, groundStation
-from source.environment.environment import environmentClass
+from src.bodies.bodies import spacecraft, groundStation
+from src.environment.environment import environmentClass
 
 class marsEnvironment ( environmentClass ):
     def __init__ ( 

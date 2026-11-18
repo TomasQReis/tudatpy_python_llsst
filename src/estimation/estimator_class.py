@@ -6,8 +6,8 @@ from tudatpy.estimation.estimation_analysis import CovarianceAnalysisInput
 from tudatpy.estimation.observations.observations_processing import observation_parser
 
 ### Local imports. 
-from source.environment.environment import environmentClass 
-from source.observations.observation_class import \
+from src.environment.environment import environmentClass 
+from src.observations.observation_class import \
     merge_observations, observationsClass
 
 ### External imports.

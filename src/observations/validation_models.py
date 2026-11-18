@@ -1,13 +1,13 @@
 ### Local imports.
-from source.observations.n_way_doppler import \
+from src.observations.n_way_doppler import \
     oneWayDopplerObservationsClass
 
-from source.bodies.grail_spacecraft import \
+from src.bodies.grail_spacecraft import \
     grailA, grailB
-from source.bodies.ground_stations import \
+from src.bodies.ground_stations import \
     grazStation
 
-from source.environment.moon_environment import \
+from src.environment.moon_environment import \
     moonEnvironment
 
 ### Tudat imports.

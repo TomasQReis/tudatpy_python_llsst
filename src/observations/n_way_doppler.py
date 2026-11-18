@@ -8,9 +8,9 @@ from tudatpy.estimation.observations_setup.ancillary_settings import \
     n_way_doppler_ancillary_settings, doppler_ancillary_settings, FrequencyBands
 
 # Local imports
-from source.bodies.bodies import body
-from source.environment.environment import environmentClass
-from source.observations.observation_class import observationsClass
+from src.bodies.bodies import body
+from src.environment.environment import environmentClass
+from src.observations.observation_class import observationsClass
 
 # One way doppler. 
 class oneWayDopplerObservationsClass ( observationsClass ):

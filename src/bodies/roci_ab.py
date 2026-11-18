@@ -5,8 +5,8 @@
 ### 
 
 ### Imports for self-made functions 
-from source.bodies.bodies import spacecraft
-from source.auxiliary.math_functions import *
+from src.bodies.bodies import spacecraft
+from src.auxiliary.math_functions import *
 
 ### External library imports.
 import numpy as np

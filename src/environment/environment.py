@@ -14,7 +14,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 ### Self-made imports.
-from source.bodies.bodies import spacecraft, groundStation
+from src.bodies.bodies import spacecraft, groundStation
 
 ### Directories for models 
 gravityModelsDir    = "models/gravity/"

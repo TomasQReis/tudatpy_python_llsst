@@ -4,8 +4,8 @@
 ### 
 
 ### Imports for self-made functions 
-from source.bodies.bodies import spacecraft
-from source.auxiliary.math_functions import law_cosines_anomaly_spacing
+from src.bodies.bodies import spacecraft
+from src.auxiliary.math_functions import law_cosines_anomaly_spacing
 
 ### External library imports.
 import numpy as np

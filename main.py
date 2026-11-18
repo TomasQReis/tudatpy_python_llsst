@@ -1,26 +1,26 @@
 ### Local imports. 
-from source.environment.low_fidelity import *
-from source.environment.environment import *
-from source.environment.moon_environment import moonEnvironment, MOONRADIUS
+from src.environment.low_fidelity import *
+from src.environment.environment import *
+from src.environment.moon_environment import moonEnvironment, MOONRADIUS
 
-from source.observations.ll_sst import *       # NOTE: Likely deprecated. 
-from source.observations.observation_class import merge_observations
-from source.observations.n_way_doppler import \
+from src.observations.ll_sst import *       # NOTE: Likely deprecated. 
+from src.observations.observation_class import merge_observations
+from src.observations.n_way_doppler import \
     oneWayDopplerObservationsClass
 
-from source.bodies.bodies import *
-from source.bodies.roci_ab import *
-from source.bodies.grail_spacecraft import grailList
-from source.bodies.ground_stations import *
+from src.bodies.bodies import *
+from src.bodies.roci_ab import *
+from src.bodies.grail_spacecraft import grailList
+from src.bodies.ground_stations import *
 
-from source.visualization.plotting import *
+from src.visualization.plotting import *
 
-from source.estimation.estimator_class import estimatorClass
-from source.estimation.run_functions import *
+from src.estimation.estimator_class import estimatorClass
+from src.estimation.run_functions import *
 
-from source.environment.harmonics_class import shModelClass, kaula_power_rule
+from src.environment.harmonics_class import shModelClass, kaula_power_rule
 
-from source.observations.validation_models import \
+from src.observations.validation_models import \
     sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT, kABand, xBand
 
 ### External library imports.
@@ -268,7 +268,7 @@ if __name__ == "__main__":
             resultsDir= resultsDir
         )
 
-    if iterateSimulationTime:= True:
+    if iterateSimulationTime:= False:
 
         simLengths = [28]        # Days
 
@@ -389,7 +389,8 @@ if __name__ == "__main__":
     harmonicsList = []
     noiseValuesDict = dict() 
 
-    runsDir = 'results/20261117/noise_runs_9/'
+    runsNum = 12
+    runsDir = 'results/20261117/noise_runs_' + str( runsNum ) + '/'
     prefix = "run_"
     runNum = 1
 

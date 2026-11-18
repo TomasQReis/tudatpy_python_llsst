@@ -7,13 +7,13 @@ from tudatpy.interface import spice
 from tudatpy.util import result2array
 
 ### Custom Imports
-from source.bodies.roci_ab import rociA, rociB
-from source.bodies.ground_stations import grazStation
+from src.bodies.roci_ab import rociA, rociB
+from src.bodies.ground_stations import grazStation
 
-from source.environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, GGRX1200A\
+from src.environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, GGRX1200A\
     ,convert_to_j2000, check_timespan_limit, check_arc_timespan_limit, load_spice
-from source.environment.moon_environment import moonEnvironment
-from source.environment.harmonics_class import shModelClass
+from src.environment.moon_environment import moonEnvironment
+from src.environment.harmonics_class import shModelClass
 
 class environmentTests ( unittest.TestCase ):
     # Load kernels

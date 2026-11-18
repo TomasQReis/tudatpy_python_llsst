@@ -1,5 +1,5 @@
 ### Local imports
-from source.bodies.bodies import groundStation
+from src.bodies.bodies import groundStation
 
 grazStation = groundStation(
     name= "Graz",

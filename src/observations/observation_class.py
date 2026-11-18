@@ -7,8 +7,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 ### Local imports.
-from source.bodies.bodies import spacecraft, groundStation, body
-from source.environment.environment import environmentClass
+from src.bodies.bodies import spacecraft, groundStation, body
+from src.environment.environment import environmentClass
 
 ### Tudat imports. 
 from tudatpy import estimation

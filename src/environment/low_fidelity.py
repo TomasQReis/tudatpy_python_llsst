@@ -7,7 +7,7 @@
 ### 
 
 ### Self-made imports.
-from source.bodies.bodies import spacecraft, groundStation
+from src.bodies.bodies import spacecraft, groundStation
 
 ### External library imports.
 import numpy as np

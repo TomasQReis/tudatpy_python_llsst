@@ -6,7 +6,7 @@
 from typing import Sequence, Mapping
 
 ### Self-made imports.
-from source.bodies.bodies import spacecraft, groundStation, body
+from src.bodies.bodies import spacecraft, groundStation, body
 
 ### Tudat imports. 
 from tudatpy import estimation

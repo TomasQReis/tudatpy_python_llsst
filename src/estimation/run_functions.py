@@ -8,9 +8,9 @@ from datetime import date
 from pathlib import Path
 
 ### Local imports
-from source.estimation.estimator_class import estimatorClass
-from source.observations.observation_class import observationsClass
-from source.environment.harmonics_class import shModelClass
+from src.estimation.estimator_class import estimatorClass
+from src.observations.observation_class import observationsClass
+from src.environment.harmonics_class import shModelClass
 
 
 ### Constants

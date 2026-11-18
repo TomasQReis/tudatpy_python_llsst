@@ -1,5 +1,5 @@
 ### Imports for self-made functions 
-from source.auxiliary.math_functions import *
+from src.auxiliary.math_functions import *
 
 ### External library imports.
 import numpy as np

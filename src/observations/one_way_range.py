@@ -4,7 +4,7 @@ from tudatpy.estimation.observable_models_setup.model_settings import \
     one_way_range, one_way_range_type
 
 # Local imports
-from source.observations.observation_class import observationsClass
+from src.observations.observation_class import observationsClass
 
 class oneWayRangeObservationsClass ( observationsClass ):
 
