@@ -313,12 +313,14 @@ class shPyshClass ():
         return cls( shGravCoeffs, shModelClass.gravityParameter, shModelClass.referenceRadius,
                     shModelClass.harmonicsDegree )
 
-    def plot_gravity_anomaly( self, title: str ) -> None:
+    def plot_gravity_anomaly( self, title: str, show: bool= True ) -> None:
         """Plots a flat gravity anomaly map. Saves the figure and axis as class
         attributes for later use in savefig.
 
         Args:
             title (str): Title of plot. 
+            show (bool): Boolean, true if the plot should be shown at the end of 
+            the process.
         """
 
         # Initialize grid with maximum degree higher than current for finer resolution. 
@@ -342,7 +344,7 @@ class shPyshClass ():
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
-        fig.show()
+        if show: fig.show()
 
         self.gravAnomFig, self.gravAnomAx = fig, ax
 

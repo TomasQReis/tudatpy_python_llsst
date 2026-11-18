@@ -10,17 +10,19 @@ from pathlib import Path
 ### Local imports
 from src.estimation.estimator_class import estimatorClass
 from src.observations.observation_class import observationsClass
-from src.environment.harmonics_class import shModelClass
+from src.environment.harmonics_class import shModelClass, shPyshClass
 
 
 ### Constants
 # Estimates filename.
-ESTIMATEFILE    = f"estimated_harmonics.csv"
-NOISEVALSFILE   = f"noise_values.csv"
-OBSERVATIONSFILE = f"observations"
-REALSTATESFILE  = f"reality_states"
-INTEGRATIONFILE = f"integration_parameters"
-ERRORSFILE      = f"formal_errors.csv"
+ESTIMATEFILE    = "estimated_harmonics.csv"
+ESTIMATEMAPFILE = "estimated_map.png"
+NOISEVALSFILE   = "noise_values.csv"
+OBSERVATIONSFILE ="observations"
+REALSTATESFILE  = "reality_states"
+INTEGRATIONFILE = "integration_parameters"
+ERRORSFILE      = "formal_errors.csv"
+ERRORMAPFILE    = "error_map.png"
 
 def get_last_run_number( runsDir: str, prefix: str= "run_" ) -> int:
 
@@ -52,18 +54,18 @@ def estimate_with_observation_noise(
     ) -> None:
     """Performs a set of estimates that vary the observations noise. NOTE this
     does not apply noise on acceleration values, only DSN doppler and sst range
-    observations. Returns two arrays with the stored noise combinations and 
+    observations. 
 
     Args:
-    - estimator (estimatorClass): Estimator with which the estimation will be \
+        estimator (estimatorClass): Estimator with which the estimation will be \
     performed. 
-    - observationsList (list[observationsClass]): List with observationClasses 
+        observationsList (list[observationsClass]): List with observationClasses 
     for this estimation.
-    - estimationDegree (int): Highest degree of estimated harmonics. 
-    - initialStateOffset (NDArray): Initial state offset for each arc. 
-    - noiseDict (dict): Dictionary of noise values. The keys indicating the name 
+        estimationDegree (int): Highest degree of estimated harmonics. 
+        initialStateOffset (NDArray): Initial state offset for each arc. 
+        noiseDict (dict): Dictionary of noise values. The keys indicating the name 
     of the observationClass they apply to and the value its standard deviation. 
-    - resultsDir (str): Results relative directory. 
+        resultsDir (str): Results relative directory. 
     
     """
 
@@ -99,6 +101,10 @@ def estimate_with_observation_noise(
     estimator.save_real_propagation(
         fileDir= runsDir,
         fileName= REALSTATESFILE
+    )
+    # Creates shModelClass from reference harmonics.
+    harmonicsReal = shModelClass.make_from_environment(
+        environment= estimator.environmentReal
     )
 
     # Initializes observations objects 
@@ -150,11 +156,11 @@ def estimate_with_observation_noise(
             printEstimationOutput= False,
             estimationDegree= estimationDegree
         )
-        estimatedHarmonics = shModelClass.make_from_estimate(
+        harmonicsEstimated = shModelClass.make_from_estimate(
             estimator= estimator
         )
         # Save estimated harmonics. 
-        estimatedHarmonics.save_coefficients(
+        harmonicsEstimated.save_coefficients(
             fileDir= runDir,
             fileName= ESTIMATEFILE
         )
@@ -168,6 +174,28 @@ def estimate_with_observation_noise(
             fileDir= runDir,
             fileName= ERRORSFILE
         )
+
+        # Obtain difference between estimated and real harmonics.
+        harmonicsDelta = harmonicsReal.make_from_difference(
+            other= harmonicsEstimated
+        )
+        # Convert to pyshHarmonics
+        pyshEstimated = shPyshClass.from_shModelClass( harmonicsEstimated )
+        pyshDelta     = shPyshClass.from_shModelClass( harmonicsDelta )
+        # Plot and save. 
+        pyshEstimated.plot_gravity_anomaly( 
+            title= "Estimated Gravity Anomaly", show= False )
+        pyshEstimated.save_gravity_anomaly_plot(
+            fileDir= runDir, 
+            fileName= ESTIMATEMAPFILE
+        )
+        pyshDelta.plot_gravity_anomaly(
+            title= "Gravity Anomaly Error", show= False)
+        pyshDelta.save_gravity_anomaly_plot(
+            fileDir= runDir,
+            fileName= ERRORMAPFILE
+        )
+        
 
         i+=1
 
