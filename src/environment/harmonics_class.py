@@ -261,6 +261,29 @@ class shModelClass ():
         np.savetxt( filePath, saveData, header= header, comments= "",
                     fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], delimiter= "," )
 
+    def truncate( self, newMaxDegree: int ):
+        """Truncates harmonics class to a specified degree. Will raise a value
+        error if given new maximum is higher than the current one. 
+        
+        Args:
+            newMaxDegree (int): New maximum degree. 
+        """
+
+        if newMaxDegree > self.harmonicsDegree:
+            raise ValueError(
+                "ERROR: Given truncation degree is higher than current maximum." \
+                f"Current: {self.harmonicsDegree} -- New: {newMaxDegree}"
+            )
+
+        self.harmonicsDegree = newMaxDegree
+
+        # Coefficient indices for input maximum.
+        newCosIdx, newSinIdx = get_coefficient_index( newMaxDegree )
+
+        # Truncate coefficients.
+        self.cosCoeffs = self.cosCoeffs[:newCosIdx]
+        self.sinCoeffs = self.sinCoeffs[:newSinIdx]
+
 
 class shPyshClass ():
 
