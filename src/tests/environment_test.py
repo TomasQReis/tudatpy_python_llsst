@@ -2,9 +2,12 @@ import unittest
 
 import numpy as np
 
+
 ### Tudat Imports 
 from tudatpy.interface import spice
 from tudatpy.util import result2array
+from tudatpy.dynamics.propagation import MultiArcSimulationResults
+
 
 ### Custom Imports
 from src.bodies.roci_ab import rociA, rociB
@@ -358,7 +361,7 @@ class propagationTests ( unittest.TestCase ):
         )
         # Save extracted harmonics.
         harmonicsDefault.save_coefficients(
-            fileDir= "source/tests/",
+            fileDir= "src/tests/",
             fileName= "exported_harmonics.csv"
         )
 
@@ -376,7 +379,7 @@ class propagationTests ( unittest.TestCase ):
             groundStations= [],
 
             customHarmonicsBool= True,
-            customHarmonicsFile= "source/tests/exported_harmonics.csv",
+            customHarmonicsFile= "src/tests/exported_harmonics.csv",
             harmonicsMaxDegree= 10,
         )
         environmentSaved.make_propagation_settings( 
@@ -390,3 +393,65 @@ class propagationTests ( unittest.TestCase ):
 
         # Compare states.
         np.testing.assert_allclose( statesDefault, statesSaved, rtol= 1e-16 )
+
+    def test_import_saved_propagation( self ):
+        ### Normal propagation process.
+        # Given as [Year, Month, Day]
+        simStartDate    = [2001, 1, 1, 0, 0, 0]
+        simDuration     = 1*60**2
+        simStartEpoch   = convert_to_j2000( simStartDate )
+        simEndEpoch     = simStartEpoch + simDuration
+        simArcLength    = 10*60
+    
+        # Propagation time step size. 
+        propTimeStep = 10.0     # [s]s
+
+        # Default Environment. 
+        environmentDefault = moonEnvironment(
+            level= 3,
+            simStartEpoch= simStartEpoch,   # type: ignore
+            simEndEpoch= simEndEpoch,       # type: ignore
+            timeStep= propTimeStep,         # type: ignore
+
+            spacecrafts= [rociA],
+            groundStations= [],
+
+            customHarmonicsBool= True,
+            customHarmonicsFile= GGRX1200A,
+            harmonicsMaxDegree= 10,
+        )
+        environmentDefault.make_propagation_settings( 
+            arcTimeLength= simArcLength,
+            skipArcCheck= True,
+            dependentVariables= []
+        )
+        environmentDefault.propagate() 
+
+        # Directories and filename
+        fileDir = "src/tests/files/"
+        fileName = "test_propagation_save"
+
+        # Save propagation.
+        environmentDefault.save_propagation(
+            fileDir= fileDir,
+            fileName= fileName
+        )
+
+        # Extract default arc results. 
+        defaultArcResults = environmentDefault.propagationResults.single_arc_results
+
+        # Load propagation.
+        loadedSimResults = MultiArcSimulationResults.load_from_binary( path= fileDir + fileName )
+        assert isinstance( loadedSimResults, MultiArcSimulationResults )
+        loadedArcResults = loadedSimResults.single_arc_results
+
+        
+
+        # Compare states
+        for defaultArc, loadedArc in zip( defaultArcResults, loadedArcResults ): # type: ignore
+            
+            defaultState = result2array( defaultArc.state_history )
+            loadedState = result2array( loadedArc.state_history )
+
+            np.testing.assert_allclose( defaultState, loadedState, rtol= 1e-15 )
+    
