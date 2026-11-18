@@ -178,7 +178,8 @@ class shModelClass ():
         return resultSHModel
 
     def rms_per_degree( self ) -> tuple[ NDArray, NDArray ]:
-        """Outputs the degrees and corresponding rms value of the shModel.  
+        """Outputs the degrees and corresponding normalized rms amplited value 
+        of the shModel.  
 
         Returns: 
             degrees (NDArray): Array of degrees used in rms calculation.
@@ -188,7 +189,7 @@ class shModelClass ():
         # Degrees.
         degrees = np.arange( 2, step= 1, stop= self.harmonicsDegree + 1)
         # Empty rms list.
-        self.rmsPerDegrees = []
+        rmsPerDegrees = []
 
         # Previous indices. 
         prevCosIdx = 0
@@ -206,15 +207,15 @@ class shModelClass ():
             rms = np.sqrt ( ( sumOfCosCoeffsSqrd + sumOfSinCoeffsSqrd ) / ( 2*degree + 1 ) )
 
             # Appends to list. 
-            self.rmsPerDegrees.append( rms )
+            rmsPerDegrees.append( rms )
 
             # Resets previous indices. 
             prevCosIdx = cosIdx
             prevSinIdx = sinIdx
 
-        self.rmsPerDegrees = np.array( self.rmsPerDegrees )
+        rmsPerDegrees = np.array( rmsPerDegrees )
 
-        return degrees, self.rmsPerDegrees
+        return degrees, rmsPerDegrees
 
     def save_coefficients( 
         self,
@@ -284,6 +285,55 @@ class shModelClass ():
         self.cosCoeffs = self.cosCoeffs[:newCosIdx]
         self.sinCoeffs = self.sinCoeffs[:newSinIdx]
 
+    def plot_rms( 
+        self, 
+        title: str,
+        format: str= "dimensionless",
+        show: bool= True ):
+
+        # Obtain dimensionless rms. 
+        degrees, rms = self.rms_per_degree()
+        unNormalizationArr = np.array( [ np.sqrt( 2*degree + 1 ) for
+        degree in degrees ] )
+
+        # Formats rms. 
+        match format:
+            case "dimensionless":  # Dimensionless.
+                plotVals = rms
+                yLabel = "RMS [-]"
+            case "geoid":       # Geoid Height 
+                
+                plotVals = self.referenceRadius * rms * unNormalizationArr
+                yLabel = "Geoid Height Amplitude [m]"
+            case "radial":      # Radial acceleration
+                plotVals = ( 
+                    self.gravityParameter / self.referenceRadius**2 ) \
+                    * rms * unNormalizationArr * 1e5
+                yLabel = "Acceleration Amplitude [mGal]"
+            case _:
+                raise ValueError(
+                    "ERROR: Given format not recognized." \
+                    "Valid formats: dimensionless, geoid, radial "
+                )
+
+        fig, ax = plt.subplots( figsize= ( 9, 4.5 ) )
+
+        ax.plot( degrees, plotVals )
+        
+        # Set axis limits to show the extremes.
+        ax.grid()
+
+        # Labels
+        ax.set_xlabel( "Harmonic Degree" )
+        ax.set_xlim( left= -1, right= self.harmonicsDegree+1 )
+        ax.set_ylabel( ylabel= yLabel )
+        ax.set_yscale( "log" )
+        ax.set_title( title )
+        
+
+        self.rmsFig, self.rmsAx = fig, ax
+
+        if show: plt.show()
 
 class shPyshClass ():
 
@@ -375,10 +425,9 @@ class shPyshClass ():
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
-        
-        if show: fig.show()
-
         self.gravAnomFig, self.gravAnomAx = fig, ax
+        
+        if show: plt.show()
 
     def save_gravity_anomaly_plot( self, fileDir: str, fileName: str ) -> None:
         """Saves gravity anomaly plot. Requires plot_gravity_anomaly to be run
