@@ -1,7 +1,7 @@
 ### Library imports
 import numpy as np
 import re
-import csv
+import time
 from numpy.typing import NDArray
 from itertools import product
 from datetime import date
@@ -119,6 +119,9 @@ def estimate_with_observation_noise(
     # Iterates through all combinations of noise values.    
     i = 0
     for combination in combinations:
+        # Startime for process.
+        startTime = time.process_time()
+
         # Current combination linked to keys 
         currentCombination = dict( zip( noiseDict.keys(), combination ) )
 
@@ -195,7 +198,9 @@ def estimate_with_observation_noise(
             fileDir= runDir,
             fileName= ERRORMAPFILE
         )
-        
+
+        endTime = time.process_time()
+        print( f"Took {endTime - startTime} s to complete" )
 
         i+=1
 
