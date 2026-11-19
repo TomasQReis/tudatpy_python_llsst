@@ -57,25 +57,111 @@ def cartesian_to_spherical(
 
     return np.column_stack( [ radius, latitude, longitude ] )
 
+def get_slice_size( degree: int, coordinate: str ):
+    """Returns the largest whole-degree slice for the desired coordinate given
+    a harmonic degree up to 420. If degree would only result in fractional (<1) 
+    slices returns 0.25 or 0.5.
+    
+    Args:
+        degree (int): Harmonic degree that limits slice. 
+        coordinate (str): Spherical coordinate of slice. Accepts latitude 'lat' or longitude 'lon'.
+        
+    Returns:
+        float: Slice size in degrees. 
+        
+    Examples:
+        >>> get_slice_size( 6, "lon" )
+        60
+        >>> get_slice_size( 6, "lat" )
+        20
+    """
+
+    # Input check.
+    if not isinstance( degree, int ) or isinstance( degree, bool ) or degree < 0:
+        raise ValueError( f"degree must be a non-negative integer. Got {degree!r}" )
+    if degree > 420:
+        raise ValueError( f"degree must be smaller than or equal to 420. Got {degree}")
+
+    # Match target slice to coordinate. 
+    match coordinate:
+        case "lat":
+            totalAngle = 180
+            targetSlice = totalAngle / ( degree+1 )
+        case "lon":
+            totalAngle = 360
+            targetSlice = totalAngle / degree
+        case _:
+            raise ValueError(
+                "Coordinate should be either 'lat' or 'lon'."
+            )
+
+    # Whole slices. 
+    slicesWhole = [ d for d in range( 1, totalAngle+1 ) if totalAngle % d == 0 ]
+    # Partial slices.
+    slicesSmall = [0.25, 0.5]
+
+    # For target slices smaller than 1 use either 0.5º or 0.25º.
+    if targetSlice < 1:
+        return max( d for d in slicesSmall if d <= targetSlice)
+    else:
+        return max( d for d in slicesWhole if d <= targetSlice)
+    
+
 # Geometric observation density plotter
 def plot_observation_density( 
-    longSlice: float,
-    latSlice: float,
+    
 
     runDir: str,
     propagationFile: str,
     parametersFile: str,
 
+    forceSlice: bool= True,
+    longSlice: float= 0.0,
+    latSlice: float= 0.0,
+    degreeSlice: int= 0,
+
     multiArc: bool= True,
     multiSpacecraft: bool= False
     ):
-    # Warn of degree limitation with given slices. 
-    maxLongDegree = 360 // ( 2*longSlice)
-    maxLatDegree = 180 // latSlice 
 
-    print(f"WARNING: observation density valid up to degree: {min(
-        maxLatDegree, maxLongDegree
-        ) }")
+    # Impose input slice sizes. 
+    if forceSlice: 
+        maxLongDegree = 360 // ( 2*longSlice)
+        maxLatDegree = 180 // latSlice - 1
+        
+        # Convert to radians.
+        longSlice   = np.deg2rad( longSlice )
+        latSlice    = np.deg2rad( latSlice )
+
+        if longSlice <= 0 or latSlice <= 0:
+            raise ValueError(
+                "Slice size cannot be equal or smaller than zero." \
+                f"Long Slice: {longSlice} - Lat Slice: {latSlice}"
+            )
+        elif longSlice >= 2*np.pi or latSlice >= np.pi:
+            raise ValueError(
+                "Slice size cannot be equal to, or larger than entire sphere." \
+                "Longitude slice < 360º - Latitude slice < 180º" \
+                f"Long Slice: {longSlice} - Lat Slice: {latSlice}"
+            )
+        
+        # Warn of degree limitation with given slices. 
+        print(f"WARNING: observation density valid up to degree: {min(
+            maxLatDegree, maxLongDegree
+            ) }")
+    else:
+        if degreeSlice > 420: 
+            raise ValueError(
+                "ERROR: Provided degree must be smaller than 420."
+            )
+        elif degreeSlice <= 2:
+            raise ValueError(
+                "ERROR: Provided degree must be larger than 2."
+            )
+
+        print(f"Slicing to ensure validity up to degree {degreeSlice}")
+
+        #longSlice = 
 
     # Import propagation data. 
     propagationPath = runDir + propagationFile
