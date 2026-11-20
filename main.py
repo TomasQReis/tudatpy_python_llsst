@@ -46,8 +46,6 @@ if __name__ == "__main__":
 
         simLengths = [28]        # Days
 
-        runDir = "results/20261120/noise_runs_14/"
-
         # Max degrees.
         environmentDegree   = 40
         estimatedDegree     = 40
@@ -159,9 +157,7 @@ if __name__ == "__main__":
                     resultsDir= resultsDir
                 )
 
-            analysis = analysisLibrary( runDir= runDir )
-            analysis.plot_observation_density( title= "Observation Density", degreeSlice= 40,
-                                                save= True)
+            
 
     ### TEST ENVIRONMENT CREATION ###
     if testEnvironment := False:
