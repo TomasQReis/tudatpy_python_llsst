@@ -230,9 +230,10 @@ def estimate_with_observation_noise(
 
         endTime = time.process_time()
         # Save runtime.
-        with open( runDir + "runtime.txt", 'w' ) as file:
-            file.write( f"Took {endTime - startTime} s to complete" )
-
+        with open( runDir + "estimation.txt", 'w' ) as file:
+            file.write( f"Estimation took {endTime - startTime} s to complete" )
+            file.write( f" - Reality degree: {estimator.harmonicsDegreeReal}")
+            file.write( f" - Estimated degree: {estimationDegree}")
         i+=1
 
 def read_observation_noise_estimates(

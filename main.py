@@ -39,6 +39,130 @@ resultsDir = "results/"
 
 if __name__ == "__main__":
 
+    ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
+    if iterateSimulationTime:= True:
+
+        spice.load_standard_kernels()
+
+        simLengths = [28]        # Days
+
+        runDir = "results/20261120/noise_runs_14/"
+
+        # Max degrees.
+        environmentDegree   = 40
+        estimatedDegree     = 40
+
+        for simLength in simLengths:
+            ### Environment and estimation parameters.
+            # Initial epoch. 
+            simStartDate    = [2001, 1, 1, 0, 0, 0]
+            simStartEpoch= convert_to_j2000(simStartDate)
+
+            # Final Epoch 
+            simEndEpoch= simStartEpoch + simLength * (24*60**2)
+
+            # Simulation arcLengths
+            arcLength = 24 * (60**2) 
+
+            # Propagation time step
+            propTimeStep = 60*6     # s 
+
+            intParamsDict = {
+                'startEpoch': simStartEpoch,
+                'endEpoch': simEndEpoch,
+                'arcLength': arcLength,
+                'timeStep': propTimeStep
+            }
+            
+            # Dictionary of noise values. 
+            noiseDict = {
+                'sst_range_noise' : [0.0],
+                'doppler_noise' : [0.0]
+            }
+            # Initial state offset for each arc. 
+            initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+
+            # Environment definition.
+            environmentReality = moonEnvironment(
+                level= 3,
+                simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
+                simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
+                timeStep= intParamsDict['timeStep'],         # type: ignore
+
+                spacecrafts= grailList,
+                groundStations= [ grazStation ],
+
+                customHarmonicsBool= True,
+                customHarmonicsFile= GGRX420L,
+                harmonicsMaxDegree= environmentDegree,
+            )
+            environmentReference = moonEnvironment(
+                level= 3,
+                simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
+                simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
+                timeStep= intParamsDict['timeStep'],         # type: ignore
+
+                spacecrafts= grailList,
+                groundStations= [ grazStation ],
+
+                customHarmonicsBool= True,
+                customHarmonicsFile= GGRX420L,
+                harmonicsMaxDegree= environmentDegree,
+            )
+
+            # Observations 
+            ### Observations objects. 
+            grailSSTObservations = oneWayDopplerObservationsClass(
+                environmentReal= environmentReality,
+                linkGroups= sstLinks,
+
+                noiseSigma= KBRRSIGMA,
+                countTime= KBRRCOUNT,
+                epochMargin= 1*60**2,
+
+                name= 'sst_range_noise'
+            )
+            grailDSNObservations = oneWayDopplerObservationsClass(
+                environmentReal= environmentReality,
+                linkGroups= dsnXBandLinks,
+
+                noiseSigma= DSNSIGMA,
+                countTime= DSNCOUNT,
+                epochMargin= 1*60**2,
+
+                name= 'doppler_noise'
+            )
+
+            ### Estimator object.
+            estimator = estimatorClass(
+                environmentReal= environmentReality,
+                environmentReference= environmentReference,
+
+                arcLengthReal= intParamsDict["arcLength"],
+                arcLengthReference= intParamsDict["arcLength"],
+
+                harmonicsDegreeReal= environmentDegree,
+                harmonicsDegreeReference= environmentDegree
+            )
+
+            if estimate:= True:
+                ### Run noise estimation loop.
+                estimate_with_observation_noise(
+                    estimator= estimator,
+                    estimationDegree= estimatedDegree,
+                    estimationMaxIterations= 10,
+                    observationsList= [grailSSTObservations,
+                                        grailDSNObservations],
+                    initialStateOffset= initialStateOffset,
+                    noiseDict= noiseDict,
+                    intParamsDict= intParamsDict,
+                    resultsDir= resultsDir
+                )
+
+            analysis = analysisLibrary( runDir= runDir )
+            analysis.plot_observation_density( title= "Observation Density", degreeSlice= 40,
+                                                save= True)
+
     ### TEST ENVIRONMENT CREATION ###
     if testEnvironment := False:
         # Real environment. 
@@ -233,127 +357,7 @@ if __name__ == "__main__":
             resultsDir= resultsDir
         )
 
-    ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
-    if iterateSimulationTime:= True:
-
-        spice.load_standard_kernels()
-
-        simLengths = [16]        # Days
-
-        # Max degrees.
-        environmentDegree   = 20
-        estimatedDegree     = 20
-
-        for simLength in simLengths:
-            ### Environment and estimation parameters.
-            # Initial epoch. 
-            simStartDate    = [2001, 1, 1, 0, 0, 0]
-            simStartEpoch= convert_to_j2000(simStartDate)
-
-            # Final Epoch 
-            simEndEpoch= simStartEpoch + simLength * (24*60**2)
-
-            # Simulation arcLengths
-            arcLength = 24 * (60**2) 
-
-            # Propagation time step
-            propTimeStep = 60*6     # s 
-
-            intParamsDict = {
-                'startEpoch': simStartEpoch,
-                'endEpoch': simEndEpoch,
-                'arcLength': arcLength,
-                'timeStep': propTimeStep
-            }
-            
-            # Dictionary of noise values. 
-            noiseDict = {
-                'sst_range_noise' : [0.0],
-                'doppler_noise' : [0.0]
-            }
-            # Initial state offset for each arc. 
-            initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
-
-            # Environment definition.
-            environmentReality = moonEnvironment(
-                level= 3,
-                simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
-                simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
-                timeStep= intParamsDict['timeStep'],         # type: ignore
-
-                spacecrafts= grailList,
-                groundStations= [ grazStation ],
-
-                customHarmonicsBool= True,
-                customHarmonicsFile= GGRX420L,
-                harmonicsMaxDegree= environmentDegree,
-            )
-            environmentReference = moonEnvironment(
-                level= 3,
-                simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
-                simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
-                timeStep= intParamsDict['timeStep'],         # type: ignore
-
-                spacecrafts= grailList,
-                groundStations= [ grazStation ],
-
-                customHarmonicsBool= True,
-                customHarmonicsFile= GGRX420L,
-                harmonicsMaxDegree= environmentDegree,
-            )
-
-            # Observations 
-            ### Observations objects. 
-            grailSSTObservations = oneWayDopplerObservationsClass(
-                environmentReal= environmentReality,
-                linkGroups= sstLinks,
-
-                noiseSigma= 0.0,
-                countTime= KBRRCOUNT,
-                epochMargin= 1*60**2,
-
-                name= 'sst_range_noise'
-            )
-            grailDSNObservations = oneWayDopplerObservationsClass(
-                environmentReal= environmentReality,
-                linkGroups= dsnXBandLinks,
-
-                noiseSigma= 0.0,
-                countTime= DSNCOUNT,
-                epochMargin= 1*60**2,
-
-                name= 'doppler_noise'
-            )
-
-            ### Estimator object.
-            estimator = estimatorClass(
-                environmentReal= environmentReality,
-                environmentReference= environmentReference,
-
-                arcLengthReal= intParamsDict["arcLength"],
-                arcLengthReference= intParamsDict["arcLength"],
-
-                harmonicsDegreeReal= environmentDegree,
-                harmonicsDegreeReference= environmentDegree
-            )
-
-            if estimate:= True:
-                ### Run noise estimation loop.
-                estimate_with_observation_noise(
-                    estimator= estimator,
-                    estimationDegree= estimatedDegree,
-                    estimationMaxIterations= 10,
-                    observationsList= [grailSSTObservations,
-                                        grailDSNObservations],
-                    initialStateOffset= initialStateOffset,
-                    noiseDict= noiseDict,
-                    intParamsDict= intParamsDict,
-                    resultsDir= resultsDir
-                )
-
-            analysis = analysisLibrary( runDir= "results/20261120/noise_runs_14/" )
-            analysis.plot_observation_density( title= "Observation Density", degreeSlice= 40,
-                                               save= True)
+    
 
     ### TEST PLOTTING TOOLS ### 
     # Compare initial state estimates with propagation values. 
