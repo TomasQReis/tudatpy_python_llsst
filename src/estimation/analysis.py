@@ -3,6 +3,9 @@
 
 ### Library imports
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.figure as fig
+import matplotlib.axes as ax
 
 ### Tudat imports.
 from tudatpy.dynamics.propagation import \
@@ -10,8 +13,8 @@ from tudatpy.dynamics.propagation import \
 from tudatpy.util import result2array
 
 ### Local imports. 
-from src.estimation.estimator_class import estimatorClass
-
+from src.estimation.run_functions import \
+    REALSTATESFILE
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,7 +23,7 @@ from numpy.typing import NDArray
 def cartesian_to_spherical(
     positions: NDArray[ np.float64 ],
     degrees: bool = True,
-    lonRange360: bool = False,
+    lonRange360: bool = True,
 ) -> NDArray[ np.float64 ]:
     """Converts Cartesian positions to spherical coordinates, row by row.
 
@@ -53,10 +56,11 @@ def cartesian_to_spherical(
     if lonRange360:
         longitude = np.mod( longitude, 2 * np.pi )   # 0° to 360°
     if degrees:
-        latitude, longitude =  latitude , longitude
+        latitude, longitude =  np.rad2deg( latitude ) , np.rad2deg( longitude )
 
     return np.column_stack( [ radius, latitude, longitude ] )
 
+# Slice size for desired degree of analysis. 
 def get_slice_size( degree: int, coordinate: str ):
     """Returns the largest whole-degree slice for the desired coordinate given
     a harmonic degree up to 420. If degree would only result in fractional (<1) 
@@ -105,100 +109,264 @@ def get_slice_size( degree: int, coordinate: str ):
         return max( d for d in slicesSmall if d <= targetSlice)
     else:
         return max( d for d in slicesWhole if d <= targetSlice)
+
+# Position index for given grid slicing. 
+def get_position_index( 
+        lats: NDArray, 
+        lons: NDArray, 
+        latSlice: float, 
+        lonSlice: float ) -> tuple[ 
+            NDArray[ np.int16 ], NDArray[ np.int16 ], int, int 
+            ]:
+    """Returns the indices of cells for a given spherical grid with latitude and
+    longitudinal slices as given in inputs. Latitude must be constrained to -90º 
+    +90º and longitude between 0º and 360º. 
     
+    If an position is on the border of a cell, it will return as being in the 
+    previous cell. If this occurs on the first cell it simply uses the floor
+    division.
+    
+    Args:
+        lats (NDArray): array of latitude positions. Given in degrees.
+        lons (NDArray): array of longitude positions. Given in degrees. 
+        latSlice (float): size of latitudinal grid slice. Given in degrees.
+        lonSlice (float): size of longitudinal grid slice. Given in degrees.
+        
+    Returns:
+        latIdx (NDArray): array of indices for the latitudinal position.
+        lonIdx (NDArray): array of indices for the longitudinal position. 
+        nLat (int): number of latitudinal slices. 
+        nLon (int): number of longitudinal slices.
+        
+    Examples:
+        >>> lats= np.array([ -15, 0, 15 ])
+        >>> lons= np.array([ 190, 180, 160])
+        >>> get_position_cell( lats, lons, 60, 30 )
+        (array([2,2,3]), array([3,3,2]), 6, 6)"""
+
+    # Number of cells along each coordinate. 
+    nLat, nLon = int( 180 // latSlice ) , int( 360 // lonSlice )
+
+    # Modf division of 
+    # Lats +90 to prevent negative indices. 
+    latIdxRemainder, latIdx = np.modf( ( np.asarray( lats ) + 90.0 ) / latSlice )
+    lonIdxRemainder, lonIdx = np.modf( np.asarray( lons ) / lonSlice )
+
+    # Checks for points at borders (Where fractional part is zero)
+    latIdxBorders = np.argwhere( latIdxRemainder == 0 )
+    lonIdxBorders = np.argwhere( lonIdxRemainder == 0 )
+    # Sets cell of borders as the previous cell. 
+    # If first cell disregards. 
+    latIdx[ latIdxBorders ] = latIdx[ np.where(
+            latIdxBorders - 1 >= 0, latIdxBorders-1, latIdxBorders )
+        ]
+    lonIdx[ lonIdxBorders ] = lonIdx[ np.where(
+            lonIdxBorders - 1 >= 0, lonIdxBorders-1, lonIdxBorders )
+        ]
+    
+    return latIdx.astype( int ) , lonIdx.astype( int ) , nLat, nLon
+
+
+class analysisLibrary():
+    
+    def __init__(
+        self,
+        runDir: str,
+
+        loadPropOnCreation: bool= True
+        ) -> None:
+
+        self.runDir = runDir 
+
+        if loadPropOnCreation: self.load_propagation()
+
+    def load_propagation( self ) -> None:
+
+        propagationPath = self.runDir + REALSTATESFILE
+        simulationResults = MultiArcSimulationResults.load_from_binary( # type: ignore
+            path= propagationPath ) 
+
+        # Single arc results list.
+        self.singleArcs = simulationResults.single_arc_results
+
+        epochs = np.empty(0)
+        lats = np.empty(0)
+        lons = np.empty(0)
+        # Save relevant values to NDArrays
+        # NOTE: This list should be expanded as necessary. 
+        for arc in self.singleArcs:
+            dependentArr = result2array( arc.dependent_variable_history )
+
+            epochs = np.concat( ( epochs, dependentArr[ :,0 ] ) )
+            lats = np.concat( ( lats, np.rad2deg( dependentArr[ :,1 ] ) ) )
+            # Convert longitude results to 0º / 360º range by adding 180
+            lons = np.concat( ( lons, np.rad2deg( dependentArr[ :,2 ] ) + 180 ) )
+
+        self.epochs = epochs
+        self.lats = lats
+        self.lons = lons
+
+    def plot_ground_track( 
+        self,
+        latSlice: float,
+        lonSlice: float ) -> tuple[ fig.Figure, ax.Axes ]: 
+
+        # Create plot showing trajectory.
+        fig, ax = plt.subplots( figsize= ( 9, 4.5 ) )
+        ax.plot( self.lons, self.lats, linestyle= "", marker= ".", label= "Trajectory" )
+
+        ax.set_ylim( bottom= -90, top= 90 )
+        ax.set_yticks( np.arange( -90, 91, latSlice ) )
+        ax.set_ylabel( "Latitude [deg]" )
+
+        ax.set_xlim( left= 0, right= 360 )
+        ax.set_xticks( np.arange( 0, 361, lonSlice ) )
+        ax.set_xlabel( "Longitude [deg]" )
+
+        ax.set_aspect( "equal" )
+        ax.set_title( "Ground track" )
+
+        ax.grid()
+
+        plt.show()
+
+        return fig, ax
+
+    def plot_observation_density( 
+        self,
+
+        title: str,
+
+        forceSlice: bool= False,
+        lonSlice: float= 0.0,
+        latSlice: float= 0.0,
+        degreeSlice: int= 0,
+
+        show: bool= False
+        ) -> None:
+
+        # Impose input slice sizes. 
+        if forceSlice: 
+            maxLongDegree = 360 // ( 2*lonSlice)
+            maxLatDegree = 180 // latSlice - 1
+
+            if lonSlice <= 0 or latSlice <= 0:
+                raise ValueError(
+                    "Slice size cannot be equal or smaller than zero." \
+                    f"Long Slice: {lonSlice} - Lat Slice: {latSlice}"
+                )
+            elif lonSlice >= 360 or latSlice >= 180:
+                raise ValueError(
+                    "Slice size cannot be equal to, or larger than entire sphere." \
+                    "Longitude slice < 360º - Latitude slice < 180º" \
+                    f"Long Slice: {lonSlice} - Lat Slice: {latSlice}"
+                )
+            
+            # Warn of degree limitation with given slices. 
+            print(f"WARNING: observation density valid up to degree: {min(
+                maxLatDegree, maxLongDegree
+                ) }")
+        else:
+            if degreeSlice > 420: 
+                raise ValueError(
+                    "ERROR: Provided degree must be smaller than 420."
+                )
+            elif degreeSlice <= 2:
+                raise ValueError(
+                    "ERROR: Provided degree must be larger than 2."
+                )
+
+            print(f"Slicing to ensure validity up to degree {degreeSlice}")
+
+            lonSlice = get_slice_size( degree= degreeSlice, coordinate= "lon" )
+            latSlice  = get_slice_size( degree= degreeSlice, coordinate= "lat" )
+
+        # Find gridsize and indices for position
+        latIdx, lonIdx, latNum, lonNum = get_position_index(
+            lats= self.lats,
+            lons= self.lons,
+            latSlice= latSlice,
+            lonSlice= lonSlice
+        )
+
+        # Initialize empty bins.
+        bins = np.zeros( ( latNum, lonNum ) )
+
+        # Sweep through states and check number of passes per grid. 
+        # Assigns unique ID to each cell.
+        cellID = latIdx * latNum + lonIdx
+        # Identify where ID changes (Pass).
+        passOccurs = np.zeros( len( cellID ), dtype= bool )
+        passOccurs[ np.argwhere( cellID[ 1: ] != cellID[ :-1 ] ) ] = True
+        # Add to corresponding bin. 
+        np.add.at( bins, ( latIdx[ passOccurs ], lonIdx[ passOccurs ] ), 1 )
+
+        # Plots. 
+        limit = np.max( bins )
+        
+        fig, ax = plt.subplots( figsize= ( 9, 4.5 ) )
+        mesh = ax.pcolormesh( 
+            np.arange( 0, 361, lonSlice ), np.arange( -90, 91, latSlice ), 
+            bins, cmap= "Blues", vmin= 0, vmax= limit+1, shading= "auto" )
+        fig.colorbar( mesh, ax= ax, label= "Number of Passes [-]" )
+    
+        # Set axis ticks. 
+        if latSlice < 15: latGrid = 15
+        if lonSlice < 30: lonGrid = 30
+        ax.set_ylim( bottom= -90, top= 90 )
+        ax.set_yticks( np.arange( -90, 91, latGrid ) )
+        ax.set_xlim( left= 0, right= 360 )
+        ax.set_xticks( np.arange( 0, 361, lonGrid ) )
+        ax.grid()
+    
+        # Labels
+        ax.set_xlabel( "Longitude [deg]" )
+        ax.set_ylabel( "Latitude [deg]" )
+
+        # Aspect ratio and title
+        ax.set_aspect( "equal" )
+        ax.set_title( title )
+        
+        if show: plt.show()
+
+
+
 
 # Geometric observation density plotter
 def plot_observation_density( 
-    
-
     runDir: str,
     propagationFile: str,
     parametersFile: str,
 
     forceSlice: bool= True,
-    longSlice: float= 0.0,
+    lonSlice: float= 0.0,
     latSlice: float= 0.0,
     degreeSlice: int= 0,
 
     multiArc: bool= True,
-    multiSpacecraft: bool= False
     ):
 
-    # Impose input slice sizes. 
-    if forceSlice: 
-        maxLongDegree = 360 // ( 2*longSlice)
-        maxLatDegree = 180 // latSlice - 1
-        
-        # Convert to radians.
-        longSlice   = np.deg2rad( longSlice )
-        latSlice    = np.deg2rad( latSlice )
-
-        if longSlice <= 0 or latSlice <= 0:
-            raise ValueError(
-                "Slice size cannot be equal or smaller than zero." \
-                f"Long Slice: {longSlice} - Lat Slice: {latSlice}"
-            )
-        elif longSlice >= 2*np.pi or latSlice >= np.pi:
-            raise ValueError(
-                "Slice size cannot be equal to, or larger than entire sphere." \
-                "Longitude slice < 360º - Latitude slice < 180º" \
-                f"Long Slice: {longSlice} - Lat Slice: {latSlice}"
-            )
-        
-        # Warn of degree limitation with given slices. 
-        print(f"WARNING: observation density valid up to degree: {min(
-            maxLatDegree, maxLongDegree
-            ) }")
-    else:
-        if degreeSlice > 420: 
-            raise ValueError(
-                "ERROR: Provided degree must be smaller than 420."
-            )
-        elif degreeSlice <= 2:
-            raise ValueError(
-                "ERROR: Provided degree must be larger than 2."
-            )
-
-        print(f"Slicing to ensure validity up to degree {degreeSlice}")
-
-        #longSlice = 
-
-    # Import propagation data. 
-    propagationPath = runDir + propagationFile
-    simulationResults = MultiArcSimulationResults.load_from_binary( path= propagationPath )   # type: ignore
-
-    # Limit states that will be inspected depending on number of spacecraft. 
-    if multiSpacecraft: 
-        # Import integration parameters. 
-        with open( runDir + parametersFile, "r" ) as file:
-            for line in file:
-                if line.startswith( "spacecraft: " ):
-                    # Extract number of spacecraft. 
-                    spacecraft = [ int( s ) for s in line.split() if s.isdigit() ][0]
-        # Defines slice of each spacecraft's position. 
-        stateSlice = slice( 1, 1 + spacecraft * 6, 3 )
-    else: 
-        # Limits slice to single spacecraft position. 
-        stateSlice = slice( 1, 4 )
-
+    """ ### Plot map of density. 
+    limit = np.max( bins )
     
-    # Extract states from propagation data. 
-    assert isinstance( simulationResults, MultiArcSimulationResults )
-    singleArcResults = simulationResults.single_arc_results
+    # Plotting
+    fig, ax = plt.subplots( figsize= ( 9, 4.5 ) )
+    mesh = ax.pcolormesh( 
+        np.arange( 0, 361, lonSlice ), np.arange( -90, 91, latSlice ), 
+        bins, cmap= "RdBu_r", vmin= 0, vmax= limit, shading= "auto" )
+    fig.colorbar( mesh, ax= ax, label= "Radial gravity anomaly [mGal]" )
 
-    # Extract each arc's position and merge to single array. 
-    sphericalArr = np.empty( ( 0, 3 ) )      # TODO: Still needs to be generalized. 
-    for singleArcResult in singleArcResults: # type: ignore
-        stateArr = result2array( singleArcResult.state_history )[:, stateSlice]
-        # Convert states to radius, latitude, longitude (Spherical).  
-        stateSpherical = cartesian_to_spherical( stateArr )
-        # Stack
-        sphericalArr = np.vstack( ( sphericalArr, stateSpherical ) ) 
+    # Set axis limits to show the extremes.
+    ax.set_ylim( bottom= -90, top= 90 )
+    ax.set_yticks( np.arange( -90, 90 + 15, 15 ) )
+    ax.set_xlim( left= 0, right= 360 )
+    ax.set_xticks( np.arange( 0, 360 + 30, 30 ) )
 
-    # Create grid and bins. 
-
-    # Sweep through states and check number of passes per grid. 
-
-    # Plot map of density. 
-
-
+    # Labels
+    ax.set_xlabel( "Longitude [deg]" )
+    ax.set_ylabel( "Latitude [deg]" )
+    ax.set_aspect( "equal" )
+    ax.set_title( title )
+    
+    if show: plt.show()
+ """

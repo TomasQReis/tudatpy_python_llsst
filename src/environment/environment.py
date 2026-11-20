@@ -505,7 +505,7 @@ class environmentClass ():
 
         # Extract state history and dependent variables
         self.propagationResults = dynamicsSimulator.propagation_results # type: ignore
-
+        
         return self.propagationResults
 
     # Getter for harmonic coefficients and parameters. 
