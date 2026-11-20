@@ -386,7 +386,14 @@ class shPyshClass ():
         return cls( shGravCoeffs, shModelClass.gravityParameter, shModelClass.referenceRadius,
                     shModelClass.harmonicsDegree )
 
-    def plot_gravity_anomaly( self, title: str, show: bool= True ) -> None:
+    def plot_gravity_anomaly( 
+            self, 
+            title: str, 
+            
+            show: bool= False,
+            save: bool= False,
+            fileDir: str= "",
+            fileName: str= "" ) -> None:
         """Plots a flat gravity anomaly map. Saves the figure and axis as class
         attributes for later use in savefig.
 
@@ -426,26 +433,16 @@ class shPyshClass ():
         ax.set_title( title )
 
         self.gravAnomFig, self.gravAnomAx = fig, ax
-        
+
+        # Saves figure. 
+        if save: 
+            if not fileDir or not fileName:
+                raise ValueError(
+                    "no input file directory or name given."
+                )
+            fig.savefig( fileDir + fileName )
+        # Shows figure. 
         if show: plt.show()
-
-    def save_gravity_anomaly_plot( self, fileDir: str, fileName: str ) -> None:
-        """Saves gravity anomaly plot. Requires plot_gravity_anomaly to be run
-        before. Will raise a runtime error otherwise.
-        
-        Args:
-            fileDir (str): Directory in which to save the plot. Must end in a /.
-            fileName (str): Name of file. Must end in file extension (.png, .jpg, etc.)
-        """
-        if not hasattr( self, "gravAnomFig" ):
-            raise RuntimeError(
-                "ERROR: Gravity anomaly figure has not yet been plotted. Run" \
-                "self.plot_gravity_anomaly before this function."
-            )
-        
-        filePath = fileDir + fileName 
-
-        self.gravAnomFig.savefig( fname= filePath )
 
 
 def kaula_power_rule ( maxDegree: int,
