@@ -10,5 +10,5 @@ source/tests/exported_harmonics.csv
 src/tests/files/test_propagation_save.tudat
 src/tests/files/test_trajectory.png
 src/tests/files/observation_density.png
-src/tests/files/test_propagation_save.tudat
 sync_list.txt
+__pycache__/

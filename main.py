@@ -234,15 +234,15 @@ if __name__ == "__main__":
         )
 
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
-    if iterateSimulationTime:= True:
+    if iterateSimulationTime:= False:
 
         spice.load_standard_kernels()
 
-        simLengths = [28]        # Days
+        simLengths = [6]        # Days
 
         # Max degrees.
-        environmentDegree   = 40
-        estimatedDegree     = 40
+        environmentDegree   = 20
+        estimatedDegree     = 10
 
         for simLength in simLengths:
             ### Environment and estimation parameters.
