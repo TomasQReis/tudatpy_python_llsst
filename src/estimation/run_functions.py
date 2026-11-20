@@ -23,10 +23,14 @@ from src.environment.harmonics_class import shModelClass, shPyshClass
 # Estimates filename.
 ESTIMATEFILE    = "estimated_harmonics.csv"
 ESTIMATEMAPFILE = "estimated_map.png"
+
 NOISEVALSFILE   = "noise_values.csv"
 OBSERVATIONSFILE ="observations"
+
 REALSTATESFILE  = "reality_states"
+REALMAPFILE     = "real_map.png"
 INTEGRATIONFILE = "integration_parameters"
+
 ERRORSFILE      = "formal_errors.csv"
 ERRORMAPFILE    = "error_map.png"
 
@@ -131,9 +135,9 @@ def estimate_with_observation_noise(
     )
     # Convert to pysh harmonics and save. 
     pyshReal = shPyshClass.from_shModelClass( harmonicsReal )
-    pyshReal.plot_gravity_anomaly( title= "Real Gravity Anomaly", show= False )
-    pyshReal.save_gravity_anomaly_plot( fileDir= runsDir, 
-                                       fileName= "real_anomaly.png" )
+    pyshReal.plot_gravity_anomaly( title= "Real Gravity Anomaly", show= False,
+                                   save= True, fileDir= runsDir, 
+                                   fileName= REALMAPFILE )
 
     # Initializes observations objects 
     for observation in observationsList: observation.initial_setup()
@@ -215,17 +219,11 @@ def estimate_with_observation_noise(
         pyshDelta     = shPyshClass.from_shModelClass( harmonicsDelta )
         # Plot and save. 
         pyshEstimated.plot_gravity_anomaly( 
-            title= "Estimated Gravity Anomaly", show= False )
-        pyshEstimated.save_gravity_anomaly_plot(
-            fileDir= runDir, 
-            fileName= ESTIMATEMAPFILE
-        )
+            title= "Estimated Gravity Anomaly", show= False,
+            save= True, fileDir= runDir, fileName= ESTIMATEMAPFILE )
         pyshDelta.plot_gravity_anomaly(
-            title= "Gravity Anomaly Error", show= False)
-        pyshDelta.save_gravity_anomaly_plot(
-            fileDir= runDir,
-            fileName= ERRORMAPFILE
-        )
+            title= "Gravity Anomaly Error", show= False,
+            save= True, fileDir= runDir, fileName= ERRORMAPFILE )
 
         endTime = time.process_time()
         # Save runtime.
