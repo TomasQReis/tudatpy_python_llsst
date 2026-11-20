@@ -241,6 +241,7 @@ def estimate_with_observation_noise(
 
         # Saves analysis plots. 
         analysis = analysisLibrary( runDir= runDir )
+        analysis.load_propagation( realStatesFile= REALSTATESFILE )
         analysis.plot_observation_density( title= "Observation Density", 
                                            degreeSlice= estimationDegree + 20,
                                            save= True)

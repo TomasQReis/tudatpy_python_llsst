@@ -13,8 +13,6 @@ from tudatpy.dynamics.propagation import \
 from tudatpy.util import result2array
 
 ### Local imports. 
-from src.estimation.run_functions import \
-    REALSTATESFILE
 
 import numpy as np
 from numpy.typing import NDArray
@@ -167,13 +165,13 @@ def get_position_index(
     return latIdx.astype( int ) , lonIdx.astype( int ) , nLat, nLon
 
 
+
+
 class analysisLibrary():
     
     def __init__(
         self,
         runDir: str,
-
-        loadOnCreation: bool= True
         ) -> None:
 
         self.runDir = runDir 
@@ -182,11 +180,9 @@ class analysisLibrary():
         self.lats = np.empty(0)
         self.lons = np.empty(0)
 
-        if loadOnCreation: self.load_propagation()
+    def load_propagation( self, realStatesFile: str ) -> None:
 
-    def load_propagation( self ) -> None:
-
-        propagationPath = self.runDir + REALSTATESFILE
+        propagationPath = self.runDir + realStatesFile
         simulationResults = MultiArcSimulationResults.load_from_binary( # type: ignore
             path= propagationPath ) 
 
