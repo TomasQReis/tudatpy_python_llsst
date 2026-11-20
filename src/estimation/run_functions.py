@@ -7,10 +7,15 @@ from itertools import product
 from datetime import date
 from pathlib import Path
 
+### Tudat Imports
+from tudatpy.interface import spice
+
 ### Local imports
 from src.estimation.estimator_class import estimatorClass
 from src.observations.observation_class import observationsClass
 from src.environment.harmonics_class import shModelClass, shPyshClass
+
+
 
 
 ### Constants
@@ -68,6 +73,9 @@ def estimate_with_observation_noise(
         resultsDir (str): Results relative directory. 
     
     """
+
+    # Load spice kernels. 
+    spice.load_standard_kernels()
 
     # Creates directory for current set of runs if not existing.
     dayDir = resultsDir + date.today().strftime( "%Y%m%d" ) + "/"
