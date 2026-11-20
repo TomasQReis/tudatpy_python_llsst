@@ -102,20 +102,23 @@ def estimate_with_observation_noise(
         for key, value in intParamsDict.items():
             file.write( f"{key}: {value}\n")
         file.write( f"spacecraft: { len( estimator.environmentReal.spacecrafts ) }")
+
+    # Dependent variables list.
+    dependentVariables = [
+        dependent_variable.latitude(
+            body= estimator.environmentReal.spacecrafts[0].name,
+            central_body= estimator.environmentReal.frameOriginBody
+        ),
+        dependent_variable.longitude(
+            body= estimator.environmentReal.spacecrafts[0].name,
+            central_body= estimator.environmentReal.frameOriginBody
+        )
+    ]
     
     # Propagate reality once.
     estimator.propagate_reality(
         initialStateOffset= initialStateOffset,
-        dependentVariables= [
-            dependent_variable.latitude(
-                body= estimator.environmentReal.spacecrafts[0].name,
-                central_body= estimator.environmentReal.frameOriginBody
-            ),
-            dependent_variable.longitude(
-                body= estimator.environmentReal.spacecrafts[0].name,
-                central_body= estimator.environmentReal.frameOriginBody
-            )
-        ]
+        dependentVariables= dependentVariables
     )
     # Saves reality propagation to overall run directory. 
     estimator.save_real_propagation(
