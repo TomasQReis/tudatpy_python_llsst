@@ -15,6 +15,7 @@ from tudatpy.dynamics.propagation_setup import dependent_variable
 from src.estimation.estimator_class import estimatorClass
 from src.observations.observation_class import observationsClass
 from src.environment.harmonics_class import shModelClass, shPyshClass
+from src.estimation.analysis import analysisLibrary
 
 
 
@@ -229,11 +230,20 @@ def estimate_with_observation_noise(
             save= True, fileDir= runDir, fileName= ERRORMAPFILE )
 
         endTime = time.process_time()
-        # Save runtime.
+
+        
+
+        # Save runtime and estimation details. 
         with open( runDir + "estimation.txt", 'w' ) as file:
             file.write( f"Estimation took {endTime - startTime} s to complete" )
             file.write( f" - Reality degree: {estimator.harmonicsDegreeReal}")
             file.write( f" - Estimated degree: {estimationDegree}")
+
+        # Saves analysis plots. 
+        analysis = analysisLibrary( runDir= runDir )
+        analysis.plot_observation_density( title= "Observation Density", 
+                                           degreeSlice= estimationDegree + 20,
+                                           save= True)
         i+=1
 
 def read_observation_noise_estimates(
