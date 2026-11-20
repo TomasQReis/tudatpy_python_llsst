@@ -308,7 +308,7 @@ if __name__ == "__main__":
                 environmentReal= environmentReality,
                 linkGroups= sstLinks,
 
-                noiseSigma= KBRRSIGMA,
+                noiseSigma= 0.0,
                 countTime= KBRRCOUNT,
                 epochMargin= 1*60**2,
 
@@ -318,7 +318,7 @@ if __name__ == "__main__":
                 environmentReal= environmentReality,
                 linkGroups= dsnXBandLinks,
 
-                noiseSigma= DSNSIGMA,
+                noiseSigma= 0.0,
                 countTime= DSNCOUNT,
                 epochMargin= 1*60**2,
 
@@ -351,7 +351,7 @@ if __name__ == "__main__":
                     resultsDir= resultsDir
                 )
 
-            analysis = analysisLibrary( runDir= "results/20261120/noise_runs_13/" )
+            analysis = analysisLibrary( runDir= "results/20261120/noise_runs_14/" )
             analysis.plot_observation_density( title= "Observation Density", degreeSlice= 40,
                                                save= True)
 
