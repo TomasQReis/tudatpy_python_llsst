@@ -20,7 +20,6 @@ def law_cosines_anomaly_spacing( orbitRadius: float, desiredSpacing: float ):
         (2*orbitRadius**2 - desiredSpacing**2) / (2*orbitRadius**2) 
     )
 
-
 def linear_interpolation( yValues1:NDArray , yValues2:NDArray , 
                           xValues: NDArray , xInterpol: float):
     """

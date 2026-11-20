@@ -129,6 +129,11 @@ def estimate_with_observation_noise(
     harmonicsReal = shModelClass.make_from_environment(
         environment= estimator.environmentReal
     )
+    # Convert to pysh harmonics and save. 
+    pyshReal = shPyshClass.from_shModelClass( harmonicsReal )
+    pyshReal.plot_gravity_anomaly( title= "Real Gravity Anomaly", show= False )
+    pyshReal.save_gravity_anomaly_plot( fileDir= runsDir, 
+                                       fileName= "real_anomaly.png" )
 
     # Initializes observations objects 
     for observation in observationsList: observation.initial_setup()
@@ -223,7 +228,9 @@ def estimate_with_observation_noise(
         )
 
         endTime = time.process_time()
-        print( f"Took {endTime - startTime} s to complete" )
+        # Save runtime.
+        with open( runDir + "runtime.txt", 'w' ) as file:
+            file.write( f"Took {endTime - startTime} s to complete" )
 
         i+=1
 

@@ -1,5 +1,8 @@
+### Deprecated imports.
+#from src.environment.low_fidelity import *
+#from src.visualization.plotting import *
+
 ### Local imports. 
-from src.environment.low_fidelity import *
 from src.environment.environment import *
 from src.environment.moon_environment import moonEnvironment
 
@@ -11,10 +14,10 @@ from src.bodies.roci_ab import *
 from src.bodies.grail_spacecraft import grailList
 from src.bodies.ground_stations import grazStation
 
-from src.visualization.plotting import *
-
 from src.estimation.estimator_class import estimatorClass
 from src.estimation.run_functions import *
+
+from src.estimation.analysis import analysisLibrary
 
 from src.observations.validation_models import \
     sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT
@@ -35,10 +38,6 @@ from tudatpy.estimation.estimation_analysis import Estimator
 resultsDir = "results/"
 
 if __name__ == "__main__":
-
-    # Test save for gadt. 
-    if testSave := True:
-        resultsDir = ""
 
     ### TEST ENVIRONMENT CREATION ###
     if testEnvironment := False:
@@ -124,7 +123,7 @@ if __name__ == "__main__":
         _, _, estimationGravParameter, estimationRefRadius = \
                 estimatorReference.environmentReal.get_harmonic_coefficients()
 
-    ##### For loop for testing chaging orbital parameters vs estimate. #####
+    ### TEST WITH A LIST OF NOISE ###
     if iterateNoise := False:
 
         ### Environment and estimation parameters.
@@ -234,7 +233,8 @@ if __name__ == "__main__":
             resultsDir= resultsDir
         )
 
-    if iterateSimulationTime:= False:
+    ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
+    if iterateSimulationTime:= True:
 
         spice.load_standard_kernels()
 
@@ -242,7 +242,7 @@ if __name__ == "__main__":
 
         # Max degrees.
         environmentDegree   = 40
-        estimatedDegree     = 30
+        estimatedDegree     = 40
 
         for simLength in simLengths:
             ### Environment and estimation parameters.
@@ -349,6 +349,10 @@ if __name__ == "__main__":
                 intParamsDict= intParamsDict,
                 resultsDir= resultsDir
             )
+
+            analysis = analysisLibrary( runDir= "results/20261120/noise_runs_1/" )
+            analysis.plot_observation_density( title= "Observation Density", degreeSlice= 60,
+                                               save= True)
 
     ### TEST PLOTTING TOOLS ### 
     # Compare initial state estimates with propagation values. 
