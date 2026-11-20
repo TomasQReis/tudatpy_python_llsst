@@ -5,7 +5,7 @@ from tudatpy import estimation
 from tudatpy.estimation.estimation_analysis import CovarianceAnalysisInput
 from tudatpy.estimation.observations.observations_processing import observation_parser
 
-from tudatpy.dynamics.propagation_setup import dependent_variable
+
 
 ### Local imports. 
 from src.environment.environment import environmentClass 
@@ -104,6 +104,9 @@ class estimatorClass ():
         ### Propagate reality 
         self.environmentReal.make_propagation_settings(
             arcTimeLength= self.arcLengthReal,
+
+            dependentVariables= dependentVariables,
+
             keepEnvironment= True, 
             skipArcCheck= True      # TODO: Remove after testing. 
         )
@@ -122,7 +125,7 @@ class estimatorClass ():
         self.environmentReference.make_propagation_settings(
             arcTimeLength= self.arcLengthReference,
 
-            dependentVariables= dependentVariables
+            dependentVariables= dependentVariables,
 
             importInitialStates= True,
             initialStatesArray= initialStatesArray,
