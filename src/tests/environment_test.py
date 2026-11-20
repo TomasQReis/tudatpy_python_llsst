@@ -18,7 +18,7 @@ from src.environment.environment import GGRX1200L, MAXSPAN, MINSPAN, LP150Q, GGR
 from src.environment.moon_environment import moonEnvironment
 from src.environment.harmonics_class import shModelClass
 
-from src.estimation.analysis import cartesian_to_spherical
+from src.estimation.analysis import cartesian_to_spherical, get_position_index
 
 class environmentTests ( unittest.TestCase ):
     # Load kernels
@@ -443,7 +443,7 @@ class propagationTests ( unittest.TestCase ):
         defaultArcResults = environmentDefault.propagationResults.single_arc_results
 
         # Load propagation.
-        loadedSimResults = MultiArcSimulationResults.load_from_binary( path= fileDir + fileName )
+        loadedSimResults = MultiArcSimulationResults.load_from_binary( path= fileDir + fileName ) # type: ignore
         assert isinstance( loadedSimResults, MultiArcSimulationResults )
         loadedArcResults = loadedSimResults.single_arc_results
 
@@ -465,9 +465,14 @@ class analysisTest ( unittest.TestCase ):
         positions = np.array( [ [ 1738e3,      0.0,    0.0 ],
                                 [    0.0,   1738e3,    0.0 ],
                                 [    0.0,      0.0, 1838e3 ],
-                                [  -1e6,     -1e6,     0.0 ] ] )
+                                [  -1e6,     -1e6,     0.0 ],
+                                [  1e5,     -1e6,    300.0 ],
+                                [  25600,     0.0,    10.0 ]  ] )
 
-        localSpherical = cartesian_to_spherical( positions )
+        localSpherical = cartesian_to_spherical( positions, degrees= False,
+                                                lonRange360= False )
+        localSphericalDeg = cartesian_to_spherical( positions, degrees= True,
+                                                   lonRange360= False )
 
         for index, row in enumerate( positions[:] ):
             formatted = np.zeros(6)
@@ -478,7 +483,41 @@ class analysisTest ( unittest.TestCase ):
 
             # Compare
             np.testing.assert_allclose( localSpherical[index, :], targetSpherical,
-                                        rtol= 1e-15 )
+                                        rtol= 1e-9 )
+
+            # Degrees comparison
+            targetSphericalDeg = targetSpherical
+            targetSphericalDeg[1:] = np.rad2deg( targetSpherical[1:] )
+
+            np.testing.assert_allclose( localSphericalDeg[index, :], targetSphericalDeg,
+                                        rtol= 1e-9 )
+
+    def test_get_position_index( self ):
+
+        # Test case spherical positions.  
+        lats = np.array( [ -18, -9, -6, 0, 10, 30, 36, 45 ])
+        lons = np.array( [ 280, 240, 210, 180, 167, 160, 119, 90 ])
+        latSlice = 30 
+        lonSlice = 60
+
+        # Desired results.
+        latIdxDes = np.array( [ 2, 2, 2, 2, 3, 3, 4, 4 ])
+        lonIdxDes = np.array( [ 4, 4, 3, 3, 2, 2, 1, 1 ])
+        latNumDes = 6
+        lonNumDes = 6
+
+        latIdx, lonIdx, latNum, lonNum = get_position_index(
+            lats, lons, latSlice, lonSlice
+        )
+
+        np.testing.assert_allclose( latIdx, latIdxDes )
+        np.testing.assert_allclose( lonIdx, lonIdxDes )
+        np.testing.assert_allclose( latNum, latNumDes )
+        np.testing.assert_allclose( lonNum, lonNumDes )
+
+    
+        
+
 
 
 

@@ -173,12 +173,16 @@ class analysisLibrary():
         self,
         runDir: str,
 
-        loadPropOnCreation: bool= True
+        loadOnCreation: bool= True
         ) -> None:
 
         self.runDir = runDir 
 
-        if loadPropOnCreation: self.load_propagation()
+        self.epochs = np.empty(0)
+        self.lats = np.empty(0)
+        self.lons = np.empty(0)
+
+        if loadOnCreation: self.load_propagation()
 
     def load_propagation( self ) -> None:
 
@@ -189,22 +193,15 @@ class analysisLibrary():
         # Single arc results list.
         self.singleArcs = simulationResults.single_arc_results
 
-        epochs = np.empty(0)
-        lats = np.empty(0)
-        lons = np.empty(0)
         # Save relevant values to NDArrays
         # NOTE: This list should be expanded as necessary. 
         for arc in self.singleArcs:
             dependentArr = result2array( arc.dependent_variable_history )
 
-            epochs = np.concat( ( epochs, dependentArr[ :,0 ] ) )
-            lats = np.concat( ( lats, np.rad2deg( dependentArr[ :,1 ] ) ) )
+            self.epochs = np.concat( ( self.epochs, dependentArr[ :,0 ] ) )
+            self.lats = np.concat( ( self.lats, np.rad2deg( dependentArr[ :,1 ] ) ) )
             # Convert longitude results to 0º / 360º range by adding 180
-            lons = np.concat( ( lons, np.rad2deg( dependentArr[ :,2 ] ) + 180 ) )
-
-        self.epochs = epochs
-        self.lats = lats
-        self.lons = lons
+            self.lons = np.concat( ( self.lons, np.rad2deg( dependentArr[ :,2 ] ) + 180 ) )
 
     def plot_ground_track( 
         self,
@@ -242,7 +239,9 @@ class analysisLibrary():
         latSlice: float= 0.0,
         degreeSlice: int= 0,
 
-        show: bool= False
+        show: bool= False,
+        save: bool= False,
+        fname: str= "observation_density.png"
         ) -> None:
 
         # Impose input slice sizes. 
@@ -295,11 +294,14 @@ class analysisLibrary():
         # Sweep through states and check number of passes per grid. 
         # Assigns unique ID to each cell.
         cellID = latIdx * latNum + lonIdx
-        # Identify where ID changes (Pass).
+        # Identify where ID changes (New cell entered = Pass).
         passOccurs = np.zeros( len( cellID ), dtype= bool )
         passOccurs[ np.argwhere( cellID[ 1: ] != cellID[ :-1 ] ) ] = True
+
         # Add to corresponding bin. 
         np.add.at( bins, ( latIdx[ passOccurs ], lonIdx[ passOccurs ] ), 1 )
+        # Adds last cell in path as this is not detected as a switch. 
+        np.add.at( bins, ( latIdx[ -1 ], lonIdx[ -1 ] ), 1 )
 
         # Plots. 
         limit = np.max( bins )
@@ -307,12 +309,16 @@ class analysisLibrary():
         fig, ax = plt.subplots( figsize= ( 9, 4.5 ) )
         mesh = ax.pcolormesh( 
             np.arange( 0, 361, lonSlice ), np.arange( -90, 91, latSlice ), 
-            bins, cmap= "Blues", vmin= 0, vmax= limit+1, shading= "auto" )
-        fig.colorbar( mesh, ax= ax, label= "Number of Passes [-]" )
+            bins, cmap= "Blues", vmin= 0, vmax= limit, shading= "auto" )
+        
+        fig.colorbar( mesh, ax= ax, label= "Number of Passes [-]",
+                      format= "%d" )
     
         # Set axis ticks. 
-        if latSlice < 15: latGrid = 15
+        if latSlice < 15: latGrid = 15 
+        else: latGrid = latSlice
         if lonSlice < 30: lonGrid = 30
+        else: lonGrid = lonSlice
         ax.set_ylim( bottom= -90, top= 90 )
         ax.set_yticks( np.arange( -90, 91, latGrid ) )
         ax.set_xlim( left= 0, right= 360 )
@@ -326,8 +332,10 @@ class analysisLibrary():
         # Aspect ratio and title
         ax.set_aspect( "equal" )
         ax.set_title( title )
-        
+
+        if save: fig.savefig( fname= self.runDir + fname)
         if show: plt.show()
+        
 
 
 

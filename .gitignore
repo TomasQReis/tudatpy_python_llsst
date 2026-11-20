@@ -7,3 +7,8 @@ drafting.py
 drafting.py
 source/tests/exported_harmonics.csv
 ./drafting.py
+src/tests/files/test_propagation_save.tudat
+src/tests/files/test_trajectory.png
+src/tests/files/observation_density.png
+src/tests/files/test_propagation_save.tudat
+sync_list.txt

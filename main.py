@@ -1,31 +1,26 @@
 ### Local imports. 
 from src.environment.low_fidelity import *
 from src.environment.environment import *
-from src.environment.moon_environment import moonEnvironment, MOONRADIUS
+from src.environment.moon_environment import moonEnvironment
 
-from src.observations.ll_sst import *       # NOTE: Likely deprecated. 
-from src.observations.observation_class import merge_observations
 from src.observations.n_way_doppler import \
     oneWayDopplerObservationsClass
 
 from src.bodies.bodies import *
 from src.bodies.roci_ab import *
 from src.bodies.grail_spacecraft import grailList
-from src.bodies.ground_stations import *
+from src.bodies.ground_stations import grazStation
 
 from src.visualization.plotting import *
 
 from src.estimation.estimator_class import estimatorClass
 from src.estimation.run_functions import *
 
-from src.environment.harmonics_class import shModelClass, kaula_power_rule
-
 from src.observations.validation_models import \
-    sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT, kABand, xBand
+    sstLinks, dsnXBandLinks, DSNSIGMA, DSNCOUNT, KBRRSIGMA, KBRRCOUNT
 
 ### External library imports.
 import numpy as np
-import matplotlib
 
 from pathlib import Path
 
@@ -41,38 +36,9 @@ resultsDir = "results/"
 
 if __name__ == "__main__":
 
-    ### -----------------------------------------------------------------------
-    ### Propagation of "reality".
-    ### -----------------------------------------------------------------------
-
-    # Propagation start and end dates. 
-    #
-    # Given as [Year, Month, Day]
-    simStartDate    = [2001, 1, 1, 0, 0, 0]
-    simEndDate      = [2001, 1, 4, 0, 0, 0]
-
-    # Propagation time step size. 
-    propTimeStep = 240.0     # [s]
-
-    # Arc Length. 
-    arcLength = 12 * 60**2 # 24hrs
-    arcLength0 = 0.0
-
-    # Load SPICE kernels and return J2000 formatted epochs. 
-    simStartEpoch, simEndEpoch = load_spice( 
-        simStartDate= simStartDate, simEndDate= simEndDate,
-        skipTimespanCheck= True
-        )
-
-    # Choose list of spacecraft for simulation. 
-    spacecrafts = [ rociA, rociB ]
-
-    # Choose list of ground stations for simulation.
-    groundStations = [ grazStation ]
-
-
-    # Reference degree. 
-    referenceDegree = 10
+    # Test save for gadt. 
+    if testSave := True:
+        resultsDir = ""
 
     ### TEST ENVIRONMENT CREATION ###
     if testEnvironment := False:
@@ -167,7 +133,7 @@ if __name__ == "__main__":
         simStartEpoch= convert_to_j2000(simStartDate)
 
         # Simulation Days
-        simLength = 28 * (24*60**2)
+        simLength = 14 * (24*60**2)
         # Final Epoch 
         simEndEpoch= simStartEpoch + simLength
 
@@ -201,7 +167,7 @@ if __name__ == "__main__":
             timeStep= intParamsDict['timeStep'],         # type: ignore
     
             spacecrafts= grailList,
-            groundStations= groundStations,
+            groundStations= [ grazStation ],
     
             customHarmonicsBool= True,
             customHarmonicsFile= GGRX420L,
@@ -214,7 +180,7 @@ if __name__ == "__main__":
             timeStep= intParamsDict['timeStep'],         # type: ignore
     
             spacecrafts= grailList,
-            groundStations= groundStations,
+            groundStations= [ grazStation ],
     
             customHarmonicsBool= True,
             customHarmonicsFile= GGRX420L,
@@ -252,14 +218,14 @@ if __name__ == "__main__":
             arcLengthReal= intParamsDict["arcLength"],
             arcLengthReference= intParamsDict["arcLength"],
 
-            harmonicsDegreeReal= 40,
-            harmonicsDegreeReference= 40
+            harmonicsDegreeReal= 20,
+            harmonicsDegreeReference= 20
         )
 
         ### Run noise estimation loop.
         estimate_with_observation_noise(
             estimator= estimator,
-            estimationDegree= 25,
+            estimationDegree= 10,
             observationsList= [grailSSTObservations,
                                grailDSNObservations],
             initialStateOffset= initialStateOffset,
@@ -270,11 +236,13 @@ if __name__ == "__main__":
 
     if iterateSimulationTime:= False:
 
+        spice.load_standard_kernels()
+
         simLengths = [28]        # Days
 
         # Max degrees.
         environmentDegree   = 40
-        estimatedDegree     = 40
+        estimatedDegree     = 30
 
         for simLength in simLengths:
             ### Environment and estimation parameters.
@@ -314,7 +282,7 @@ if __name__ == "__main__":
                 timeStep= intParamsDict['timeStep'],         # type: ignore
 
                 spacecrafts= grailList,
-                groundStations= groundStations,
+                groundStations= [ grazStation ],
 
                 customHarmonicsBool= True,
                 customHarmonicsFile= GGRX420L,
@@ -327,7 +295,7 @@ if __name__ == "__main__":
                 timeStep= intParamsDict['timeStep'],         # type: ignore
 
                 spacecrafts= grailList,
-                groundStations= groundStations,
+                groundStations= [ grazStation ],
 
                 customHarmonicsBool= True,
                 customHarmonicsFile= GGRX420L,
@@ -381,73 +349,6 @@ if __name__ == "__main__":
                 intParamsDict= intParamsDict,
                 resultsDir= resultsDir
             )
-
-    lineColors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
-    lineStyles = ["-", "--", "-.", ":"]
-    markerStyles = ["+", ".", "3", "*"]
-
-    harmonicsList = []
-    noiseValuesDict = dict() 
-
-    runsNum = 12
-    runsDir = 'results/20261117/noise_runs_' + str( runsNum ) + '/'
-    prefix = "run_"
-    runNum = 1
-
-    runDir = runsDir + prefix + str( runNum ) + "/"
-
-    harmonicsReference = shModelClass.make_from_file(
-        filePath= 'models/gravity/gggrx_420l_formatted.csv'
-    )
-    harmonicsEstimated = shModelClass.make_from_file(
-        filePath= runDir + 'estimated_harmonics.csv'
-    ) 
-    harmonicsError = shModelClass.make_from_formal_errors(
-        filePath= runDir + "formal_errors.csv"
-    )
-    harmonicsDelta = harmonicsReference.make_from_difference(
-        other= harmonicsEstimated
-    )
-
-    
-    # RMS Values.
-    degreesEstimate, rmsFormal = harmonicsError.rms_per_degree()
-    _, rmsDelta  = harmonicsDelta.rms_per_degree()
-    degreesReference, rmsReference  = harmonicsReference.rms_per_degree()
-    _, rmsEstimated  = harmonicsEstimated.rms_per_degree()
-
-    scatterList = [ rmsDelta, rmsEstimated ]
-    scatterLabels = [ "Reference - Estimate RMS", "Estimate Field RMS" ]
-    
-    for index, rms in enumerate( scatterList ):
-        # Plot
-        plt.scatter( degreesEstimate, rms, 
-            label= scatterLabels[index], color= lineColors[index % len(lineColors)],
-            marker= markerStyles[index % len(markerStyles)] )  
-    
-
-    plt.plot( degreesEstimate, rmsFormal, color= "red",
-             label= "Formal Error RMS")
-    plt.plot( degreesReference, rmsReference, color= "black",
-              label= "Reference Field RMS" )
-    
-    #print(harmonicsError.cosCoeffs)
-
-
-    plt.yscale( "log" )
-
-    plt.grid()
-    plt.ylabel("RMS")
-    plt.xlim(-1, 41)
-    plt.xlabel("Harmonics Degree")
-    plt.legend()
-
-    plt.title( f'Weighed Observations Estimate - 28 Days - 10 Iterations' )
-
-    plt.rcParams.update( { "font.size": 22 } )
-
-    plt.show()
-
 
     ### TEST PLOTTING TOOLS ### 
     # Compare initial state estimates with propagation values. 
