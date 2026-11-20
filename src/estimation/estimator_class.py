@@ -153,13 +153,14 @@ class estimatorClass ():
         if weighObservations:
             # Iterates through observation objects 
             for observations in observationsList:
-                # Sets observation weight from class attributes. 
-                self.observationCollection.set_constant_weight(
-                    weight= 1 / (observations.noiseSigma)**2,
-                    observation_parser= observation_parser(
-                        link_ends= observations.linkEndsDict
+                if observations.noiseSigma > 0:
+                    # Sets observation weight from class attributes. 
+                    self.observationCollection.set_constant_weight(
+                        weight= 1 / (observations.noiseSigma)**2,
+                        observation_parser= observation_parser(
+                            link_ends= observations.linkEndsDict
+                        )
                     )
-                )
 
             # Adds weight to observation collection using links as parser.
 
