@@ -234,15 +234,15 @@ if __name__ == "__main__":
         )
 
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
-    if iterateSimulationTime:= False:
+    if iterateSimulationTime:= True:
 
         spice.load_standard_kernels()
 
-        simLengths = [6]        # Days
+        simLengths = [16]        # Days
 
         # Max degrees.
         environmentDegree   = 20
-        estimatedDegree     = 10
+        estimatedDegree     = 20
 
         for simLength in simLengths:
             ### Environment and estimation parameters.
@@ -337,18 +337,19 @@ if __name__ == "__main__":
                 harmonicsDegreeReference= environmentDegree
             )
 
-            ### Run noise estimation loop.
-            estimate_with_observation_noise(
-                estimator= estimator,
-                estimationDegree= estimatedDegree,
-                estimationMaxIterations= 10,
-                observationsList= [grailSSTObservations,
-                                    grailDSNObservations],
-                initialStateOffset= initialStateOffset,
-                noiseDict= noiseDict,
-                intParamsDict= intParamsDict,
-                resultsDir= resultsDir
-            )
+            if estimate:= True:
+                ### Run noise estimation loop.
+                estimate_with_observation_noise(
+                    estimator= estimator,
+                    estimationDegree= estimatedDegree,
+                    estimationMaxIterations= 10,
+                    observationsList= [grailSSTObservations,
+                                        grailDSNObservations],
+                    initialStateOffset= initialStateOffset,
+                    noiseDict= noiseDict,
+                    intParamsDict= intParamsDict,
+                    resultsDir= resultsDir
+                )
 
             analysis = analysisLibrary( runDir= "results/20261120/noise_runs_1/" )
             analysis.plot_observation_density( title= "Observation Density", degreeSlice= 60,
