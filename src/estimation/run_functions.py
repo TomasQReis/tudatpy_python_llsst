@@ -9,6 +9,7 @@ from pathlib import Path
 
 ### Tudat Imports
 from tudatpy.interface import spice
+from tudatpy.dynamics.propagation_setup import dependent_variable
 
 ### Local imports
 from src.estimation.estimator_class import estimatorClass
@@ -104,7 +105,17 @@ def estimate_with_observation_noise(
     
     # Propagate reality once.
     estimator.propagate_reality(
-        initialStateOffset= initialStateOffset
+        initialStateOffset= initialStateOffset,
+        dependentVariables= [
+            dependent_variable.latitude(
+                body= estimator.environmentReal.spacecrafts[0].name,
+                central_body= estimator.environmentReal.frameOriginBody
+            ),
+            dependent_variable.longitude(
+                body= estimator.environmentReal.spacecrafts[0].name,
+                central_body= estimator.environmentReal.frameOriginBody
+            )
+        ]
     )
     # Saves reality propagation to overall run directory. 
     estimator.save_real_propagation(
