@@ -432,7 +432,7 @@ class shPyshClass ():
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
-        self.gravAnomFig, self.gravAnomAx = fig, ax
+        ax.grid()
 
         # Saves figure. 
         if save: 

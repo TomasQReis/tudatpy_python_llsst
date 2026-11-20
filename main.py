@@ -268,8 +268,8 @@ if __name__ == "__main__":
             
             # Dictionary of noise values. 
             noiseDict = {
-                'sst_range_noise' : [KBRRSIGMA],
-                'doppler_noise' : [DSNSIGMA]
+                'sst_range_noise' : [0.0],
+                'doppler_noise' : [0.0]
             }
             # Initial state offset for each arc. 
             initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
@@ -351,8 +351,8 @@ if __name__ == "__main__":
                     resultsDir= resultsDir
                 )
 
-            analysis = analysisLibrary( runDir= "results/20261120/noise_runs_1/" )
-            analysis.plot_observation_density( title= "Observation Density", degreeSlice= 60,
+            analysis = analysisLibrary( runDir= "results/20261120/noise_runs_13/" )
+            analysis.plot_observation_density( title= "Observation Density", degreeSlice= 40,
                                                save= True)
 
     ### TEST PLOTTING TOOLS ### 

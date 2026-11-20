@@ -171,7 +171,10 @@ def estimate_with_observation_noise(
         ### Estimation Process ###
         # Set new noise values. 
         for observation in observationsList: 
-            observation.set_noise_sigma( noiseSigma= currentCombination[ observation.name ] )
+            if currentCombination[ observation.name ] > 0:
+                observation.set_noise_sigma( noiseSigma= currentCombination[ 
+                    observation.name ] 
+                )
 
         # Create observations using noise values. 
         estimator.make_observations(
