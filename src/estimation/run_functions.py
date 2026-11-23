@@ -21,17 +21,23 @@ from src.estimation.analysis import analysisLibrary
 
 
 ### Constants
-# Estimates filename.
+# Run paths. 
+RUNPREFIX       = "run_"
+
+# Estimates paths.
 ESTIMATEFILE    = "estimated_harmonics.csv"
 ESTIMATEMAPFILE = "estimated_map.png"
 
+# Noise paths. 
 NOISEVALSFILE   = "noise_values.csv"
 OBSERVATIONSFILE ="observations"
 
+# Reality paths. 
 REALSTATESFILE  = "reality_states"
 REALMAPFILE     = "real_map.png"
 INTEGRATIONFILE = "integration_parameters"
 
+# Error paths 
 ERRORSFILE      = "formal_errors.csv"
 ERRORMAPFILE    = "error_map.png"
 
@@ -87,13 +93,12 @@ def estimate_with_observation_noise(
     dayDir = resultsDir + date.today().strftime( "%Y%m%d" ) + "/"
     Path( dayDir ).mkdir( parents= True, exist_ok= True ) 
     # Checks for previous noise runs. 
-    noiseRunsDirPrefix = "noise_runs_"
     noiseRunsNum = get_last_run_number( 
         runsDir= dayDir,
-        prefix= noiseRunsDirPrefix
+        prefix= RUNPREFIX
     ) 
     # Creates directory for noise runs if not existing. 
-    runsDir = dayDir + noiseRunsDirPrefix + f"{noiseRunsNum + 1}/"
+    runsDir = dayDir + RUNPREFIX + f"{noiseRunsNum + 1}/"
     Path( runsDir ).mkdir( parents= True, exist_ok= True ) 
     # Checks value of last individual run. 
     runDirPrefix = "run_"
