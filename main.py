@@ -40,7 +40,7 @@ resultsDir = "results/"
 if __name__ == "__main__":
 
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
-    if iterateSimulationTime:= True:
+    if iterateSimulationTime:= False:
 
         spice.load_standard_kernels()
 
