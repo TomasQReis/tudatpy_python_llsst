@@ -6,16 +6,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.figure as fig
 import matplotlib.axes as ax
+import numpy as np
+from numpy.typing import NDArray
 
 ### Tudat imports.
 from tudatpy.dynamics.propagation import \
     SimulationResults, MultiArcSimulationResults, SingleArcSimulationResults
 from tudatpy.util import result2array
 
-### Local imports. 
 
-import numpy as np
-from numpy.typing import NDArray
+### File paths. 
+# Run paths. 
+SETPREFIX       = "set_"
+RUNPREFIX       = "run_"
+
+# Estimates paths.
+ESTIMATEFILE    = "estimated_harmonics.csv"
+ESTIMATEMAPFILE = "estimated_map.png"
+
+# Noise paths. 
+NOISEVALSFILE   = "noise_values.csv"
+OBSERVATIONSFILE ="observations"
+
+# Reality paths. 
+REALSTATESFILE  = "reality_states"
+REALMAPFILE     = "real_map.png"
+INTEGRATIONFILE = "integration_parameters"
+
+# Estimation analysis paths 
+ANALYSISFILE    = "estimate_analysis.csv"
+ERRORMAPFILE    = "error_map.png"
+CORRMATXFILE    = "correlation"
+CORRMATXFLAG    = 'FCORRMATX'
+
 
 # NOTE: AI-made but verified. 
 def cartesian_to_spherical(
@@ -165,6 +188,26 @@ def get_position_index(
     return latIdx.astype( int ) , lonIdx.astype( int ) , nLat, nLon
 
 
+def get_flags( filePath: str, starter: str= '- ', flags: list[ str ]= ['FCORRMATX']):
+
+    # Empty flag value list. 
+    flagsVals = []
+    with open( filePath ) as file:
+        # Read line by line. 
+        for line in file:
+            # Check when flag starter occurs.
+            if line.startswith( starter ):
+                for flag in flags:
+                    # If flag identifier.
+                    if flag in line: 
+                        # Reads value and continues to next flag. 
+                        flagsVals.append( int( line.strip()[-1] ) ) 
+                        continue
+    # Error for no flags. 
+    if not flagsVals:
+        raise ValueError( f"No data found for flag {flag} in {filePath}" )
+    return flagsVals
+
 class analysisLibrary():
     
     def __init__(
@@ -196,6 +239,35 @@ class analysisLibrary():
             self.lats = np.concat( ( self.lats, np.rad2deg( dependentArr[ :,1 ] ) ) )
             # Convert longitude results to 0º / 360º range by adding 180
             self.lons = np.concat( ( self.lons, np.rad2deg( dependentArr[ :,2 ] ) + 180 ) )
+
+    def load_correlation( 
+            self, 
+            runNum: int, 
+            corrFileName: str= CORRMATXFILE 
+        ) -> None:
+
+        # Correlation matrix file. 
+        runFilePath = self.setDir +  RUNPREFIX + str( runNum ) + '/'
+        corrFilePath = runFilePath + corrFileName + '.npz'
+
+        # Load data. 
+        data = np.load( corrFilePath )
+
+        # If full correlation matrix, skip symmetry. 
+        if get_flags( filePath= runFilePath + ANALYSISFILE, flags= [CORRMATXFLAG] ):
+            # Load full matrix. 
+            self.fullMatx = data
+        else: 
+            # Load size. 
+            size = data[ 'size' ]
+
+            # Row and column indices for half matrix. 
+            rows, cols = np.triu_indices( size )
+
+            self.fullMatx = np.zeros( (size, size) )
+            self.fullMatx[ rows, cols ] = data[ 'halfMatx' ]
+            self.fullMatx[ cols, rows ] = data[ 'halfMatx' ]
+
 
     def plot_ground_track( 
         self,
