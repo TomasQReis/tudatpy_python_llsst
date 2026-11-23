@@ -37,6 +37,7 @@ INTEGRATIONFILE = "integration_parameters"
 ANALYSISFILE    = "estimate_analysis.csv"
 ERRORMAPFILE    = "error_map.png"
 CORRMATXFILE    = "correlation"
+CORRPLOTFILE    = 'correlation.png'
 CORRMATXFLAG    = 'FCORRMATX'
 
 
@@ -190,6 +191,7 @@ def get_position_index(
 
 def get_flags( filePath: str, starter: str= '#- ', flags: list[ str ]= ['FCORRMATX']):
 
+    # TODO: Make this output a dictionary with flag keys and values. 
     # Empty flag value list. 
     flagsVals = []
     with open( filePath ) as file:
@@ -252,7 +254,7 @@ class analysisLibrary():
         data = np.load( corrFilePath )
 
         # If full correlation matrix, skip symmetry. 
-        if get_flags( filePath= self.runDir + ANALYSISFILE, flags= [CORRMATXFLAG] ):
+        if get_flags( filePath= self.runDir + ANALYSISFILE, flags= [CORRMATXFLAG] )[0]:
             # Load full matrix. 
             self.size = data[ 'size' ]
             self.fullMatx = data[ 'halfMatx' ]
@@ -403,7 +405,7 @@ class analysisLibrary():
         
     def plot_correlation( \
         self,
-        fileName: str,
+        fileName: str= CORRPLOTFILE,
         title: str= 'Correlation Matrix',
         save: bool= False,
         show: bool= False):

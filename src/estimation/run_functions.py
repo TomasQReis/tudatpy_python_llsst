@@ -44,6 +44,11 @@ def estimate_with_observation_noise(
     intParamsDict: dict= {},
 
     resultsDir: str= "",
+
+    forceSetNum: bool= False,
+    lastSetForced: int= 0,
+    forceRunNum: bool= False,
+    lastRunForced: int= 0
     ) -> None:
     """Performs a set of estimates that vary the observations noise. NOTE this
     does not apply noise on acceleration values, only DSN doppler and sst range
@@ -70,20 +75,20 @@ def estimate_with_observation_noise(
     Path( dayDir ).mkdir( parents= True, exist_ok= True ) 
 
     # Checks number of run sets within day. 
-    setNum = get_last_run_number( 
+    lastSetNum = get_last_run_number( 
         runsDir= dayDir,
         prefix= SETPREFIX
-    ) 
+    )
+
     # Creates directory for set if not existing. 
-    setPath = dayDir + SETPREFIX + f"{setNum + 1}/"
+    setPath = dayDir + SETPREFIX + f"{lastSetNum + 1}/"
     Path( setPath ).mkdir( parents= True, exist_ok= True )
  
     # Checks value of last individual run. 
-    highestRun = get_last_run_number (
+    lastRunNum = get_last_run_number (
         runsDir= setPath,
         prefix= RUNPREFIX
     )
-
 
     # Save propagation parameters. 
     with open( setPath + INTEGRATIONFILE, 'w' ) as file:
@@ -144,7 +149,7 @@ def estimate_with_observation_noise(
         print(f"Noise vals:{currentCombination}")
 
         # Individual run directory.
-        runDir = setPath +  RUNPREFIX + f"{i+1+highestRun}/"
+        runDir = setPath +  RUNPREFIX + f"{i+1+lastRunNum}/"
         # Creates directory if not existing. 
         Path( runDir ).mkdir( parents= True, exist_ok= True ) 
 

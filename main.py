@@ -39,16 +39,20 @@ resultsDir = "results/"
 
 if __name__ == "__main__":
 
+
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
     if iterateSimulationTime:= True:
 
         spice.load_standard_kernels()
 
-        simLength = 6      # Days
+        simLength = 28      # Days
 
         # Max degrees.
-        environmentDegree   = 10
-        estimatedDegree     = 10
+        environmentDegree   = 40
+        estimatedDegree     = 40
+
+        baseline = np.array( [ 10, 10, 10, 0.001, 0.001, 0.001 ] )
+        initialStateOffsets = [ baseline, baseline*10, baseline*1e2, baseline*1e3 ]
         
         ### Environment and estimation parameters.
         # Initial epoch. 
@@ -142,15 +146,15 @@ if __name__ == "__main__":
             harmonicsDegreeReference= environmentDegree
         )
 
-        if estimate:= True:
+        for stateOffset in initialStateOffsets:
             ### Run noise estimation loop.
             estimate_with_observation_noise(
                 estimator= estimator,
                 estimationDegree= estimatedDegree,
-                estimationMaxIterations= 10,
+                estimationMaxIterations= 15,
                 observationsList= [grailSSTObservations,
                                     grailDSNObservations],
-                initialStateOffset= initialStateOffset,
+                initialStateOffset= stateOffset,
                 noiseDict= noiseDict,
                 intParamsDict= intParamsDict,
                 resultsDir= resultsDir
