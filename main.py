@@ -44,11 +44,11 @@ if __name__ == "__main__":
 
         spice.load_standard_kernels()
 
-        simLengths = [28]        # Days
+        simLengths = [6]        # Days
 
         # Max degrees.
-        environmentDegree   = 40
-        estimatedDegree     = 40
+        environmentDegree   = 10
+        estimatedDegree     = 10
 
         for simLength in simLengths:
             ### Environment and estimation parameters.

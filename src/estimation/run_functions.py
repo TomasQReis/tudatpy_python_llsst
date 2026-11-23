@@ -22,6 +22,7 @@ from src.estimation.analysis import analysisLibrary
 
 ### Constants
 # Run paths. 
+SETPREFIX       = "set_"
 RUNPREFIX       = "run_"
 
 # Estimates paths.
@@ -89,26 +90,28 @@ def estimate_with_observation_noise(
     # Load spice kernels. 
     spice.load_standard_kernels()
 
-    # Creates directory for current set of runs if not existing.
+    # Creates directory for current day if not existing.
     dayDir = resultsDir + date.today().strftime( "%Y%m%d" ) + "/"
     Path( dayDir ).mkdir( parents= True, exist_ok= True ) 
-    # Checks for previous noise runs. 
-    noiseRunsNum = get_last_run_number( 
+
+    # Checks number of run sets within day. 
+    setNum = get_last_run_number( 
         runsDir= dayDir,
-        prefix= RUNPREFIX
+        prefix= SETPREFIX
     ) 
-    # Creates directory for noise runs if not existing. 
-    runsDir = dayDir + RUNPREFIX + f"{noiseRunsNum + 1}/"
-    Path( runsDir ).mkdir( parents= True, exist_ok= True ) 
+    # Creates directory for set if not existing. 
+    setPath = dayDir + SETPREFIX + f"{setNum + 1}/"
+    Path( setPath ).mkdir( parents= True, exist_ok= True )
+ 
     # Checks value of last individual run. 
-    runDirPrefix = "run_"
     highestRun = get_last_run_number (
-        runsDir= runsDir,
-        prefix= runDirPrefix
+        runsDir= SETPREFIX,
+        prefix= RUNPREFIX
     )
 
+
     # Save propagation parameters. 
-    with open( runsDir + INTEGRATIONFILE, 'w' ) as file:
+    with open( setPath + INTEGRATIONFILE, 'w' ) as file:
         for key, value in intParamsDict.items():
             file.write( f"{key}: {value}\n")
         file.write( f"spacecraft: { len( estimator.environmentReal.spacecrafts ) }")
@@ -132,7 +135,7 @@ def estimate_with_observation_noise(
     )
     # Saves reality propagation to overall run directory. 
     estimator.save_real_propagation(
-        fileDir= runsDir,
+        fileDir= setPath,
         fileName= REALSTATESFILE
     )
     # Creates shModelClass from reference harmonics.
@@ -142,7 +145,7 @@ def estimate_with_observation_noise(
     # Convert to pysh harmonics and save. 
     pyshReal = shPyshClass.from_shModelClass( harmonicsReal )
     pyshReal.plot_gravity_anomaly( title= "Real Gravity Anomaly", show= False,
-                                   save= True, fileDir= runsDir, 
+                                   save= True, fileDir= setPath, 
                                    fileName= REALMAPFILE )
 
     # Initializes observations objects 
@@ -167,7 +170,7 @@ def estimate_with_observation_noise(
         print(f"Noise vals:{currentCombination}")
 
         # Individual run directory.
-        runDir = runsDir +  runDirPrefix + f"{i+1+highestRun}/"
+        runDir = setPath +  RUNPREFIX + f"{i+1+highestRun}/"
         # Creates directory if not existing. 
         Path( runDir ).mkdir( parents= True, exist_ok= True ) 
 
