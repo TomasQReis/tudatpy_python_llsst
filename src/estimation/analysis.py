@@ -212,10 +212,10 @@ class analysisLibrary():
     
     def __init__(
         self,
-        setDir: str,
+        runDir: str,
         ) -> None:
 
-        self.setDir = setDir 
+        self.runDir = runDir 
 
         self.epochs = np.empty(0)
         self.lats = np.empty(0)
@@ -223,7 +223,7 @@ class analysisLibrary():
 
     def load_propagation( self, realStatesFile: str ) -> None:
 
-        propagationPath = self.setDir + realStatesFile
+        propagationPath = self.runDir + realStatesFile
         simulationResults = MultiArcSimulationResults.load_from_binary( # type: ignore
             path= propagationPath ) 
 
@@ -242,19 +242,17 @@ class analysisLibrary():
 
     def load_correlation( 
             self, 
-            runNum: int, 
-            corrFileName: str= CORRMATXFILE 
+            corrFileName: str= CORRMATXFILE
         ) -> None:
 
         # Correlation matrix file. 
-        runFilePath = self.setDir +  RUNPREFIX + str( runNum ) + '/'
-        corrFilePath = runFilePath + corrFileName + '.npz'
+        corrFilePath = self.runDir + corrFileName + '.npz'
 
         # Load data. 
         data = np.load( corrFilePath )
 
         # If full correlation matrix, skip symmetry. 
-        if get_flags( filePath= runFilePath + ANALYSISFILE, flags= [CORRMATXFLAG] ):
+        if get_flags( filePath= self.runDir + ANALYSISFILE, flags= [CORRMATXFLAG] ):
             # Load full matrix. 
             self.size = data[ 'size' ]
             self.fullMatx = data[ 'halfMatx' ]
@@ -400,7 +398,7 @@ class analysisLibrary():
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
-        if save: fig.savefig( fname= self.setDir + fname)
+        if save: fig.savefig( fname= self.runDir + fname)
         if show: plt.show()
         
     def plot_correlation( \
@@ -427,5 +425,5 @@ class analysisLibrary():
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
-        if save: fig.savefig( fname= self.setDir + fileName)
+        if save: fig.savefig( fname= self.runDir + fileName)
         if show: plt.show()

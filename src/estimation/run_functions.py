@@ -226,11 +226,15 @@ def estimate_with_observation_noise(
             file.write( f" - Estimated degree: {estimationDegree}")
 
         # Saves analysis plots. 
-        analysis = analysisLibrary( setDir= runDir )
+        analysis = analysisLibrary( runDir= runDir )
         analysis.load_propagation( realStatesFile= REALSTATESFILE )
         analysis.plot_observation_density( title= "Observation Density", 
                                            degreeSlice= estimationDegree + 20,
                                            save= True)
+        analysis.load_correlation( corrFileName= CORRMATXFILE )
+        analysis.plot_correlation( title= 'Correlation Matrix', 
+                                   fileName= 'correlation_matrix.png',
+                                   save= True )
         
         
         i+=1
