@@ -251,6 +251,12 @@ class estimatorClass ():
             print_output_to_terminal= printEstimationOutput,
             condition_number_warning_each_iteration= printEstimationOutput
         )
+        
+
+        ### Perform parameter estimation.
+        self.estimationOutput = estimator.perform_estimation(
+            estimation_input= estimatorSettings
+        )
 
         ### Perform covariance analysis. 
         if covarianceAnalysis: 
@@ -266,12 +272,6 @@ class estimatorClass ():
             self.covarianceOutput = estimator.compute_covariance(
                 covarianceInput
             )
-        
-
-        ### Perform parameter estimation.
-        self.estimationOutput = estimator.perform_estimation(
-            estimation_input= estimatorSettings
-        )
 
     def get_observations(
             self,
@@ -371,9 +371,9 @@ class estimatorClass ():
         """
 
         # Value check for fullCorrMatx flag:
-        if fullCorrMatx != 0 | 1:
+        if type( fullCorrMatx ) is not int:
             raise ValueError (
-                f'fullCorrMatx should be either 1 or 0. Got: {fullCorrMatx}'
+                f'fullCorrMatx should be an integer. Got: {fullCorrMatx}'
             )
         
         print( "Saving estimate analysis...")
@@ -454,12 +454,12 @@ class estimatorClass ():
         if fullCorrMatx: 
             # Saves full correlation matrix instead. Note that the key does not
             # change. 
-            np.savez_compressed( file= corrFileName,
+            np.savez_compressed( file= fileDir + corrFileName,
                 halfMatx= correlation, size = size )
         else:
             # Saves only half matrix. 
             rows, cols = np.triu_indices( size )
-            np.savez_compressed( file= corrFileName,
+            np.savez_compressed( file= fileDir + corrFileName,
                 halfMatx= correlation[ rows, cols ], size = size )
 
             

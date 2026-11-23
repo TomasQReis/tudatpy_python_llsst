@@ -73,8 +73,8 @@ if __name__ == "__main__":
         
         # Dictionary of noise values. 
         noiseDict = {
-            'sst_range_noise' : [KBRRSIGMA],
-            'doppler_noise' : [DSNSIGMA]
+            'sst_range_noise' : [0.0],
+            'doppler_noise' : [0.0]
         }
         # Initial state offset for each arc. 
         initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]

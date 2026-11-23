@@ -188,7 +188,7 @@ def get_position_index(
     return latIdx.astype( int ) , lonIdx.astype( int ) , nLat, nLon
 
 
-def get_flags( filePath: str, starter: str= '- ', flags: list[ str ]= ['FCORRMATX']):
+def get_flags( filePath: str, starter: str= '#- ', flags: list[ str ]= ['FCORRMATX']):
 
     # Empty flag value list. 
     flagsVals = []
@@ -205,7 +205,7 @@ def get_flags( filePath: str, starter: str= '- ', flags: list[ str ]= ['FCORRMAT
                         continue
     # Error for no flags. 
     if not flagsVals:
-        raise ValueError( f"No data found for flag {flag} in {filePath}" )
+        raise ValueError( f"No data found for flags in {filePath}" )
     return flagsVals
 
 class analysisLibrary():
@@ -221,9 +221,9 @@ class analysisLibrary():
         self.lats = np.empty(0)
         self.lons = np.empty(0)
 
-    def load_propagation( self, realStatesFile: str ) -> None:
+    def load_propagation( self, realStatesPath: str ) -> None:
 
-        propagationPath = self.runDir + realStatesFile
+        propagationPath = realStatesPath
         simulationResults = MultiArcSimulationResults.load_from_binary( # type: ignore
             path= propagationPath ) 
 

@@ -80,7 +80,7 @@ def estimate_with_observation_noise(
  
     # Checks value of last individual run. 
     highestRun = get_last_run_number (
-        runsDir= SETPREFIX,
+        runsDir= setPath,
         prefix= RUNPREFIX
     )
 
@@ -180,7 +180,9 @@ def estimate_with_observation_noise(
         estimator.make_estimation(
             maximumIterations= estimationMaxIterations,
             printEstimationOutput= False,
-            estimationDegree= estimationDegree
+            estimationDegree= estimationDegree,
+
+            covarianceAnalysis= True
         )
         harmonicsEstimated = shModelClass.make_from_estimate(
             estimator= estimator
@@ -227,7 +229,7 @@ def estimate_with_observation_noise(
 
         # Saves analysis plots. 
         analysis = analysisLibrary( runDir= runDir )
-        analysis.load_propagation( realStatesFile= REALSTATESFILE )
+        analysis.load_propagation( realStatesPath= setPath + REALSTATESFILE )
         analysis.plot_observation_density( title= "Observation Density", 
                                            degreeSlice= estimationDegree + 20,
                                            save= True)
