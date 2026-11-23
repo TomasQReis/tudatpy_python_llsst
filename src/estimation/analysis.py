@@ -165,16 +165,14 @@ def get_position_index(
     return latIdx.astype( int ) , lonIdx.astype( int ) , nLat, nLon
 
 
-
-
 class analysisLibrary():
     
     def __init__(
         self,
-        runDir: str,
+        setDir: str,
         ) -> None:
 
-        self.runDir = runDir 
+        self.setDir = setDir 
 
         self.epochs = np.empty(0)
         self.lats = np.empty(0)
@@ -182,7 +180,7 @@ class analysisLibrary():
 
     def load_propagation( self, realStatesFile: str ) -> None:
 
-        propagationPath = self.runDir + realStatesFile
+        propagationPath = self.setDir + realStatesFile
         simulationResults = MultiArcSimulationResults.load_from_binary( # type: ignore
             path= propagationPath ) 
 
@@ -329,6 +327,6 @@ class analysisLibrary():
         ax.set_aspect( "equal" )
         ax.set_title( title )
 
-        if save: fig.savefig( fname= self.runDir + fname)
+        if save: fig.savefig( fname= self.setDir + fname)
         if show: plt.show()
         
