@@ -15,32 +15,7 @@ from tudatpy.dynamics.propagation_setup import dependent_variable
 from src.estimation.estimator_class import estimatorClass
 from src.observations.observation_class import observationsClass
 from src.environment.harmonics_class import shModelClass, shPyshClass
-from src.estimation.analysis import analysisLibrary
-
-
-
-
-### Constants
-# Run paths. 
-SETPREFIX       = "set_"
-RUNPREFIX       = "run_"
-
-# Estimates paths.
-ESTIMATEFILE    = "estimated_harmonics.csv"
-ESTIMATEMAPFILE = "estimated_map.png"
-
-# Noise paths. 
-NOISEVALSFILE   = "noise_values.csv"
-OBSERVATIONSFILE ="observations"
-
-# Reality paths. 
-REALSTATESFILE  = "reality_states"
-REALMAPFILE     = "real_map.png"
-INTEGRATIONFILE = "integration_parameters"
-
-# Error paths 
-ERRORSFILE      = "formal_errors.csv"
-ERRORMAPFILE    = "error_map.png"
+from src.estimation.analysis import *
 
 def get_last_run_number( runsDir: str, prefix: str= "run_" ) -> int:
 
@@ -130,7 +105,6 @@ def estimate_with_observation_noise(
     
     # Propagate reality once.
     estimator.propagate_reality(
-        initialStateOffset= initialStateOffset,
         dependentVariables= dependentVariables
     )
     # Saves reality propagation to overall run directory. 
@@ -178,6 +152,11 @@ def estimate_with_observation_noise(
         testValues[i,:] = combination
 
         ### Estimation Process ###
+        # Apply initial state offset. 
+        estimator.set_initial_state_offset(
+            initialStateOffset= initialStateOffset
+        )
+
         # Set new noise values. 
         for observation in observationsList: 
             if currentCombination[ observation.name ] > 0:
@@ -217,9 +196,10 @@ def estimate_with_observation_noise(
         combinationDir = runDir + NOISEVALSFILE
         np.savetxt( combinationDir, [ combination ], header= header, comments= "",
                    fmt= '%2.4e', delimiter= "," )
-        estimator.save_formal_error(
+        estimator.save_estimation_analysis(
             fileDir= runDir,
-            fileName= ERRORSFILE
+            analysisFileName= ANALYSISFILE,
+            corrFileName= CORRMATXFILE
         )
 
         # Obtain difference between estimated and real harmonics.
@@ -238,8 +218,6 @@ def estimate_with_observation_noise(
             save= True, fileDir= runDir, fileName= ERRORMAPFILE )
 
         endTime = time.process_time()
-
-        
 
         # Save runtime and estimation details. 
         with open( runDir + "estimation.txt", 'w' ) as file:
