@@ -256,15 +256,16 @@ class analysisLibrary():
         # If full correlation matrix, skip symmetry. 
         if get_flags( filePath= runFilePath + ANALYSISFILE, flags= [CORRMATXFLAG] ):
             # Load full matrix. 
-            self.fullMatx = data
+            self.size = data[ 'size' ]
+            self.fullMatx = data[ 'halfMatx' ]
         else: 
             # Load size. 
-            size = data[ 'size' ]
+            self.size = data[ 'size' ]
 
             # Row and column indices for half matrix. 
-            rows, cols = np.triu_indices( size )
+            rows, cols = np.triu_indices( self.size )
 
-            self.fullMatx = np.zeros( (size, size) )
+            self.fullMatx = np.zeros( (self.size, self.size) )
             self.fullMatx[ rows, cols ] = data[ 'halfMatx' ]
             self.fullMatx[ cols, rows ] = data[ 'halfMatx' ]
 
@@ -402,3 +403,29 @@ class analysisLibrary():
         if save: fig.savefig( fname= self.setDir + fname)
         if show: plt.show()
         
+    def plot_correlation( \
+        self,
+        fileName: str,
+        title: str= 'Correlation Matrix',
+        save: bool= False,
+        show: bool= False):
+
+
+        fig, ax = plt.subplots( figsize= ( 9, 4.5 ) )
+
+        mesh = ax.pcolormesh( 
+            np.arange( 0, self.size+1, 1 ), np.arange( 0, self.size+1, 1 ), 
+            np.abs( self.fullMatx ), cmap= "RdYlGn", vmin= 0, vmax= 1, shading= "auto" )
+        
+        fig.colorbar( mesh, ax= ax, label= "Correlation [-]" )
+    
+        # Labels
+        ax.set_xlabel( "Estimated Parameter Index" )
+        ax.set_ylabel( "Estimated Parameter Index" )
+
+        # Aspect ratio and title
+        ax.set_aspect( "equal" )
+        ax.set_title( title )
+
+        if save: fig.savefig( fname= self.setDir + fileName)
+        if show: plt.show()

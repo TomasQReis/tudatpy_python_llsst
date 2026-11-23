@@ -6,11 +6,11 @@ from tudatpy.estimation.estimation_analysis import CovarianceAnalysisInput
 from tudatpy.estimation.observations.observations_processing import observation_parser
 
 
-
 ### Local imports. 
 from src.environment.environment import environmentClass 
 from src.observations.observation_class import \
     merge_observations, observationsClass
+from src.estimation.analysis import ANALYSISFILE
 
 ### External imports.
 import numpy as np
@@ -96,10 +96,14 @@ class estimatorClass ():
 
     def propagate_reality ( 
         self,
-        initialStateOffset: NDArray= np.array([0,0,0,0,0,0]),
-
-        dependentVariables: list= []
+        dependentVariables: list= [],
         ):
+        '''Propagate reality and initialize propagation settings for a priori
+        information. Optionally adds dependent values to save for the reality 
+        propagation.
+        Args:
+            dependentVariables (list): List of dependent variable settings.
+        '''
 
         ### Propagate reality 
         self.environmentReal.make_propagation_settings(
@@ -113,6 +117,19 @@ class estimatorClass ():
 
         # Save propagation results. 
         self.environmentReal.propagate()
+
+    def set_initial_state_offset(
+        self,
+        initialStateOffset: NDArray= np.array([0,0,0,0,0,0]),
+        dependentVariables: list= []
+    ) -> None:
+        '''Adds an initial state offset to the a priori information. Optionally
+        , adds dependent variables to a priori propagation.
+        Args:
+            initialStateOffset (NDArray): Numpy array of initial state offset. 
+            Assumes state offset is the same for all spacecraft. Given in SI
+            and formatted as (m, m, m, m/s, m/s, m/s).
+            dependentVariables (list): List of dependent variable settings.'''
 
         # Match initial state offset to number of spacecraft. 
         initialStateOffset = np.tile( initialStateOffset, 
@@ -161,8 +178,7 @@ class estimatorClass ():
                             link_ends= observations.linkEndsDict
                         )
                     )
-
-            # Adds weight to observation collection using links as parser.
+            
 
     def make_estimation ( 
             self,
@@ -238,10 +254,19 @@ class estimatorClass ():
 
         ### Perform covariance analysis. 
         if covarianceAnalysis: 
-            # TODO: Still need to add weights to this operation. 
-            self.estimationCovarianceOutput = estimator.compute_covariance(
-                CovarianceAnalysisInput( self.observationCollection )
+            # Initialize input.
+            covarianceInput = CovarianceAnalysisInput( self.observationCollection )
+
+            # Add analysis methods. 
+            covarianceInput.define_covariance_settings(
+                reintegrate_variational_equations= False,
+                print_output_to_terminal= True
             )
+
+            self.covarianceOutput = estimator.compute_covariance(
+                covarianceInput
+            )
+        
 
         ### Perform parameter estimation.
         self.estimationOutput = estimator.perform_estimation(
@@ -308,7 +333,12 @@ class estimatorClass ():
 
     def get_formal_error( self ):
 
+        print( self.covarianceOutput.formal_errors - self.estimationOutput.formal_errors )
+
         return self.estimationOutput.formal_errors
+
+    def get_correlation_matrix( self ):
+        return self.covarianceOutput.correlations
     
     def save_observations( self, fileDir: str, fileName: str ):
         # Saves to file. 
@@ -324,18 +354,29 @@ class estimatorClass ():
             fileName= fileName
         )
 
-    def save_formal_error( 
+    def save_estimation_analysis( 
             self, 
             fileDir: str, 
-            fileName: str= "formal_errors.csv" ) -> None:
+            analysisFileName: str= ANALYSISFILE,
+            corrFileName: str= "correlation",
+            fullCorrMatx: int= 0
+        ) -> None:
         """Saves formal errors resulting from propagation. Takes in file directory
         and (Optional) file name.
         Args:
             fileDir (str):    String containing individual run results file directory.
-            fileName (str):   OPTIONAL. File name, defaults to "formal_errors.csv". Requires file extension.
+            fileName (str):   OPTIONAL. Formal errors file name. Requires file extension. Defaults to "formal_errors.csv". 
+            corrFileName (str): OPTIONAL. Correlation matrix file. No file extension. Defaults to "correlation".  
+            fullCorrMatx (int): =1 for saving full correlation matrix. WARNING: Can be memory intensive. Accepts 1 or 0. 
         """
+
+        # Value check for fullCorrMatx flag:
+        if fullCorrMatx != 0 | 1:
+            raise ValueError (
+                f'fullCorrMatx should be either 1 or 0. Got: {fullCorrMatx}'
+            )
         
-        print( "Saving formal errors...")
+        print( "Saving estimate analysis...")
         # Get formal errors.
         formalErrors = self.get_formal_error()
 
@@ -377,16 +418,19 @@ class estimatorClass ():
 
         ### Save values to file.
         description = (
-            "----- Estimation formal errors. -----\n"
-            "Block A: Initial state formal error. Each row corresponds to a \n"
+            "----- Estimation analysis. -----\n"
+            "- Block A: Initial state formal error. Each row corresponds to a \n"
             "single arc's initial estimate. The values are ordered by a \n"
             "spacecraft-by-spacecraft arrangement. For n-spacecrafts \n"
             "Columns: x_1, y_1, z_1, Vx_1, Vy_1, Vz_1, x_2, (...), Vy_n, Vz_n\n\n"
-            "Block B: Harmonic coefficient formal error. Columns:\n " 
+            "- Block B: Harmonic coefficient formal error. Columns:\n " 
             "1: Degree, 2: Order, 3: Cosine coeff. formal error\n "
-            "4: Sine coeff. formal error.\n"
+            "4: Sine coeff. formal error.\n\n"
+            "--- Separate correlation.npz file: Contains compressed correlation\n" \
+            "matrix. See the following flags for format info:\n" \
+            f"- FCORRMATX: {fullCorrMatx} \n\n"
         )
-        with open( fileDir + fileName, "w" ) as file:
+        with open( fileDir + analysisFileName, "w" ) as file:
             # Write description
             for line in description.splitlines():
                 file.write( f"#{line}\n")
@@ -401,4 +445,25 @@ class estimatorClass ():
             np.savetxt( file, harmonicsData, fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], 
                        delimiter= ",")
 
+        ### Covariance matrix saving. 
+        # Get covariance matrix. 
+        correlation = self.get_correlation_matrix()
+        # Size of correlation matrix. 
+        size = np.shape( correlation )[0]
+        
+        if fullCorrMatx: 
+            # Saves full correlation matrix instead. Note that the key does not
+            # change. 
+            np.savez_compressed( file= corrFileName,
+                halfMatx= correlation, size = size )
+        else:
+            # Saves only half matrix. 
+            rows, cols = np.triu_indices( size )
+            np.savez_compressed( file= corrFileName,
+                halfMatx= correlation[ rows, cols ], size = size )
 
+            
+        
+
+        
+            
