@@ -132,7 +132,7 @@ class estimatorClass ():
 
         # Match initial state offset to number of spacecraft. 
         initialStateOffset = np.tile( initialStateOffset, 
-                                        len( self.environmentReal.spacecrafts ) )
+                                      len( self.environmentReal.spacecrafts ) )
         
         # Offset reality initial states for initial guess values. 
         initialStatesArray = self.environmentReal.get_initial_states() + initialStateOffset
@@ -149,6 +149,20 @@ class estimatorClass ():
             skipArcCheck= True      # TODO: Remove when done testing. 
         )
 
+    def set_simulation_time( self, simTime: float ):
+        '''Will give a new value to the simEndEpoch time of associated
+        environments. NOTE: It is necessary to remake propagation settings after 
+        this.
+        
+        ### Args:
+            simTime (float): New simulation time, given in seconds. '''
+
+        newEndEpoch = self.environmentReal.simStartEpoch + simTime
+
+        # Give new attribute value.
+        self.environmentReal.simEndEpoch = newEndEpoch
+        self.environmentReference.simEndEpoch = newEndEpoch
+
     def make_observations ( 
         self,
         observationsList: list[ observationsClass ],
@@ -160,7 +174,6 @@ class estimatorClass ():
         self.observations = merge_observations(
             observationList = observationsList
             )
-
 
         # Simulates observations. 
         self.observationCollection = self.observations.simulate_observation()
@@ -331,9 +344,6 @@ class estimatorClass ():
             return initialStatePerArc, estimatedCosineCoeffs, estimatedSineCoefffs
 
     def get_formal_error( self ):
-
-        print( self.covarianceOutput.formal_errors - self.estimationOutput.formal_errors )
-
         return self.estimationOutput.formal_errors
 
     def get_correlation_matrix( self ):

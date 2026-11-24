@@ -12,6 +12,8 @@ from src.bodies.ground_stations import grazStation
 
 from src.estimation.estimator_class import estimatorClass
 from src.estimation.run_functions import *
+from src.estimation.run_setups.zero_noise import \
+    estimator, simDurationList, observationsList, observationsDict, stateOffset
 
 from src.estimation.analysis import *
 
@@ -30,11 +32,24 @@ resultsDir = "results/"
 
 if __name__ == "__main__":
 
+    if externalSimArgs := False:
+
+        thisSet = simTimeSet(
+        resultsPath= 'results/',
+        setParamsList= simDurationList
+        )
+        thisSet.set_estimator( estimator= estimator,
+            observationsList= observationsList )
+        thisSet.set_dependent_variables(
+            mainSpacecraftName= grailList[0].name,
+            centralBodyName= 'Moon'
+        ) 
+        thisSet.run_set( initialStateOffset= stateOffset, maxIterations= 15,
+                         estimatedDegree= 10, observationsDict= observationsDict )
+
 
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
     if iterateSimulationTime:= True:
-
-        spice.load_standard_kernels()
 
         simLength = 6      # Days
 
@@ -145,18 +160,15 @@ if __name__ == "__main__":
             harmonicsDegreeReference= environmentDegree
         )
 
-
-        if newEstimator := True:
-            thisSet = noiseSet(
-                resultsPath= 'results/',
-                estimatedDegree= 10,
-                setParamsList= noiseList
-            )
-            thisSet.set_estimator( estimator= estimator,
-                observationsList= [grailSSTObservations, grailDSNObservations] )
-            thisSet.set_dependent_variables(
-                mainSpacecraftName= grailList[0].name,
-                centralBodyName= 'Moon'
-            ) 
-            thisSet.run_set( initialStateOffset= baseline,
-                             maxIterations= 10 )
+        thisSet = noiseSet(
+            resultsPath= 'results/',
+            setParamsList= noiseList
+        )
+        thisSet.set_estimator( estimator= estimator,
+            observationsList= [grailSSTObservations, grailDSNObservations] )
+        thisSet.set_dependent_variables(
+            mainSpacecraftName= grailList[0].name,
+            centralBodyName= 'Moon'
+        ) 
+        thisSet.run_set( initialStateOffset= baseline, maxIterations= 15,
+                         estimatedDegree= 10 )

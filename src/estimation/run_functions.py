@@ -32,7 +32,6 @@ class runSet ():
 
     def __init__(    
         self,
-        estimatedDegree: int,
         # Set parameters list of dictionaries. 
         setParamsList: list[dict],
         # Overall results path. 
@@ -43,8 +42,6 @@ class runSet ():
         forceRunNum: bool           = False,       # Starting run. 
         runNumForced: int           = 0
     ) -> None:
-        # Estimated degree.
-        self.estimatedDegree    = estimatedDegree    
 
         # Paths
         self.resultsPath        = resultsPath 
@@ -67,12 +64,13 @@ class runSet ():
         # Load spice kernels. Necessary for any run. 
         spice.load_standard_kernels()
 
-        # Makes day folder on class creation.
+        # Makes day folder on class creation if it does not exist. 
         self.make_day_folder()
 
         # Set number to forced. Otherwise reads highest.
         if forceSetNum: self.setNum = setNumForced
-        else: self.setNum = self.get_highest_folder( path= self.dayDir, prefix= SETPREFIX )
+        else: self.setNum = self.get_highest_folder( 
+            path= self.dayDir, prefix= SETPREFIX )
 
         # Run number to forced. 
         if forceRunNum: self.runNum = runNumForced
@@ -295,8 +293,6 @@ class runSet ():
         observationClasses: list[ observationsClass ],
         observationDict: dict 
         ):
-
-        
         
         for observation in observationClasses: 
             # Initializes observations objects 
@@ -337,13 +333,15 @@ class runSet ():
         estimationDegree: int= 10,
         ): 
 
+        # Save estimation degree.
+        self.estimatedDegree = estimationDegree
+
         # Save relevant information.
         self.runInfo['stateOffset']     = initialStateOffset
         self.runInfo['maxIters']        = maxIterations
         self.runInfo['convergenceLimit']= minResidualChange
         self.runInfo['environmentReference'] = \
-            f'{self.estimator.environmentReference.frameOriginBody} - \
-              {self.estimator.environmentReference.level}'
+            f'{self.estimator.environmentReference.frameOriginBody} - {self.estimator.environmentReference.level}'
         self.runInfo['degreeReference'] = self.estimator.environmentReference.harmonicsMaxDegree
         self.runInfo['degreeEstimated'] = estimationDegree
 
@@ -474,13 +472,12 @@ class runSet ():
     def run_common( self, **kwargs ): pass # Specific to children classes.
 
     def run_single( self, parameters, **kwargs ): pass # Specific to children classes. 
-    
+
 
 class noiseSet ( runSet ):
     
     def __init__(
         self, 
-        estimatedDegree: int, 
         setParamsList: list[dict], 
         resultsPath: str = 'results/', 
         forceSetNum: bool = False, 
@@ -493,7 +490,6 @@ class noiseSet ( runSet ):
         the noise sigmas.
         
         Args:
-            estimatedDegree (int): Maximum degree of estimation.
             resultsPath (str): String with path of overall results folder. 
             setParamsList (list[dict]): List of dictionary set parameters. 
             Should be formatted such that each dictionary's keys are the noise
@@ -501,8 +497,8 @@ class noiseSet ( runSet ):
 
         '''
 
-        super().__init__(estimatedDegree, setParamsList, resultsPath, 
-                         forceSetNum, setNumForced, forceRunNum, runNumForced)
+        super().__init__(setParamsList, resultsPath, forceSetNum, setNumForced, 
+                         forceRunNum, runNumForced)
 
     def run_common( self, **kwargs ) -> None: 
 
@@ -514,6 +510,7 @@ class noiseSet ( runSet ):
         parameters, 
         initialStateOffset: NDArray= np.zeros(6),
         maxIterations: int= 10,
+        estimatedDegree: int= 10,
 
         **kwargs
     ) -> None:
@@ -527,7 +524,64 @@ class noiseSet ( runSet ):
 
         self.run_estimation( initialStateOffset= initialStateOffset,
                              maxIterations= maxIterations,
-                             estimationDegree= self.estimatedDegree )
+                             estimationDegree= estimatedDegree )
 
         self.run_analysis( fullCorrMatx= 0 )
+
+
+class simTimeSet ( runSet ):
+
+    def __init__(
+        self, 
+        setParamsList: list[dict], 
+        resultsPath: str = 'results/', 
+        forceSetNum: bool = False, 
+        setNumForced: int = 0, 
+        forceRunNum: bool = False, 
+        runNumForced: int = 0
+        ) -> None:
+        '''Class for set of estimates using different total simulation time.
+        setParamsList should be given as a list of dictionaries, each of which
+        has a single key and value attributed to it. 
+        
+        Args:
+            resultsPath (str): String with path of overall results folder. 
+            setParamsList (list[dict]): List of dictionary set parameters. 
+            Should be formatted such that each dictionary has a single key and
+            whose only value is the simulation duration in seconds.
+        '''
+
+        super().__init__(setParamsList, resultsPath, forceSetNum, setNumForced, 
+                            forceRunNum, runNumForced)
+
+    # No common items. 
+    def run_single( 
+        self, 
+        parameters, 
+        initialStateOffset: NDArray= np.zeros(6),
+        maxIterations: int= 10,
+        estimatedDegree: int= 10,
+        observationsDict: dict= {'sst_range':0.0,'dsn_doppler':0.0},
+        
+        **kwargs ):
+
+        # Sets new values for simulation time. 
+        assert isinstance( parameters, dict )
+        self.estimator.set_simulation_time( simTime= float( *parameters.values() ) )
+
+        
+
+        self.run_reality()
+
+        self.run_observations( observationClasses= self.observationsList,
+                               observationDict= observationsDict )
+        
+        self.run_estimation( initialStateOffset= initialStateOffset,
+                             maxIterations= maxIterations,
+                             estimationDegree= estimatedDegree )
+
+        self.run_analysis( fullCorrMatx= 0 )
+
+
+class degreeSet ( runSet ): pass
 
