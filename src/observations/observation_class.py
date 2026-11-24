@@ -313,7 +313,7 @@ class observationsClass ():
     # Returns array of observation values and epochs. 
     def get_observations( 
         self,
-        observableTypeVector: ObservableType,
+        observableTypeVector: Sequence[ ObservableType ]= [],
         transmitterVector: list[ body ] = [] ):
 
         """Extracts observations from the observations collections. Returns a 
@@ -332,7 +332,7 @@ class observationsClass ():
         if observableTypeVector:
             # Observable parser.
             parser = observation_parser(
-                observable_type_vector= [ observableTypeVector ] )
+                observable_type_vector= observableTypeVector )
         else:
             parser = observation_parser( 
                 observable_type_vector= self.observationType )

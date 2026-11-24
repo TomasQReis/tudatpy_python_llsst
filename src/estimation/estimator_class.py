@@ -66,7 +66,6 @@ def get_error_block_lines( filePath: str, blockName: str= "Block B",
     return lines
 
 
-
 class estimatorClass ():
     def __init__(
         self,
