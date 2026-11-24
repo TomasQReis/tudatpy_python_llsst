@@ -45,14 +45,14 @@ if __name__ == "__main__":
 
         spice.load_standard_kernels()
 
-        simLength = 28      # Days
+        simLength = 6      # Days
 
         # Max degrees.
-        environmentDegree   = 40
-        estimatedDegree     = 40
+        environmentDegree   = 10
+        estimatedDegree     = 10
 
         baseline = np.array( [ 10, 10, 10, 0.001, 0.001, 0.001 ] )
-        initialStateOffsets = [ baseline, baseline*10, baseline*1e2, baseline*1e3 ]
+        initialStateOffsets = [ baseline ]
         
         ### Environment and estimation parameters.
         # Initial epoch. 
@@ -76,9 +76,17 @@ if __name__ == "__main__":
         }
         
         # Dictionary of noise values. 
-        noiseDict = {
-            'sst_range_noise' : [0.0],
-            'doppler_noise' : [0.0]
+
+        noise1 = { 'sst_range_noise': 0.0, 'doppler_noise': 0.0 }
+        noise2 = { 'sst_range_noise': KBRRSIGMA, 'doppler_noise': DSNSIGMA }
+        noise3 = { 'sst_range_noise': KBRRSIGMA*2, 'doppler_noise': DSNSIGMA*2 }
+        noise4 = { 'sst_range_noise': KBRRSIGMA*4, 'doppler_noise': DSNSIGMA*4 }
+
+        noiseList = [ noise2 ]
+
+        noiseDict  = {
+            'sst_range_noise' : [KBRRSIGMA],
+            'doppler_noise' : [DSNSIGMA]
         }
         # Initial state offset for each arc. 
         initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
@@ -146,19 +154,37 @@ if __name__ == "__main__":
             harmonicsDegreeReference= environmentDegree
         )
 
-        for stateOffset in initialStateOffsets:
-            ### Run noise estimation loop.
-            estimate_with_observation_noise(
-                estimator= estimator,
-                estimationDegree= estimatedDegree,
-                estimationMaxIterations= 15,
-                observationsList= [grailSSTObservations,
-                                    grailDSNObservations],
-                initialStateOffset= stateOffset,
-                noiseDict= noiseDict,
-                intParamsDict= intParamsDict,
-                resultsDir= resultsDir
+
+        if newEstimator := True:
+            thisSet = noiseSet(
+                resultsPath= 'results/',
+                estimatedDegree= 10,
+                setParamsList= noiseList
             )
+            thisSet.set_estimator( estimator= estimator,
+                observationsList= [grailSSTObservations, grailDSNObservations] )
+            thisSet.set_dependent_variables(
+                mainSpacecraftName= grailList[0].name,
+                centralBodyName= 'Moon'
+            ) 
+            thisSet.run_set( initialStateOffset= baseline,
+                             maxIterations= 10 )
+
+        if oldEstimator := True:
+
+            for stateOffset in initialStateOffsets:
+                ### Run noise estimation loop.
+                estimate_with_observation_noise(
+                    estimator= estimator,
+                    estimationDegree= estimatedDegree,
+                    estimationMaxIterations= 10,
+                    observationsList= [grailSSTObservations,
+                                        grailDSNObservations],
+                    initialStateOffset= stateOffset,
+                    noiseDict= noiseDict,
+                    intParamsDict= intParamsDict,
+                    resultsDir= resultsDir
+                )
 
             
 

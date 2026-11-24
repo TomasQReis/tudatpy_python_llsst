@@ -119,10 +119,16 @@ class observationsClass ():
         
         # Real environment attribute. 
         self.environmentReal = environmentReal
+        # Sets interval between observations. 
+        # TODO: This is a bad way to do this. Should have the possibility to 
+        # choose an observation interval that differs from propagation. 
+        self.interval = float( self.environmentReal.timeStep ) 
+
         # Initiates observation times attribute from reality environment. 
+        
         self.times = np.arange(
             float( self.environmentReal.simStartEpoch ) + epochMargin,
-            step= float( self.environmentReal.timeStep ),
+            step= self.interval,
             stop= float( self.environmentReal.simEndEpoch ) - epochMargin
         )
         
@@ -307,7 +313,7 @@ class observationsClass ():
     # Returns array of observation values and epochs. 
     def get_observations( 
         self,
-        observableTypeVector: list[ ObservableType ] = [],
+        observableTypeVector: ObservableType,
         transmitterVector: list[ body ] = [] ):
 
         """Extracts observations from the observations collections. Returns a 
@@ -326,7 +332,7 @@ class observationsClass ():
         if observableTypeVector:
             # Observable parser.
             parser = observation_parser(
-                observable_type_vector= observableTypeVector )
+                observable_type_vector= [ observableTypeVector ] )
         else:
             parser = observation_parser( 
                 observable_type_vector= self.observationType )

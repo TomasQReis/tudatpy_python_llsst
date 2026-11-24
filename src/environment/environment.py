@@ -60,6 +60,9 @@ def convert_to_j2000(date: list):
 
     return dateJ2000
 
+def convert_to_date(date: float):
+    '''Returns date from seconds since J2000'''
+    return DateTime.from_epoch( date )
 
 def check_timespan_limit(simStartEpoch: float, simEndEpoch: float):
         """
@@ -83,7 +86,6 @@ def check_timespan_limit(simStartEpoch: float, simEndEpoch: float):
             )
         else:
             return True
-
 
 def check_arc_timespan_limit( arcLength: float, timeSpan: float ):
     """

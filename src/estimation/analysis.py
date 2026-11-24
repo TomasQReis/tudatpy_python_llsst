@@ -18,7 +18,9 @@ from tudatpy.util import result2array
 ### File paths. 
 # Run paths. 
 SETPREFIX       = "set_"
+SETINFO         = 'set_info.txt'
 RUNPREFIX       = "run_"
+RUNINFO         = 'run_info.txt'
 
 # Estimates paths.
 ESTIMATEFILE    = "estimated_harmonics.csv"

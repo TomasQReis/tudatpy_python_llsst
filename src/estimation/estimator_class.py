@@ -153,7 +153,6 @@ class estimatorClass ():
     def make_observations ( 
         self,
         observationsList: list[ observationsClass ],
-
         weighObservations: bool= False,
         ):
 
@@ -179,10 +178,10 @@ class estimatorClass ():
                         )
                     )
             
-
     def make_estimation ( 
             self,
             maximumIterations: int= 10,
+            minResidualChange: float = 0.0,
             printEstimationOutput: bool= True,
             estimationDegree: int= 0,
 
@@ -243,7 +242,8 @@ class estimatorClass ():
         estimatorSettings = estimation.estimation_analysis.EstimationInput(
             observations_and_times= self.observationCollection,
             convergence_checker= estimation.estimation_analysis.estimation_convergence_checker(
-                maximum_iterations= maximumIterations
+                maximum_iterations= maximumIterations,
+                minimum_residual_change= minResidualChange
             )
         )
 
@@ -426,8 +426,8 @@ class estimatorClass ():
             "- Block B: Harmonic coefficient formal error. Columns:\n " 
             "1: Degree, 2: Order, 3: Cosine coeff. formal error\n "
             "4: Sine coeff. formal error.\n\n"
-            "--- Separate correlation.npz file: Contains compressed correlation\n" \
-            "matrix. See the following flags for format info:\n" \
+            "- Separate correlation.npz file Contains compressed correlation matrix.\n"
+            '------ Formatting Flags ------\n' 
             f"- FCORRMATX: {fullCorrMatx} \n\n"
         )
         with open( fileDir + analysisFileName, "w" ) as file:
