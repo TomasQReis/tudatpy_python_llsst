@@ -392,6 +392,7 @@ class shPyshClass ():
             
             show: bool= False,
             save: bool= False,
+            keepDegree: bool= False,
             fileDir: str= "",
             fileName: str= "" ) -> None:
         """Plots a flat gravity anomaly map. Saves the figure and axis as class
@@ -402,9 +403,14 @@ class shPyshClass ():
             show (bool): Boolean, true if the plot should be shown at the end of 
             the process.
         """
+        if keepDegree: 
+            # Keep degree of used harmonics. 
+            grid = self.shGrav.expand( lmax= self.harmonicDegree )
+            print( grid )
+        else: 
+            # Initialize grid with maximum degree higher than current for finer resolution.
+            grid = self.shGrav.expand( lmax= 4* self.harmonicDegree )
 
-        # Initialize grid with maximum degree higher than current for finer resolution. 
-        grid = self.shGrav.expand( lmax= 4* self.harmonicDegree )
         assert grid.rad is not None
 
         # Subtracts point-mass contribution from field to get anomaly. 

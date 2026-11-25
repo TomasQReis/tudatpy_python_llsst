@@ -302,16 +302,30 @@ class environmentClass ():
         spacecraftInitialStates = []
 
         for spacecraft in self.spacecrafts:
-            # Convert from keplerian initial state to cartesian coords. 
-            spacecraftInitialStates.append ( element_conversion.keplerian_to_cartesian_elementwise(
-                gravitational_parameter= self.systemOfBodies.get("Moon").gravitational_parameter,
+            # Convert from keplerian initial state (Defined in body fixed) to cartesian coords. 
+            stateBodyFixed = element_conversion.keplerian_to_cartesian_elementwise(
+                gravitational_parameter= self.systemOfBodies.get(
+                    self.frameOriginBody).gravitational_parameter,
                 semi_major_axis= spacecraft.keplerianElems[0],
                 eccentricity= spacecraft.keplerianElems[1],
                 inclination= spacecraft.keplerianElems[2],
                 argument_of_periapsis= spacecraft.keplerianElems[3],
                 longitude_of_ascending_node= spacecraft.keplerianElems[4],
                 true_anomaly= spacecraft.keplerianElems[5],
-            ) )
+            ) 
+
+            # Transforms from body fixed to inertial. 
+            stateInertial = environment.transform_to_inertial_orientation(
+                state_in_body_fixed_frame= stateBodyFixed,
+                current_time= self.simStartEpoch,
+                rotational_ephemeris= self.systemOfBodies.get(
+                    self.frameOriginBody).rotation_model
+            )
+
+            spacecraftInitialStates.append( stateInertial )
+
+
+
         # Flatten out state vector.
         self.spacecraftInitialStates = np.concatenate( spacecraftInitialStates )
 
