@@ -18,7 +18,7 @@ grailADict = {
     "mass": 313,        # kg
     # For reference lunar radius = 1737.4 km 
     "keplerianElems": [     
-        1737.4e3,               # Semi-major Axis [m]. 
+        1737.4e3 + 50e3,               # Semi-major Axis [m]. 
         0.001,                  # Eccentricity [-]
         np.deg2rad(89.2),       # Inclination [rads]
         np.deg2rad(0),          # Arg of Periapsis [rads]
@@ -54,4 +54,4 @@ grailB = spacecraft(
     mass= grailBDict["mass"],
     keplerianElems= grailBDict["keplerianElems"]
 )
-grailList = [grailA, grailB]
+grailList = [grailA, grailB]   

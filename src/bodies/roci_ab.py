@@ -6,6 +6,7 @@
 
 ### Imports for self-made functions 
 from src.bodies.bodies import spacecraft
+from src.bodies.ground_stations import grazStation
 from src.auxiliary.math_functions import *
 
 ### External library imports.
@@ -19,9 +20,9 @@ rociADict = {
     # Ordered as [semiMajorAxis, eccentricity, inclination, argOfPeriapsis,
     # longOfAscending, trueAnom]
     "keplerianElems": [     
-        1737.4e3 + 200e3,        # [m]. For reference lunar radius = 1737.4 km 
+        1737.4e3 + 50e3,        # [m]. For reference lunar radius = 1737.4 km 
         0.001,
-        np.deg2rad(89),
+        np.deg2rad(90),
         np.deg2rad(0),
         np.deg2rad(0),
         np.deg2rad(0)
@@ -59,3 +60,7 @@ rociB = spacecraft(
 
 # List of dictionaries for use in creating body settings. 
 rociList = [rociA, rociB]
+
+# Roci links
+sstLinksRoci = [ [rociA, rociB], [rociB, rociA] ]
+dsnLinksRoci = [ [grazStation, rociA], [grazStation, rociB]]
