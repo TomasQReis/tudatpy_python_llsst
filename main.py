@@ -13,7 +13,8 @@ from src.bodies.ground_stations import grazStation
 from src.estimation.estimator_class import estimatorClass
 from src.estimation.run_functions import *
 from src.estimation.run_setups.zero_noise import \
-    estimator, simDurationList, observationsList, observationsDict, stateOffset
+    estimator, simDurationList, observationsList, observationsDict, stateOffset, \
+    environmentReality
 
 from src.estimation.analysis import *
 
@@ -51,14 +52,14 @@ if __name__ == "__main__":
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
     if iterateSimulationTime:= True:
 
-        simLength = 6      # Days
+        simLength = 28      # Days
 
         # Max degrees.
-        environmentDegree   = 10
-        estimatedDegree     = 10
+        environmentDegree   = 20
+        estimatedDegree     = 20
 
-        baseline = np.array( [ 10, 10, 10, 0.001, 0.001, 0.001 ] )
-        initialStateOffsets = [ baseline ]
+
+        baselineOffset = np.array( [ 10, 10, 10, 0.001, 0.001, 0.001 ] )
         
         ### Environment and estimation parameters.
         # Initial epoch. 
@@ -88,14 +89,14 @@ if __name__ == "__main__":
         noise3 = { 'sst_range_noise': KBRRSIGMA*2, 'doppler_noise': DSNSIGMA*2 }
         noise4 = { 'sst_range_noise': KBRRSIGMA*4, 'doppler_noise': DSNSIGMA*4 }
 
-        noiseList = [ noise2 ]
+        noiseList = [ noise1 ]
 
         noiseDict  = {
             'sst_range_noise' : [KBRRSIGMA],
             'doppler_noise' : [DSNSIGMA]
         }
         # Initial state offset for each arc. 
-        initialStateOffset = np.array( [10, 10, 10, 0.1, 0.1, 0.1] ) # [m,m,m,m/s,m/s,m/s]
+        initialStateOffset = np.array( [1, 1, 1, 1e-3, 1e-3, 1e-3] ) # [m,m,m,m/s,m/s,m/s]
 
         # Environment definition.
         environmentReality = moonEnvironment(
@@ -124,6 +125,7 @@ if __name__ == "__main__":
             customHarmonicsFile= GGRX420L,
             harmonicsMaxDegree= environmentDegree,
         )
+
 
         # Observations 
         ### Observations objects. 
@@ -162,7 +164,9 @@ if __name__ == "__main__":
 
         thisSet = noiseSet(
             resultsPath= 'results/',
-            setParamsList= noiseList
+            setParamsList= noiseList,
+            forceSetNum= True,
+            setNumForced= 22
         )
         thisSet.set_estimator( estimator= estimator,
             observationsList= [grailSSTObservations, grailDSNObservations] )
@@ -170,5 +174,6 @@ if __name__ == "__main__":
             mainSpacecraftName= grailList[0].name,
             centralBodyName= 'Moon'
         ) 
-        thisSet.run_set( initialStateOffset= baseline, maxIterations= 15,
-                         estimatedDegree= 10 )
+        thisSet.run_set( initialStateOffset= np.zeros(6), 
+                         maxIterations= 100,
+                         estimatedDegree= 20 )
