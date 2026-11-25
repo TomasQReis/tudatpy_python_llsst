@@ -99,6 +99,16 @@ class runSet ():
 
         return outPath
 
+    def make_environments( 
+        self,
+        centralBody: str,
+        level
+    ): pass #(...)
+
+    def make_observables( self ): pass #(...)
+
+    def make_estimator( self ): pass #(...)
+
     def set_estimator( 
         self, 
         estimator: estimatorClass,
@@ -392,13 +402,16 @@ class runSet ():
         # Convert to pyshHarmonics
         pyshEstimated = shPyshClass.from_shModelClass( self.harmonicsEstimated )
         pyshDelta     = shPyshClass.from_shModelClass( harmonicsDelta )
-        # Plot and save. 
+        # Plot and save estimated gravity anomaly. 
+        # NOTE: Extends the degree to improve resolution. 
         pyshEstimated.plot_gravity_anomaly( 
             title= "Estimated Gravity Anomaly", show= False,
             save= True, fileDir= self.runPath, fileName= ESTIMATEMAPFILE )
+        # Plot and save gravity anomaly error.
         pyshDelta.plot_gravity_anomaly(
             title= "Gravity Anomaly Error", show= False,
-            save= True, fileDir= self.runPath, fileName= ERRORMAPFILE )
+            save= True, fileDir= self.runPath, fileName= ERRORMAPFILE,
+            keepDegree= True )
 
         # Saves analysis plots. 
         analysis = analysisLibrary( runDir= self.runPath )
