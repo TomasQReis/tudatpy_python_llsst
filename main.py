@@ -52,11 +52,11 @@ if __name__ == "__main__":
     ### TEST WITH A LIST OF SIMULATION TOTAL TIMES ###
     if iterateSimulationTime:= True:
 
-        simLength = 28      # Days
+        simLength = 14      # Days
 
         # Max degrees.
-        environmentDegree   = 20
-        estimatedDegree     = 20
+        environmentDegree   = 10
+        estimatedDegree     = 10
 
 
         baselineOffset = np.array( [ 10, 10, 10, 0.001, 0.001, 0.001 ] )
@@ -103,7 +103,10 @@ if __name__ == "__main__":
             level= 3,
             simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
             simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
-            timeStep= intParamsDict['timeStep'],         # type: ignore
+            timeStep= 60*3,         # type: ignore
+
+            arcTimeLength= 0.0,
+            skipArcCheck= True,
 
             spacecrafts= grailList,
             groundStations= [ grazStation ],
@@ -117,6 +120,9 @@ if __name__ == "__main__":
             simStartEpoch= intParamsDict["startEpoch"],   # type: ignore
             simEndEpoch= intParamsDict["endEpoch"],       # type: ignore
             timeStep= intParamsDict['timeStep'],         # type: ignore
+
+            arcTimeLength= intParamsDict["arcLength"],
+            skipArcCheck= True,
 
             spacecrafts= grailList,
             groundStations= [ grazStation ],
@@ -155,7 +161,7 @@ if __name__ == "__main__":
             environmentReal= environmentReality,
             environmentReference= environmentReference,
 
-            arcLengthReal= intParamsDict["arcLength"],
+            arcLengthReal= 0.0,
             arcLengthReference= intParamsDict["arcLength"],
 
             harmonicsDegreeReal= environmentDegree,
@@ -164,9 +170,7 @@ if __name__ == "__main__":
 
         thisSet = noiseSet(
             resultsPath= 'results/',
-            setParamsList= noiseList,
-            forceSetNum= True,
-            setNumForced= 22
+            setParamsList= noiseList
         )
         thisSet.set_estimator( estimator= estimator,
             observationsList= [grailSSTObservations, grailDSNObservations] )
@@ -175,5 +179,5 @@ if __name__ == "__main__":
             centralBodyName= 'Moon'
         ) 
         thisSet.run_set( initialStateOffset= np.zeros(6), 
-                         maxIterations= 100,
-                         estimatedDegree= 20 )
+                         maxIterations= 10,
+                         estimatedDegree= 10 )

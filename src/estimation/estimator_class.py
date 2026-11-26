@@ -106,12 +106,9 @@ class estimatorClass ():
 
         ### Propagate reality 
         self.environmentReal.make_propagation_settings(
-            arcTimeLength= self.arcLengthReal,
-
             dependentVariables= dependentVariables,
 
-            keepEnvironment= True, 
-            skipArcCheck= True      # TODO: Remove after testing. 
+            keepEnvironment= True,
         )
 
         # Save propagation results. 
@@ -133,20 +130,32 @@ class estimatorClass ():
         # Match initial state offset to number of spacecraft. 
         initialStateOffset = np.tile( initialStateOffset, 
                                       len( self.environmentReal.spacecrafts ) )
-        
-        # Offset reality initial states for initial guess values. 
-        initialStatesArray = self.environmentReal.get_initial_states() + initialStateOffset
 
+        # Create empty initialStatesArray.
+        initialStatesArray = np.empty( ( 0 , np.size( initialStateOffset ) ) )
+        
+        # Reality states (Single arc)
+        realStates = self.environmentReal.get_states()[0]
+        
+        # Find states at initial arctimes. (Or closest time)
+        # NOTE: This will for sure be a source of error if they mismatch!!
+        for arc in range( self.environmentReference.arcNumber ):
+                
+            arcStartEpoch = self.environmentReference.arcEpochs[ arc ]
+            arcStartIndex = ( np.abs( realStates[:,0] - arcStartEpoch )).argmin()
+            arcStartState = realStates[ arcStartIndex, 1: ] + initialStateOffset
+
+            """ print( realStates[ arcStartIndex, 1: ] )
+            print( arcStartState ) """
+
+            initialStatesArray = np.vstack( ( initialStatesArray, arcStartState ) )
+        
         ### Estimation environment settings. 
         self.environmentReference.make_propagation_settings(
-            arcTimeLength= self.arcLengthReference,
-
             dependentVariables= dependentVariables,
-
+            
             importInitialStates= True,
-            initialStatesArray= initialStatesArray,
-
-            skipArcCheck= True      # TODO: Remove when done testing. 
+            initialStatesArray= initialStatesArray
         )
 
     def set_simulation_time( self, simTime: float ):

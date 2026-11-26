@@ -197,7 +197,10 @@ class environmentClass ():
         timeStep: time_representation.Time,
 
         spacecrafts: list[spacecraft],
-        groundStations: list[groundStation]= [],
+        groundStations: list[groundStation],
+
+        arcTimeLength: float= 0.0,
+        skipArcCheck: bool= False,
 
         level: int= 1,
 
@@ -209,6 +212,9 @@ class environmentClass ():
         self.simStartEpoch = simStartEpoch
         self.simEndEpoch = simEndEpoch
         self.timeStep = timeStep
+
+        self.arcTimeLength  = arcTimeLength
+        self.skipArcCheck   = skipArcCheck
 
         self.level = level
 
@@ -222,6 +228,20 @@ class environmentClass ():
         self.systemOfBodies: SystemOfBodies
         self.accelerationSettings: dict
         self.arcInitialEpochs = []
+
+        # Checks multi-arc propagation.
+        if arcTimeLength != 0.0:
+            if not skipArcCheck:
+                # Checks arc length limits. 
+                check_arc_timespan_limit(
+                    arcLength= arcTimeLength,
+                    timeSpan= float(self.simEndEpoch)
+                )
+            # Number of arcs.
+            self.arcNumber = int( float(self.simEndEpoch - self.simStartEpoch) // arcTimeLength ) 
+            self.make_arc_epochs()
+        else: 
+            self.arcNumber = 1
 
     # SystemOfBodies creator. 
     def make_environment_bodies( self, bodies: list[str] ):
@@ -324,40 +344,33 @@ class environmentClass ():
 
             spacecraftInitialStates.append( stateInertial )
 
-
-
         # Flatten out state vector.
         self.spacecraftInitialStates = np.concatenate( spacecraftInitialStates )
 
     # Empty propagation level selector. 
     def select_propagation_level( self ): return None
 
+    def make_arc_epochs( self ) -> None:
+
+        # Creates array of values for start and end epochs of each arc. 
+        self.arcEpochs = np.append( 
+            np.arange( float( self.simStartEpoch ), step= self.arcTimeLength, 
+                stop= float( self.simEndEpoch ) ),
+            float( self.simEndEpoch ) 
+        )
+
+        print( self.arcEpochs )
+
     # Propagation settings creator. 
     def make_propagation_settings( 
             self, 
             dependentVariables: list= [],
-
-            arcTimeLength: float= 0.0,
-            skipArcCheck: bool= False,
 
             keepEnvironment: bool= False,
 
             importInitialStates: bool= False,
             initialStatesArray: NDArray= np.array( [] ) 
         ):
-
-        # Checks multi-arc propagation.
-        if arcTimeLength != 0.0:
-            if not skipArcCheck:
-                # Checks arc length limits. 
-                check_arc_timespan_limit(
-                    arcLength= arcTimeLength,
-                    timeSpan= float(self.simEndEpoch)
-                )
-            # Number of arcs.
-            self.arcNumber = int( float(self.simEndEpoch - self.simStartEpoch) // arcTimeLength ) 
-        else: 
-            self.arcNumber = 1
 
         # Selects propagation level. 
         self.select_propagation_level( )
@@ -392,8 +405,6 @@ class environmentClass ():
         # Initial states. 
         if not importInitialStates:
             self.make_spacecraft_initial_states( )
-        else:
-            self.spacecraftInitialStates = initialStatesArray
 
         ### If single arc create standard translational settings. 
         if self.arcNumber == 1:
@@ -423,31 +434,31 @@ class environmentClass ():
             # Saves to common "arcPropagationSettings" object.
             self.arcPropagationSettings = singleArcPropagatorSetting
 
-            # Saves arc initial epoch. 
-            self.arcInitialEpochs.append(self.simStartEpoch)
-
         else:
 
             ### Checks whether importing initial states. 
             # Differs in initial state assignment and transfer_state_to_next_arc.
             if importInitialStates:
+
+                # Initial states array from argument. 
+                self.spacecraftInitialStates = initialStatesArray
+
                 # Settings per arc. 
                 for arc in range(self.arcNumber):
                     # Arc termination time. 
                     if arc < self.arcNumber-1: 
-                        arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
+                        arcFinalTime = self.simStartEpoch + self.arcTimeLength * (arc+1) 
                     else: 
                         # Avoids propagating beyond final epoch. 
                         arcFinalTime = self.simEndEpoch
 
                     # Create termination settings.
                     terminationSettings = propagation_setup.propagator.time_termination(
-                        arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+                        self.arcEpochs[ arc + 1 ] 
                     )
 
                     # Arc initial time. 
-                    arcInitialEpoch = self.simStartEpoch + arc * arcTimeLength
-                    self.arcInitialEpochs.append( arcInitialEpoch )
+                    arcInitialEpoch = self.arcEpochs[ arc ]
 
                     # Create propagation settings. 
                     # NOTE: Multi-arc is set up to use integration results to find initial
@@ -456,7 +467,7 @@ class environmentClass ():
                         central_bodies= centralBodies,
                         acceleration_models= acccelerationModels,
                         bodies_to_integrate= bodiesToPropagate,
-                        initial_states= self.spacecraftInitialStates[arc, :],
+                        initial_states= self.spacecraftInitialStates[ arc, : ],
                         initial_time= arcInitialEpoch,
                         termination_settings= terminationSettings,
                         integrator_settings= integratorSettings,
@@ -474,19 +485,18 @@ class environmentClass ():
                 for arc in range(self.arcNumber):
                     # Arc termination time. 
                     if arc < self.arcNumber-1: 
-                        arcFinalTime = self.simStartEpoch + arcTimeLength * (arc+1) 
+                        arcFinalTime = self.simStartEpoch + self.arcTimeLength * (arc+1) 
                     else: 
                         # Avoids propagating beyond final epoch. 
                         arcFinalTime = self.simEndEpoch
 
                     # Create termination settings.
                     terminationSettings = propagation_setup.propagator.time_termination(
-                        arcFinalTime  # sim end epoch or start epoch plus n * arclength. 
+                        self.arcEpochs[ arc + 1 ] 
                     )
 
                     # Arc initial time. 
-                    arcInitialEpoch = self.simStartEpoch + arc * arcTimeLength
-                    self.arcInitialEpochs.append( arcInitialEpoch )
+                    arcInitialEpoch = self.arcEpochs[ arc ]
 
                     # Create propagation settings. 
                     singleArcPropagatorSetting = propagation_setup.propagator.translational(
@@ -574,7 +584,7 @@ class environmentClass ():
             # Extract initial state per arc state_history. 
             for arcIdx in range( self.arcNumber ):
                 # Extract arc states and convert to array.  
-                arcStates = result2array( multiArcResults[ arcIdx ].state_history )[:,1:]
+                arcStates = result2array( multiArcResults[ arcIdx ].state_history )
 
                 # Concatenate initial state. 
                 states.append( arcStates )
