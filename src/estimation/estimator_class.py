@@ -348,6 +348,9 @@ class estimatorClass ():
 
     def get_correlation_matrix( self ):
         return self.covarianceOutput.correlations
+
+    def get_residuals( self ):
+        return self.estimationOutput.final_residuals
     
     def save_observations( self, fileDir: str, fileName: str ):
         # Saves to file. 
@@ -388,6 +391,8 @@ class estimatorClass ():
         print( "Saving estimate analysis...")
         # Get formal errors.
         formalErrors = self.get_formal_error()
+        # Get residuals. 
+        residuals = self.get_residuals() 
 
         ### Separate errors ( State - Harmonics - etc. )
         ### Add additional splits here when estimating additional parameters.
@@ -403,16 +408,30 @@ class estimatorClass ():
         initialStateError = np.reshape( 
             formalErrors[:initialStateEstimatedParams], 
             ( arcNum, 6*spacecraftNum ) )
+        initialStateResiduals = np.reshape(
+            residuals[ :initialStateEstimatedParams ],
+            ( arcNum, 6*spacecraftNum )
+        )
 
-        # Harmonic estimate error. 
+        # Harmonic formal error and residuals. 
         harmonicsError  = formalErrors[ 
             initialStateEstimatedParams:
             (initialStateEstimatedParams + harmonicsIndx) 
         ]
-        # Cosine formal errors. 
+        harmonicsResiduals = residuals[ 
+            initialStateEstimatedParams:
+            (initialStateEstimatedParams + harmonicsIndx) 
+        ]
+
+        # Cosine formal errors and residuals.  
         cosineErrors    = harmonicsError[ :cosIndx ]
-        # Sine formal errors ( =0 where not estimated )
+        cosineResiduals = harmonicsResiduals[ :cosIndx ]
+
+        # Sine formal errors ( 
         sineErrors      = np.zeros( cosIndx )
+        sineResiduals   = np.zeros( cosIndx )
+
+        # =0 where not estimated
         orders  = np.array( [ order for degree in range( 
                             2, self.harmonicsDegreeEstimated + 1 )
                             for order in range( degree + 1 ) ] )
@@ -420,10 +439,16 @@ class estimatorClass ():
                             2, self.harmonicsDegreeEstimated + 1 )
                             for _ in range( degree + 1 ) ] )
         sineErrors[ orders != 0 ] = harmonicsError[cosIndx:]
+        sineResiduals[ orders != 0 ] = harmonicsResiduals[cosIndx:]
+
         # Match data format for saved harmonics.
-        harmonicsData = np.column_stack(
+        harmonicsFormalErr = np.column_stack(
             [ degrees, orders, cosineErrors, sineErrors ]
         )
+        harmonicsResidualsFmt = np.column_stack(
+            [ degrees, orders, cosineResiduals, sineResiduals ]
+        )
+
 
         ### Save values to file.
         description = (
@@ -451,8 +476,17 @@ class estimatorClass ():
 
             # Write harmonics errors.
             file.write("#--- Block B ---\n")
-            np.savetxt( file, harmonicsData, fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], 
+            np.savetxt( file, harmonicsFormalErr, fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ], 
                        delimiter= ",")
+
+            # Write initial state residuals. 
+            file.write('#--- Block C ---\n')
+            np.savetxt( file, initialStateResiduals, fmt= "%23.16e")
+
+            # Write harmonic residuals. 
+            file.write('#--- Block D ---\n')
+            np.savetxt( file, harmonicsResidualsFmt, fmt= [ "%5i", "%5i", "%26.16e", "%26.16e" ],
+                       delimiter= ',')
 
         ### Covariance matrix saving. 
         # Get covariance matrix. 
