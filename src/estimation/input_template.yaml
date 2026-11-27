@@ -1,0 +1,89 @@
+# ===== ESTIMATION PROPERTIES =====
+est_properties: 
+  est_degree: <est_degree>                    # :int 
+  max_iters: <max_iters>                      # :int
+  max_resid: <max_resid>                      # :float
+  # Set varying parameter
+  parameter: <parameter>                      # :str (Key of parameter)
+  param_values:                               # :list[ float ]
+    - val1        # Mind the space after the dash
+    - val2 
+    - val3
+    #- (...)
+
+  # ===== EPOCH PROPERTIES =====
+  start_date: <start_date>                    # :float (seconds from J2000 fmt)
+  total_len: <total_len>                      # :float (Seconds)
+
+# ===== ENVIRONMENT PROPERTIES =====
+env_properties:
+  central_body: <central_body>                # :str
+
+  # == REALITY ==
+  real_env:
+    real_step: <real_step>                      # :float
+    real_arc_len: <real_arc_len>                # :float
+
+    real_level: <real_level>                    # :int
+    real_degree: <real_degree>                  # :int
+    real_custom_flag: <real_custom_flag>        # :int (0 or 1)
+    real_custom_file: <real_custom_file>        # :str (local path)
+
+    real_orientation: <real_orientation>        # :str
+
+  # == REFERENCE ==
+  ref_env:
+    ref_step: <ref_step>                        # :float
+    ref_arc_len: <ref_arc_len>                  # :float
+
+    ref_level: <ref_level>                      # :int
+    ref_degree: <ref_degree>                    # :int
+    ref_custom_flag: <ref_custom_flag>          # :int (0,1)
+    ref_custom_file: <ref_custom_file>          # :str (local path)
+
+    ref_orientation: <ref_orientation>          # :str
+
+# == SPACECRAFT ==
+sc_properties:
+  sc_num: <sc_num>                            # :int
+
+  sc_1: 
+    name: <name>                              # :str
+    mass: <mass>                              # :float
+    init_kep_state: <init_kep_state>          # :list[ float ]
+    leader: <leader>                          # :str or None
+    leader_dist: <leader_dist>                # :float or None
+
+  #sc_2:                                      # Repeat until sc_num. 
+  #  name: (...)
+
+# == GROUND STATIONS ==
+gs_properties:
+  gs_num: <gs_num>
+
+  gs_1:
+    name: <name>                              # :str
+    parent: <parent>                          # :str (Parent Body)
+    position: <position>                      # :list[ float ] (Cartesian pos)
+
+  #gs_2:                                      # Repeat until gs_num. 
+  #  name: (...)
+
+# ===== OBSERVATIONS PROPERTIES =====
+obs_properties:
+  obs_num: <obs_num>
+
+  obs_1:
+    name: <name>                              # :str
+    type: <type>                              # :str
+    link_ends: <link_ends>                    # :list[ str ]    
+
+    interval: <interval>                      # :float  
+    count_time: <count_time>                  # :float
+
+    noise_s: <noise_s>                        # :float
+    weight_s: <weight_s>                      # :float
+
+  #obs_2:                                     # Repeat until obs_num. 
+  #  name: (...)
+
